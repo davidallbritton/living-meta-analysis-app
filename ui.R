@@ -3,7 +3,7 @@
 #######################################################################################
 
 ################### Shiny App v.2 21.12.2020 UI #######################################
-# revised for Vasilev et al. data 2022
+# revised for Vasilev et al. data 2022  
 
 # Load required packages and source helper functions #----
 library(shiny)
