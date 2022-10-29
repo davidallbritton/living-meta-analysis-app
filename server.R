@@ -7,12 +7,12 @@
 # Define server logic
 server <- function(input, output) {
   # Create parameters reactive for HRV parameter columns in study overview
-  parameters <- reactive({input$hrvparam})
+  parameters <- reactive({input$sound})
   # Create MA reactive for all outputs
   MA <- reactive({
     ## Create subset based on chosen inclusion criteria
     df_sub <- df %>% filter(Design %in% input$design,
-                            HRV.Parameter %in% input$hrvparam,
+                            sound %in% input$sound,
                             Sample %in% input$sample,
                             Mean.Age >= input$age[1], Mean.Age <= input$age[2],
                             Percent.Females >= input$gender[1], Percent.Females <= input$gender[2],

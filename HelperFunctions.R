@@ -5,8 +5,14 @@
 ################### Helper functions #################################################
 #----
 # Load files
+load(file = "gen.RDa")  # data from Vasilev et al.
 load(file = "df.RDa")
 load(file = "screened.RDa")
+
+## remove this hack later:
+df <- df[1:54,]
+df$sound <- as.factor(gen$sound)
+## end hack
 
 # Generate function "priorposteriorlikelihood.ggplot"
 ## Plots prior, posterior and likelihood distribution
