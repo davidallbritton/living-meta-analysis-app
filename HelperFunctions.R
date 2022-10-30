@@ -5,9 +5,13 @@
 ################### Helper functions #################################################
 #----
 # Load files
-load(file = "gen.RDa")  # data from Vasilev et al.
 load(file = "df.RDa")
 load(file = "screened.RDa")
+
+# Load the new data file
+load(file = "gen.RDa")  # data from Vasilev et al.
+# Change some columns from char to factor
+gen <- dplyr::mutate_at(gen, vars(design, sound, sample, cit, task, measure), as.factor)
 
 ## remove this hack later:
 df <- df[1:54,]
