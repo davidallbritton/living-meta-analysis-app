@@ -11,30 +11,21 @@ server <- function(input, output) {
   # Create MA reactive for all outputs
   MA <- reactive({
     ## Create subset based on chosen inclusion criteria
-    df_sub <- df %>% filter(Design %in% input$design,
+    df_sub <- df %>% filter(design %in% input$design,
                             sound %in% input$sound,
-                            Sample %in% input$sample,
-                            Mean.Age >= input$age[1], Mean.Age <= input$age[2],
-                            Percent.Females >= input$gender[1], Percent.Females <= input$gender[2],
-                            Blindness %in% input$blind,
-                            Stimulation.side %in% input$side,
-                            Publication.Year >= input$pubyear[1], Publication.Year <= input$pubyear[2],
-                            Control.Type %in% input$control,
-                            Part.of.the.ear.stimulated %in% input$part,
-                            Intensity.fixed.or.mean %in% input$intensity1,
-                            Mean.Intensity..mA. >= input$intensity2[1], Mean.Intensity..mA. <= input$intensity2[2],
-                            Stimulation.duration.sec. >= input$stimduration[1], Stimulation.duration.sec. <= input$stimduration[2],
-                            taVNS.Device %in% input$device,
+                            sample %in% input$sample,
+                            year >= input$pubyear[1], year <= input$pubyear[2],
+                            task %in% input$task,
                             study %in% input$included)
     ## Aggregate effect sizes
-    aggES <- agg(id     = Paper.No,
+    aggES <- agg(id     = ID,
                  es     = yi,
                  var    = vi,
                  data   = df_sub,
                  cor = .5,
                  method = "BHHR")
     ## Merging aggregated ES with original dataframe 
-    MA <- merge(x = aggES, y = df_sub, by.x = "id", by.y = "Paper.No")
+    MA <- merge(x = aggES, y = df_sub, by.x = "id", by.y = "ID") 
     MA <- unique(setDT(MA) [sort.list(id)], by = "id")
     MA <- with(MA, MA[order(MA$es)])
   })
@@ -60,8 +51,8 @@ server <- function(input, output) {
     MA <- as.data.frame(MA())
     MA <- MA %>% mutate_if(is.numeric, round, digits=3)
     parameters <- base::subset(MA, select = c(parameters()))
-    criteria <- base::subset(MA, select = c(study, es, var, Design, Sample,Total.N,Mean.Age,Percent.Females, Blindness, Stimulation.side, Part.of.the.ear.stimulated, Control.Type, taVNS.Device, Comment, Results.published))
-    colnames(criteria) <- c("Study", "Hedges' g", "Variance", "Design", "Sample", "Total N", "Mean age","Percent female", "Blindness", "Stimulation side", "Stimulation site", "Control type", "taVNS device", "Comment", "Results")
+    criteria <- base::subset(MA, select = c(study, es, var, design, sample, N_E, N_C, task))
+    colnames(criteria) <- c("Study", "Hedges' g", "Variance", "Design", "Sample", "N Exp","N Control", "Task")
     MAclean <- cbind(criteria,parameters)
     DT::datatable(MAclean, extensions = "FixedColumns",
                   options = list(dom = 't', 
@@ -108,18 +99,8 @@ server <- function(input, output) {
   output$MAP <- renderPrint({
     bma()$MAP[1,]
   })
-  # Full texts screened panel
-  output$screened <- DT::renderDataTable({
-    datatable(screened, escape = F, options = list(columnDefs = list(list(
-                                         targets = 2,
-                                         render = JS(
-                                           "function(data, type, row, meta) {",
-                                           "return type === 'display' && data != null && data.length > 30 ?",
-                                           "'<span title=\"' + data + '\">' + data.substr(0, 30) + '...</span>' : data;",
-                                           "}")
-                                       ))),
-              class = "display")
-  })
+  # Full texts screened panel  #deleted this###
+ 
   # Additional plots panel
   output$evupdate <- renderPlot({
     priorposteriorlikelihood.ggplot(bma(), lowerbound = 0 - (input$mupriormean + 1) * 1.5, upperbound = 0 + (input$mupriormean + 1) * 1.5)

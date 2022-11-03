@@ -5,18 +5,45 @@
 ################### Helper functions #################################################
 #----
 # Load files
-load(file = "df.RDa")
-load(file = "screened.RDa")
+
+## don't load the original app's data file:   
+## load(file = "df.RDa")
+## load(file = "screened.RDa")
 
 # Load the new data file
 load(file = "gen.RDa")  # data from Vasilev et al.
+
 # Change some columns from char to factor
 gen <- dplyr::mutate_at(gen, vars(design, sound, sample, cit, task, measure), as.factor)
 
-## remove this hack later:
-df <- df[1:54,]
-df$sound <- as.factor(gen$sound)
-## end hack
+###  These next bits allow me to keep the old app's aggregation function
+###  over studies intact in case we want to use it in a future version:
+# Add a column for experiment number etc in case we later want to use their
+# method of aggregating experiments and measures from each paper into a 
+# single effect size for each paper.  Currently we have each experiment treated
+# as a separate study, and separate data files for each measure (though we
+# do have a column for "task" and for "measure" that perhaps could be used to 
+# define effect size number "ES.No" within each experiment "Study.No")
+if(!("Study.No" %in% colnames(gen))) {gen$"Study.No" <- 1}  # experiment number with a paper
+if(!("ES.No" %in% colnames(gen))) {gen$"ES.No" <- 1}        # effect size number within an experiment
+#
+# copy our "cit" column to a "study" column.  cit includes "Exp 2" etc for multi-
+# experiment studies, but their "study" column does not. If we later add a "study" 
+# column to the data file that only lists one label (author and year) for each
+# paper, then we could aggregate over each study. 
+if(!("study" %in% colnames(gen))) {gen$study <- gen$cit}
+#
+###
+
+###  The original app expects yi and vi instead of g and g_var, so add those columns:
+if(!("yi" %in% colnames(gen))) {gen$yi <- gen$g}
+if(!("vi" %in% colnames(gen))) {gen$vi <- gen$g_var}
+
+
+## temporarily(?) copy to the original app's name for the data file / data frame:
+## Or perhaps it would be better to continue in the server
+## and ui to use "df" as they did?
+df <- gen
 
 # Generate function "priorposteriorlikelihood.ggplot"
 ## Plots prior, posterior and likelihood distribution
