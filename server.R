@@ -1,8 +1,13 @@
 #######################################################################################
-################### EFFECT OF taVNS ON HRV - A BAYESIAN META-ANALYSIS #################
+################### Toward a Universal BAYESIAN META-ANALYSIS #################
 #######################################################################################
 
-################### Shiny App v.2 21.12.2020 SERVER ###################################
+################### Shiny App v.0.1 2022.11.3 SERVER ###################################
+#
+# Derived and adapted from https://vinzentwolf.shinyapps.io/taVNSHRVmeta/
+# as described in https://doi.org/10.1111/psyp.13933
+#
+###################################################################################
 
 # Define server logic
 server <- function(input, output) {

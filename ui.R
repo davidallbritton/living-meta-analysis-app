@@ -1,5 +1,5 @@
 #######################################################################################
-################### EFFECT OF taVNS ON HRV - A BAYESIAN META-ANALYSIS #################
+################### Toward a Universal BAYESIAN META-ANALYSIS #################
 #######################################################################################
 
 ################### Shiny App v.2 21.12.2020 UI #######################################
@@ -27,9 +27,8 @@ source("HelperFunctions.R")
 #----
 # Define UI
 ui <- fluidPage(theme = shinytheme("cosmo"),
-                titlePanel(title = div("The influence of taVNS on HRV - a Bayesian living & interactive meta-analysis", 
-                                       img(src='ukt.png',style="width: 200px", align = "right")),
-                           windowTitle = "taVNS on HRV | Bayesian living & interactive MA"),
+                titlePanel(title = div("Toward a Universal BAYESIAN META-ANALYSIS Tool"),
+                           windowTitle = "Toward a Universal BAYESIAN META-ANALYSIS Tool"),
                 sidebarLayout(
                   sidebarPanel(fluidRow(
                     tabsetPanel(
