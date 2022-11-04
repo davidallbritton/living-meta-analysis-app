@@ -31,6 +31,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                            windowTitle = "Toward a Universal BAYESIAN META-ANALYSIS Tool"),
                 sidebarLayout(
                   sidebarPanel(fluidRow(
+                    submitButton("Re-Calculate Meta-Analysis", icon("sync")),
+                  
                     tabsetPanel(
                       tabPanel("Study criteria",
                                br(), checkboxGroupInput(inputId = "design", label = p("Study design",style="color:#333333",
@@ -92,7 +94,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                                      "<p>However, if a study is selected for inclusion by the criteria above, but is unticked here, the study will not be included."),
                                    placement = "right", 
                                    trigger = "click",
-                                   options = list(container = "body"))),
+                                   options = list(container = "body"))
+                               ),
   
                       tabPanel("Prior specifications",
                                br(), numericInput(inputId = "mupriormean", label = p("µ prior mean",style="color:#333333",
@@ -151,8 +154,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                          trigger = "click",
                                          options = list(container = "body")),
                                a("Further information on choosing an appropriate τ prior.", href="https://cran.r-project.org/web/packages/bayesmeta/bayesmeta.pdf", target = "_blank")),
-                      hr(),
-                      submitButton("Re-Calculate Meta-Analysis", icon("sync"))
+                      hr()
                     ))),
                   mainPanel(
                     fluidRow(

@@ -19,7 +19,7 @@
 #     The data file must contain the following columns:
 #       Study_Design
 #       Publication_Year
-#       Paper_Citation   [brief citation format:  Author, year]   ###"study" in Wolf df###
+#       study   [paper in brief citation format:  Author, year]   ###study is ref'ed in a function###
 #       Paper_Number
 #       Experiment_Number  [in case there are multiple experiments/studies in a paper]
 #       Effect_Size_Number [in case there are multiple measurements in an experiment/study]
@@ -79,6 +79,13 @@ if(!("vi" %in% colnames(df))) {df$vi <- df$g_var}
 ## Or perhaps it would be better to continue in the server
 ## and ui to use "df" as they did?
 ####### df <- gen
+
+################## Get list of variable factors from input data file ##############
+#
+Variable.Factor.Names <-  colnames(select(df, Begin.Factors:End.Factors & !c(Begin.Factors, End.Factors)))
+
+
+##################  Functions   ####################################################
 
 # Generate function "priorposteriorlikelihood.ggplot"
 ## Plots prior, posterior and likelihood distribution
