@@ -83,10 +83,14 @@ server <- function(input, output) {
       theme_minimal_hgrid(12)
   }, width = 600, height = 600)
   
+  # Forest plot panel height
+  forest_height <- reactive(length(bma()$y) * 25 + 200)
+  
   # Forest Plot panel
   output$forest <- renderPlot({
     forestplot.bayesmeta(bma(), xlab = "Hedges' g")
-  })
+  }, height = forest_height)
+  
   # Funnel Plot panel
   output$funnel <- renderPlot({
     funnel.bayesmeta(bma(), main = "")
