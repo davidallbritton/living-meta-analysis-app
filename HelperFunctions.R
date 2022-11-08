@@ -35,7 +35,8 @@
 # Load the new data file
 ################## load(file = "df2.RDa")  # data from Vasilev et al., altered for this app
 ## load the altered data file and see if it still works....
-load(file = "df3.RDa")
+load(file = "df2.RDa")  ## worked ok.  Now try to make it work with "standard" input file format:
+#load(file = "df3.Rda")
 
 # Preset factor list:
 # Change some columns to factors in case they were not already.  Should here
