@@ -33,13 +33,15 @@
 ## load(file = "screened.RDa")
 
 # Load the new data file
-load(file = "df2.RDa")  # data from Vasilev et al., altered for this app
+################## load(file = "df2.RDa")  # data from Vasilev et al., altered for this app
+## load the altered data file and see if it still works....
+load(file = "df3.RDa")
 
 # Preset factor list:
 # Change some columns to factors in case they were not already.  Should here
 # list all the "required" columns for data files that are factors
 # ### need to change this list once we standardize what an input data file contains###
-df <- dplyr::mutate_at(df, vars(design, sample, cit, task, measure), as.factor)
+df <- dplyr::mutate_at(df, vars(design, sample, cit, task, measure, var_type), as.factor)
 
 # Variable factor list:  Follows the column labeled "Begin.Factors"
 # Add a column to the end of the data file to mark the end of the variable factor list

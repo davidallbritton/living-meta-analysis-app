@@ -25,6 +25,14 @@ library(tidyr)
 library(xtable)
 source("HelperFunctions.R")
 #----
+
+####################################
+## this should go in the helper functions instead, or be deleted when no longer needed:
+varName <- Variable.Factor.Names
+##
+####################################
+
+
 # Define UI
 ui <- fluidPage(theme = shinytheme("cosmo"),
                 titlePanel(title = div("Toward a Universal BAYESIAN META-ANALYSIS Tool"),
@@ -83,6 +91,21 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                             placement = "right", 
                                             trigger = "click",
                                             options = list(container = "body")),
+                               
+                               
+                               
+## loop over the variable factor columns
+                               lapply(Variable.Factor.Names, function(varName) {                             
+                               checkboxGroupInput(inputId = varName, label = p(varName,style="color:#333333",
+                                                                               tags$style(type = "text/css", "#q3 {vertical-align: top;}"),
+                                                                               bsButton("q3", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")), 
+                                                  choices = levels(df[,varName]), selected = levels(df[,varName]))
+                               
+                               }),
+                               
+                               
+                               
+                               
                                checkboxGroupInput(inputId = "included", label = p("Include/exclude specific studies",style="color:#333333",
                                                                           tags$style(type = "text/css", "#q9 {vertical-align: top;}"),
                                                                           bsButton("q9", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")), 
