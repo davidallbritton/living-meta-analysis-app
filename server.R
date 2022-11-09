@@ -22,6 +22,15 @@ server <- function(input, output) {
                             year >= input$pubyear[1], year <= input$pubyear[2],
                             task %in% input$task,
                             study %in% input$included)
+ 
+    ## Create subset based on the above plus input-file defined selection factors
+    for (varName in Variable.Factor.Names)  {
+      keepValues <- input[[varName]]
+      df_sub <- df_sub[df_sub[,varName] %in% keepValues, ]
+    }
+    
+    
+    
     ## Aggregate effect sizes
     aggES <- agg(id     = ID,
                  es     = yi,
