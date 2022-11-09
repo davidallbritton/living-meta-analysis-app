@@ -6,7 +6,7 @@
 #----
 # Load files
 
-#  Data file format
+#  Data file format  
 #
 #     The data file should have one effect size per row
 #     (So if a paper has 3 effect sizes there should be 3 rows for that paper;
@@ -17,46 +17,29 @@
 #     and effect size variance, assumed to be for Hedge's g (or call them g and g_variance?###)
 # 
 #     The data file must contain the following columns:
-#       Study_Design
-#       Publication_Year
-#       study   [paper in brief citation format:  Author, year]   ###study is ref'ed in a function###
-#       Paper_Number
-#       Experiment_Number  [in case there are multiple experiments/studies in a paper]
-#       Effect_Size_Number [in case there are multiple measurements in an experiment/study]
-#       .... more??? ...
-#       .... required data columns too?  [in addition to yi and vi]
-#       
+#       [[insert some more stuff here]]
 
-###### delete these 3 lines some day:
-## don't load the original app's data file:   
-## load(file = "df.RDa")
-## load(file = "screened.RDa")
-
-# Load the new data file
-################## load(file = "df2.RDa")  # data from Vasilev et al., altered for this app
-## load the altered data file and see if it still works....
-load(file = "df2.RDa")  ## worked ok.  Now try to make it work with "standard" input file format:
-#load(file = "df3.Rda")
+load(file = "df3.Rda")
 
 # Preset factor list:
 # Change some columns to factors in case they were not already.  Should here
 # list all the "required" columns for data files that are factors
 # ### need to change this list once we standardize what an input data file contains###
-df <- dplyr::mutate_at(df, vars(design, sample, cit, task, measure, var_type), as.factor)
+df <- dplyr::mutate_at(df, vars(Paper.and.Exp, Paper, Design, Begin.Selection.Factors:End.Selection.Factors), as.factor)
 
-# Variable factor list:  Follows the column labeled "Begin.Factors"
+# Variable factor list:  Follows the column labeled "Begin.Selection.Factors"
 # Add a column to the end of the data file to mark the end of the variable factor list
 # if it does not already exist
-if(!("End.Factors" %in% colnames(df))) {df$"End.Factors" <- ""}    
+if(!("End.Selection.Factors" %in% colnames(df))) {df$"End.Selection.Factors" <- ""}    
 
 
-#  The input data file should contain columns for Experiment_Number and Effect_Size_Number
+#  The input data file should contain columns for Experiment.Number and Effect.Size.Number
 #  for use in aggregating effects within each paper.
 #  The following lines are just in case an input file does not have those columns,
 #  because the paper had only one experiment and one measurement.
 #
-if(!("Experiment_Number" %in% colnames(df))) {df$"Experiment_Number" <- 1}    # experiment number within a paper
-if(!("Effect_Size_Number" %in% colnames(df))) {df$"Effect_Size_Number" <- 1}  # effect size number within an experiment
+if(!("Experiment.Number" %in% colnames(df))) {df$"Experiment.Number" <- 1}    # experiment number within a paper
+if(!("Effect.Size.Number" %in% colnames(df))) {df$"Effect.Size.Number" <- 1}  # effect size number within an experiment
 
 ######### delete the following two lines once the ui.R and HelperFunctions.R are changed to
 ######### use the new variable names above; The following 2 are needed to make things work until then
@@ -65,11 +48,9 @@ if(!("ES.No" %in% colnames(df))) {df$"ES.No" <- 1}        # effect size number w
 #########
 
 #
-# copy our "cit" column to a "study" column.  cit includes "Exp 2" etc for multi-
-# experiment studies, but their "study" column does not. If we later add a "study" 
-# column to the data file that only lists one label (author and year) for each
-# paper, then we could aggregate over each study. 
-if(!("study" %in% colnames(df))) {df$study <- df$cit}
+# copy our "Paper.and.Exp" column to a "study" column.  
+# may not need this depending on how the aggregation is done;check later***
+if(!("study" %in% colnames(df))) {df$study <- df$Paper.and.Exp}
 #
 ###
 
@@ -77,15 +58,9 @@ if(!("study" %in% colnames(df))) {df$study <- df$cit}
 if(!("yi" %in% colnames(df))) {df$yi <- df$g}
 if(!("vi" %in% colnames(df))) {df$vi <- df$g_var}
 
-
-## temporarily(?) copy to the original app's name for the data file / data frame:
-## Or perhaps it would be better to continue in the server
-## and ui to use "df" as they did?
-####### df <- gen
-
 ################## Get list of variable factors from input data file ##############
 #
-Variable.Factor.Names <-  colnames(select(df, Begin.Factors:End.Factors & !c(Begin.Factors, End.Factors)))
+Variable.Factor.Names <-  colnames(select(df, Begin.Selection.Factors:End.Selection.Factors & !c(Begin.Selection.Factors, End.Selection.Factors)))
 
 
 ##################  Functions   ####################################################

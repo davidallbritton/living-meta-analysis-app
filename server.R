@@ -11,17 +11,13 @@
 
 # Define server logic
 server <- function(input, output) {
-  # Create parameters reactive for HRV parameter columns in study overview
-  parameters <- reactive({input$sound})
+
   # Create MA reactive for all outputs
   MA <- reactive({
     ## Create subset based on chosen inclusion criteria
-    df_sub <- df %>% filter(design %in% input$design,
-                            sound %in% input$sound,
-                            sample %in% input$sample,
-                            year >= input$pubyear[1], year <= input$pubyear[2],
-                            task %in% input$task,
-                            study %in% input$included)
+    df_sub <- df %>% filter(Design %in% input$Design,
+                            Publication.Year >= input$pubyear[1], Publication.Year <= input$pubyear[2],
+                            Paper.and.Exp %in% input$included)
  
     ## Create subset based on the above plus input-file defined selection factors
     for (varName in Variable.Factor.Names)  {
@@ -29,7 +25,10 @@ server <- function(input, output) {
       df_sub <- df_sub[df_sub[,varName] %in% keepValues, ]
     }
     
-    
+    # replace ID with Paper.Number if aggregating over papers: ****** come back to this***
+    #if (input$aggretation == "Papers") {
+    #  df_sub$ID <- df_sub$Paper.Number
+    #}
     
     ## Aggregate effect sizes
     aggES <- agg(id     = ID,
@@ -64,20 +63,9 @@ server <- function(input, output) {
                        mu.prior = c("mean" = input$mupriormean, "sd" = input$mupriorsd))
     }
   })
-  # Study overview panel
-  output$studies <- DT::renderDataTable({
-    MA <- as.data.frame(MA())
-    MA <- MA %>% mutate_if(is.numeric, round, digits=3)
-    parameters <- base::subset(MA, select = c(parameters()))
-    criteria <- base::subset(MA, select = c(study, es, var, design, sample, N_E, N_C, task))
-    colnames(criteria) <- c("Study", "Hedges' g", "Variance", "Design", "Sample", "N Exp","N Control", "Task")
-    MAclean <- cbind(criteria,parameters)
-    DT::datatable(MAclean, extensions = "FixedColumns",
-                  options = list(dom = 't', 
-                                 pageLength = nrow(MAclean),
-                                 scrollX = T, 
-                                 fixedColumns = list(leftColumns = 2)))
-  })
+  
+  # Study overview panel  ** deleted this section **
+ 
     ## Warning message if 3 or less studies are included
     output$warning <- renderPrint({
       MA <- as.data.frame(MA())
