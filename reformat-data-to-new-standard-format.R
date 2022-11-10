@@ -9,6 +9,18 @@ load(file = "df2.RDa")  # data from Vasilev et al., altered for this app
 
 dfnew <- df
 
+# distinguish the 3 Sorqvst papers that were all published in 2010
+dfnew$cit <- as.character(dfnew$cit)
+dfnew[dfnew$ID == 1, ]$"cit" <- dfnew[dfnew$ID == 1, ]$"cit" %>% as.character() %>%sub(")", "a)", .) 
+dfnew[dfnew$ID == 49, ]$"cit" <- dfnew[dfnew$ID == 49, ]$"cit" %>% as.character() %>%sub(")", "b)", .) 
+dfnew[dfnew$ID == 50, ]$"cit" <- dfnew[dfnew$ID == 50, ]$"cit" %>% as.character() %>%sub(")", "b)", .) 
+dfnew[dfnew$ID == 51, ]$"cit" <- dfnew[dfnew$ID == 51, ]$"cit" %>% as.character() %>%sub(")", "c)", .) 
+dfnew[dfnew$ID == 52, ]$"cit" <- dfnew[dfnew$ID == 52, ]$"cit" %>% as.character() %>%sub(")", "c)", .) 
+dfnew$study <- dfnew$cit
+dfnew$cit <- as.factor(dfnew$cit)
+
+# create a column called "study" that will be just the paper name without exp numbers
+
 # manually put in the correct experiment numbers for multi-experiment papers
 dfnew[dfnew$ID == 34,]$Study.No <- 2
 dfnew[dfnew$ID == 35,]$Study.No <- 4
@@ -18,7 +30,7 @@ dfnew[dfnew$ID == 41,]$Study.No <- 2
 dfnew[dfnew$ID == 50,]$Study.No <- 2
 dfnew[dfnew$ID == 52,]$Study.No <- 2
 dfnew[dfnew$ID == 60,]$ES.No <- 2
-dfnew$study <- sub(").*$", ")", df$study) %>% as.factor()
+dfnew$study <- sub(").*$", ")", dfnew$study) %>% as.factor()
 
 # give each paper a unique paper number:
 dfnew$Paper.Number <- dfnew$ID

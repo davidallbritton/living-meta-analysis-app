@@ -26,9 +26,10 @@ server <- function(input, output) {
     }
     
     # replace ID with Paper.Number if aggregating over papers: ****** come back to this***
-    #if (input$aggretation == "Papers") {
-    #  df_sub$ID <- df_sub$Paper.Number
-    #}
+    if (input$aggregation == "Papers") {
+      df_sub$ID <- df_sub$Paper.Number
+      df_sub$study <- df_sub$Paper
+    }
     
     ## Aggregate effect sizes
     aggES <- agg(id     = ID,
