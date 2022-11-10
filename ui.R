@@ -72,24 +72,17 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                            min = min(df$Publication.Year), max = max(df$Publication.Year), value = c(min(df$Publication.Year), max(df$Publication.Year)), step = 1, sep = "", ticks = F),
                                         bsPopover(id="q8", title = "Publication year.",
                                             content = paste0("<p>Choose to include effect sizes from studies with a certain range of publication years.",
-                                                             "<p>DeFfault: all."),
+                                                             "<p>Default: all."),
                                             placement = "right", 
                                             trigger = "click",
                                             options = list(container = "body")),
                                
                                
-                               
-## loop over the variable factor columns
+                               ## loop over the variable factor columns
                                lapply(Variable.Factor.Names, function(varName) {                             
-                               checkboxGroupInput(inputId = varName, label = p(varName,style="color:#333333",
-                                                                               tags$style(type = "text/css", "#q3 {vertical-align: top;}"),
-                                                                               bsButton("q3", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")), 
-                                                  choices = levels(df[,varName]), selected = levels(df[,varName]))
-                               
+                                 checkboxGroupInput(inputId = varName, label = p(varName,style="color:#333333"), 
+                                                    choices = levels(df[,varName]), selected = levels(df[,varName]))
                                }),
-                               
-                               
-                               
                                
                                checkboxGroupInput(inputId = "included", label = p("Include/exclude specific studies",style="color:#333333",
                                                                           tags$style(type = "text/css", "#q9 {vertical-align: top;}"),
