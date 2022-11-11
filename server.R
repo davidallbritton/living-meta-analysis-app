@@ -42,9 +42,9 @@ server <- function(input, output) {
     MA <- merge(x = aggES, y = df_sub, by.x = "id", by.y = "ID") 
     MA <- unique(setDT(MA) [sort.list(id)], by = "id")
     MA <- with(MA, MA[order(MA$es)])
-    ### next 2 lines for debugging; delete  when done:
-    save(MA, file="temp.MA.Rda")
-    MA
+    ### next 2 lines for debugging; delete  when done: *******
+#    save(MA, file="temp.MA.Rda")
+#    MA
   })
 
   # Create bma reactive needed for all outputs
