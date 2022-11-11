@@ -1,8 +1,8 @@
 #######################################################################################
-################### Toward a Universal BAYESIAN META-ANALYSIS #################
+################### A Universal Tool for BAYSEIAN META-ANALYSIS #######################
 #######################################################################################
 
-################### Shiny App v.2 21.12.2020 UI #######################################
+###################  Shiny App v.0.1 2022.11.10 UI ####################################
 # revised for Vasilev et al. data 2022  
 
 # Load required packages and source helper functions #----
@@ -30,8 +30,8 @@ varName <- "IF"  #for debugging only  *********************
 
 # Define UI
 ui <- fluidPage(theme = shinytheme("cosmo"),
-                titlePanel(title = div("Toward a Universal BAYESIAN META-ANALYSIS Tool"),
-                           windowTitle = "Toward a Universal BAYESIAN META-ANALYSIS Tool"),
+                titlePanel(title = div("A Universal Tool for BAYSEIAN META-ANALYSIS"),
+                           windowTitle = "A Universal Tool for BAYSEIAN META-ANALYSIS"),
                 sidebarLayout(
                   sidebarPanel(fluidRow(
                     submitButton("Re-Calculate Meta-Analysis", icon("sync")),

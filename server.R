@@ -1,8 +1,8 @@
 #######################################################################################
-################### Toward a Universal BAYESIAN META-ANALYSIS #################
+################### A Universal Tool for BAYSEIAN META-ANALYSIS #################
 #######################################################################################
 
-################### Shiny App v.0.1 2022.11.3 SERVER ###################################
+################### Shiny App v.0.1 2022.11.10 SERVER ###################################
 #
 # Derived and adapted from https://vinzentwolf.shinyapps.io/taVNSHRVmeta/
 # as described in https://doi.org/10.1111/psyp.13933
