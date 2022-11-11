@@ -80,9 +80,9 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                }),
                                
                                ## loop over the variable numeric selection columns
-                               ## *********************
-                               sliderInput(inputId = varName, label = p(varName ,style="color:#333333"), 
-                                           min = min(df[,varName], na.rm = T), max = max(df[,varName], na.rm = T), value = c(min(df[,varName], na.rm = T), max(df[,varName], na.rm = T)), ticks = F),
+                               ## ********************* add a loop and decide how to handle NAs
+                       ###        sliderInput(inputId = varName, label = p(varName ,style="color:#333333"), 
+                       ###                    min = min(df[,varName], na.rm = T), max = max(df[,varName], na.rm = T), value = c(min(df[,varName], na.rm = T), max(df[,varName], na.rm = T)), ticks = F),
                                
                                
                                
@@ -163,21 +163,20 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                     fluidRow(
                       tabsetPanel(
                         tabPanel("Explanation", br(),
-                                 h3("Welcome to the living & interactive meta-analysis on [fill in some info here!]"), br(),
+                                 h3("Welcome to the interactive Bayesian meta-analysis tool [fill in some info here!]"), br(),
                                  h4("Purpose:"),
                                  p("[something can go here]."), br(),
                                  h4("Explanation:"),
                                  p("[something can go here]"), br(),
                                  h4("Paper:"),
                                  ("This app accompanies the following "),
-                                 a("paper", href="https://doi.org/10.1177/1745691617747398", target = "_blank"), 
-                                 ("where a more detailed explanation and an exemplary analysis can be found. Inclusion criteria and prior settings of the exemplary analysis correspond to thus app's default criteria."), br(), br(),
+                                 a("paper", href="https://doi.org/", target = "_blank"), 
                                  h4("Code and data:"),
-                                 ("This app's R Code and datasets can be found "),
+                                 ("This app's R Code and sample dataset can be found "),
                                  a("here", href="put github location here some day!!", target = "_blank"),
                                  ("on GitHub."), br(), br(),
                                  h4("Adding new results:"),
-                                 p("A living meta-analysis means a growing meta-analysis. Therefore, if we either missed a paper, you published results which are not yet shown in the 'Full texts screened'-table or you have unpublished HRV data of your taVNS experiments, please contact us."), br(), br(),
+                                 p("Someday you will be able to upload your own data! ****"), br(), br(),
                                  h4("Contact:"),
                                  p("The app is maintained by [someone goes here!]"),
                                  p("Contact/Visit us:"),
@@ -193,6 +192,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  ),
                         tabPanel("Included Studies", br(),
                           h4('This table lists all the studies included by the current selected criteria (updated only when "Re-Calculate Meta-Analysis" button is pressed)'),
+                          textOutput("warning"), br(),
                           DT::dataTableOutput("studies") %>% withSpinner(type = 6, color = "#3498DB"), br()
                         ),
                         tabPanel("Outlier check", br(),
