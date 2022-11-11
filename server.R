@@ -25,7 +25,7 @@ server <- function(input, output) {
       df_sub <- df_sub[df_sub[,varName] %in% keepValues, ]
     }
     
-    # replace ID with Paper.Number if aggregating over papers: ****** come back to this***
+    # replace ID with Paper.Number if aggregating over papers:
     if (input$aggregation == "Papers") {
       df_sub$ID <- df_sub$Paper.Number
       df_sub$study <- df_sub$Paper
@@ -66,6 +66,13 @@ server <- function(input, output) {
   })
   
   # Study overview panel  ** deleted this section **
+  output$studies <- DT::renderDataTable({
+    MA <- as.data.frame(MA())
+    MAclean <-  mutate(MA, "Included Studies" = study) %>% 
+      select("Included Studies", Publication.Year)
+    DT::datatable(MAclean,
+                  options = list(pageLength = nrow(MAclean)))
+  })
  
     ## Warning message if 3 or less studies are included
     output$warning <- renderPrint({

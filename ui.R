@@ -26,12 +26,7 @@ library(xtable)
 source("HelperFunctions.R")
 #----
 
-####################################
-## this should go in the helper functions instead, or be deleted when no longer needed:
-varName <- Variable.Factor.Names
-##
-####################################
-
+varName <- "IF"  #for debugging only  *********************
 
 # Define UI
 ui <- fluidPage(theme = shinytheme("cosmo"),
@@ -83,6 +78,13 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  checkboxGroupInput(inputId = varName, label = p(varName,style="color:#333333"), 
                                                     choices = levels(df[,varName]), selected = levels(df[,varName]))
                                }),
+                               
+                               ## loop over the variable numeric selection columns
+                               ## *********************
+                               sliderInput(inputId = varName, label = p(varName ,style="color:#333333"), 
+                                           min = min(df[,varName], na.rm = T), max = max(df[,varName], na.rm = T), value = c(min(df[,varName], na.rm = T), max(df[,varName], na.rm = T)), ticks = F),
+                               
+                               
                                
                                checkboxGroupInput(inputId = "included", label = p("Include/exclude specific studies",style="color:#333333",
                                                                           tags$style(type = "text/css", "#q9 {vertical-align: top;}"),
@@ -189,6 +191,10 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                      href="http://www.depaul.edu")
               
                                  ),
+                        tabPanel("Included Studies", br(),
+                          h4('This table lists all the studies included by the current selected criteria (updated only when "Re-Calculate Meta-Analysis" button is pressed)'),
+                          DT::dataTableOutput("studies") %>% withSpinner(type = 6, color = "#3498DB"), br()
+                        ),
                         tabPanel("Outlier check", br(),
                                  h4("Boxplot graph:"), plotOutput("boxplot") %>% withSpinner(type = 6, color = "#3498DB")),
                         tabPanel("Forest plot", br(),

@@ -27,30 +27,26 @@ load(file = "df3.Rda")
 # ### need to change this list once we standardize what an input data file contains###
 df <- dplyr::mutate_at(df, vars(Paper.and.Exp, Paper, Design, Begin.Selection.Factors:End.Selection.Factors), as.factor)
 
-# Variable factor list:  Follows the column labeled "Begin.Selection.Factors"
-# Add a column to the end of the data file to mark the end of the variable factor list
+# Add a column to mark the end of the original data file columns
 # if it does not already exist
-if(!("End.Selection.Factors" %in% colnames(df))) {df$"End.Selection.Factors" <- ""}    
+if(!("End.Original.Data" %in% colnames(df))) {df$"End.Original.Data" <- ""}    
 
 
 #  The input data file should contain columns for Experiment.Number and Effect.Size.Number
 #  for use in aggregating effects within each paper.
 #  The following lines are just in case an input file does not have those columns,
 #  because the paper had only one experiment and one measurement.
+## ** so far these are not used, so they are optional unless the aggregation function
+## ** gets rewritten to use them.  
 #
 if(!("Experiment.Number" %in% colnames(df))) {df$"Experiment.Number" <- 1}    # experiment number within a paper
 if(!("Effect.Size.Number" %in% colnames(df))) {df$"Effect.Size.Number" <- 1}  # effect size number within an experiment
 
-######### delete the following two lines once the ui.R and HelperFunctions.R are changed to
-######### use the new variable names above; The following 2 are needed to make things work until then
-if(!("Study.No" %in% colnames(df))) {df$"Study.No" <- 1}  # experiment number within a paper
-if(!("ES.No" %in% colnames(df))) {df$"ES.No" <- 1}        # effect size number within an experiment
-#########
 
 #
 # copy our "Paper.and.Exp" column to a "study" column.  
-# may not need this depending on how the aggregation is done;check later***
-if(!("study" %in% colnames(df))) {df$study <- df$Paper.and.Exp}
+# the study column is used by the aggregation functions
+df$study <- df$Paper.and.Exp
 #
 ###
 
@@ -59,8 +55,9 @@ if(!("yi" %in% colnames(df))) {df$yi <- df$g}
 if(!("vi" %in% colnames(df))) {df$vi <- df$g_var}
 
 ################## Get list of variable factors from input data file ##############
-#
 Variable.Factor.Names <-  colnames(select(df, Begin.Selection.Factors:End.Selection.Factors & !c(Begin.Selection.Factors, End.Selection.Factors)))
+################## Get list of numeric selection variables from input data file ##############
+Variable.Numeric.Names <-  colnames(select(df, Begin.Selection.Numerics:End.Selection.Numerics & !c(Begin.Selection.Numerics, End.Selection.Numerics)))
 
 
 ##################  Functions   ####################################################
