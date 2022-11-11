@@ -1,22 +1,36 @@
 #######################################################################################
-################### EFFECT OF taVNS ON HRV - A BAYESIAN META-ANALYSIS #################
+################### A Universal Tool for BAYSEIAN META-ANALYSIS #################
 #######################################################################################
 
-################### Shiny App v.2 21.12.2020 SERVER ###################################
+################### Shiny App v.0.1 2022.11.10 SERVER ###################################
+#
+# Derived and adapted from https://vinzentwolf.shinyapps.io/taVNSHRVmeta/
+# as described in https://doi.org/10.1111/psyp.13933
+#
+###################################################################################
 
 # Define server logic
 server <- function(input, output) {
-  # Create parameters reactive for HRV parameter columns in study overview
-  parameters <- reactive({input$sound})
+
   # Create MA reactive for all outputs
   MA <- reactive({
     ## Create subset based on chosen inclusion criteria
-    df_sub <- df %>% filter(design %in% input$design,
-                            sound %in% input$sound,
-                            sample %in% input$sample,
-                            year >= input$pubyear[1], year <= input$pubyear[2],
-                            task %in% input$task,
-                            study %in% input$included)
+    df_sub <- df %>% filter(Design %in% input$Design,
+                            Publication.Year >= input$pubyear[1], Publication.Year <= input$pubyear[2],
+                            Paper.and.Exp %in% input$included)
+ 
+    ## Create subset based on the above plus input-file defined selection factors
+    for (varName in Variable.Factor.Names)  {
+      keepValues <- input[[varName]]
+      df_sub <- df_sub[df_sub[,varName] %in% keepValues, ]
+    }
+    
+    # replace ID with Paper.Number if aggregating over papers:
+    if (input$aggregation == "Papers") {
+      df_sub$ID <- df_sub$Paper.Number
+      df_sub$study <- df_sub$Paper
+    }
+    
     ## Aggregate effect sizes
     aggES <- agg(id     = ID,
                  es     = yi,
@@ -28,7 +42,11 @@ server <- function(input, output) {
     MA <- merge(x = aggES, y = df_sub, by.x = "id", by.y = "ID") 
     MA <- unique(setDT(MA) [sort.list(id)], by = "id")
     MA <- with(MA, MA[order(MA$es)])
+    ### next 2 lines for debugging; delete  when done: *******
+#    save(MA, file="temp.MA.Rda")
+#    MA
   })
+
   # Create bma reactive needed for all outputs
   bma <- reactive({
     ## Generate bayesmeta-object "bma" depending on tau prior chosen
@@ -46,20 +64,16 @@ server <- function(input, output) {
                        mu.prior = c("mean" = input$mupriormean, "sd" = input$mupriorsd))
     }
   })
-  # Study overview panel
+  
+  # Study overview panel  ** deleted this section **
   output$studies <- DT::renderDataTable({
     MA <- as.data.frame(MA())
-    MA <- MA %>% mutate_if(is.numeric, round, digits=3)
-    parameters <- base::subset(MA, select = c(parameters()))
-    criteria <- base::subset(MA, select = c(study, es, var, design, sample, N_E, N_C, task))
-    colnames(criteria) <- c("Study", "Hedges' g", "Variance", "Design", "Sample", "N Exp","N Control", "Task")
-    MAclean <- cbind(criteria,parameters)
-    DT::datatable(MAclean, extensions = "FixedColumns",
-                  options = list(dom = 't', 
-                                 pageLength = nrow(MAclean),
-                                 scrollX = T, 
-                                 fixedColumns = list(leftColumns = 2)))
+    MAclean <-  mutate(MA, "Included Studies" = study) %>% 
+      select("Included Studies", Publication.Year)
+    DT::datatable(MAclean,
+                  options = list(pageLength = nrow(MAclean)))
   })
+ 
     ## Warning message if 3 or less studies are included
     output$warning <- renderPrint({
       MA <- as.data.frame(MA())

@@ -1,8 +1,8 @@
 #######################################################################################
-################### EFFECT OF taVNS ON HRV - A BAYESIAN META-ANALYSIS #################
+################### A Universal Tool for BAYSEIAN META-ANALYSIS #######################
 #######################################################################################
 
-################### Shiny App v.2 21.12.2020 UI #######################################
+###################  Shiny App v.0.1 2022.11.10 UI ####################################
 # revised for Vasilev et al. data 2022  
 
 # Load required packages and source helper functions #----
@@ -25,67 +25,71 @@ library(tidyr)
 library(xtable)
 source("HelperFunctions.R")
 #----
+
+varName <- "IF"  #for debugging only  *********************
+
 # Define UI
 ui <- fluidPage(theme = shinytheme("cosmo"),
-                titlePanel(title = div("The influence of taVNS on HRV - a Bayesian living & interactive meta-analysis", 
-                                       img(src='ukt.png',style="width: 200px", align = "right")),
-                           windowTitle = "taVNS on HRV | Bayesian living & interactive MA"),
+                titlePanel(title = div("A Universal Tool for BAYSEIAN META-ANALYSIS"),
+                           windowTitle = "A Universal Tool for BAYSEIAN META-ANALYSIS"),
                 sidebarLayout(
                   sidebarPanel(fluidRow(
+                    submitButton("Re-Calculate Meta-Analysis", icon("sync")),
+                  
                     tabsetPanel(
                       tabPanel("Study criteria",
-                               br(), checkboxGroupInput(inputId = "design", label = p("Study design",style="color:#333333",
+                               br(), 
+                               radioButtons(inputId = "aggregation", label = p("Aggregate over", style="color:#333333",
+                                                                          tags$style(type = "text/css", "#q18 {vertical-align: top;}"),
+                                                                          bsButton("q118", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")),    
+                                            choices = c(ID = "ID", Papers = "Papers")),
+                               bsPopover(id="q118", title = "Aggregation.",
+                                         content = paste0("<p>Aggregate effect sizes over ID (default) or over papers.",
+                                                          "<p>Selecting Papers will compute a single aggregated effect size for each paper. Selecting ID will aggregate based on the numbers in the ID column in the data file.  If you want no aggregation, make sure the data file has a unique ID number for each line.",
+                                                          "<p>Default: ID."),
+                                         placement = "right", 
+                                         trigger = "click",
+                                         options = list(container = "body")),
+                               checkboxGroupInput(inputId = "Design", label = p("Study design",style="color:#333333",
                                                                                  tags$style(type = "text/css", "#q1 {vertical-align: top;}"),
                                                                                  bsButton("q1", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")), 
-                                                  choices = levels(df$design), selected = levels(df$design)),
+                                                  choices = levels(df$Design), selected = levels(df$Design)),
                                         bsPopover(id="q1", title = "Study design.",
                                             content = paste0("<p>Choose to include effect sizes calculated within subjects, between subjects, or both.",
                                                              "<p>Default: both."),
                                             placement = "right", 
                                             trigger = "click",
                                             options = list(container = "body")),
-                               checkboxGroupInput(inputId = "task", label = p("Task type",style="color:#333333",
-                                                                                 tags$style(type = "text/css", "#q2 {vertical-align: top;}"),
-                                                                                 bsButton("q2", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")),  
-                                                  choices = levels(df$task), selected = levels(df$task)),
-                                       bsPopover(id="q2", title = "Task type.",
-                                            content = paste0("<p>Choose tasks to include"),
-                                            placement = "right", 
-                                            trigger = "click",
-                                            options = list(container = "body")),
-                               checkboxGroupInput(inputId = "sound", label = p("Sound",style="color:#333333",
-                                                                                  tags$style(type = "text/css", "#q3 {vertical-align: top;}"),
-                                                                                  bsButton("q3", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")), 
-                                                  choices = levels(df$sound), selected = levels(df$sound)),
-                                         bsPopover(id="q3", title = "Choose sounds to include",
-                                            content = paste0("<p>Choose sounds"),
-                                            placement = "right", 
-                                            trigger = "click",
-                                            options = list(container = "body")),
-                               checkboxGroupInput(inputId = "sample", label = p("Sample",style="color:#333333",
-                                                                                tags$style(type = "text/css", "#q4 {vertical-align: top;}"),
-                                                                                bsButton("q4", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")),  
-                                                  choices = levels(df$sample), selected = df$sample),
-                                        bsPopover(id="q4", title = "Sample.",
-                                            content = paste0("<p>Choose sample populations to include."),
-                                            placement = "right", 
-                                            trigger = "click",
-                                            options = list(container = "body")),
-                              
+
                                sliderInput(inputId = "pubyear", label = p("Publication year",style="color:#333333",
                                                                           tags$style(type = "text/css", "#q8 {vertical-align: top;}"),
                                                                           bsButton("q8", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")), 
-                                           min = min(df$year), max = max(df$year), value = c(min(df$year), max(df$year)), step = 1, sep = "", ticks = F),
+                                           min = min(df$Publication.Year), max = max(df$Publication.Year), value = c(min(df$Publication.Year), max(df$Publication.Year)), step = 1, sep = "", ticks = F),
                                         bsPopover(id="q8", title = "Publication year.",
                                             content = paste0("<p>Choose to include effect sizes from studies with a certain range of publication years.",
                                                              "<p>Default: all."),
                                             placement = "right", 
                                             trigger = "click",
                                             options = list(container = "body")),
+                               
+                               
+                               ## loop over the variable factor columns
+                               lapply(Variable.Factor.Names, function(varName) {                             
+                                 checkboxGroupInput(inputId = varName, label = p(varName,style="color:#333333"), 
+                                                    choices = levels(df[,varName]), selected = levels(df[,varName]))
+                               }),
+                               
+                               ## loop over the variable numeric selection columns
+                               ## ********************* add a loop and decide how to handle NAs
+                       ###        sliderInput(inputId = varName, label = p(varName ,style="color:#333333"), 
+                       ###                    min = min(df[,varName], na.rm = T), max = max(df[,varName], na.rm = T), value = c(min(df[,varName], na.rm = T), max(df[,varName], na.rm = T)), ticks = F),
+                               
+                               
+                               
                                checkboxGroupInput(inputId = "included", label = p("Include/exclude specific studies",style="color:#333333",
                                                                           tags$style(type = "text/css", "#q9 {vertical-align: top;}"),
                                                                           bsButton("q9", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")), 
-                                                  choices = levels(df$study), selected = levels(df$study)),
+                                                  choices = levels(df$Paper.and.Exp), selected = levels(df$Paper.and.Exp)),
                                 bsPopover(id="q9", title = "Include/exclude specific studies.",
                                     content = paste0("<p>Exclude specific studies by removing the tick mark.",
                                                      "<p>This selection is hierarchically below the other inclusion/exclusion criteria.",
@@ -93,7 +97,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                                      "<p>However, if a study is selected for inclusion by the criteria above, but is unticked here, the study will not be included."),
                                    placement = "right", 
                                    trigger = "click",
-                                   options = list(container = "body"))),
+                                   options = list(container = "body"))
+                               ),
   
                       tabPanel("Prior specifications",
                                br(), numericInput(inputId = "mupriormean", label = p("µ prior mean",style="color:#333333",
@@ -152,28 +157,26 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                          trigger = "click",
                                          options = list(container = "body")),
                                a("Further information on choosing an appropriate τ prior.", href="https://cran.r-project.org/web/packages/bayesmeta/bayesmeta.pdf", target = "_blank")),
-                      hr(),
-                      submitButton("Re-Calculate Meta-Analysis", icon("sync"))
+                      hr()
                     ))),
                   mainPanel(
                     fluidRow(
                       tabsetPanel(
                         tabPanel("Explanation", br(),
-                                 h3("Welcome to the living & interactive meta-analysis on [fill in some info here!]"), br(),
+                                 h3("Welcome to the interactive Bayesian meta-analysis tool [fill in some info here!]"), br(),
                                  h4("Purpose:"),
                                  p("[something can go here]."), br(),
                                  h4("Explanation:"),
                                  p("[something can go here]"), br(),
                                  h4("Paper:"),
                                  ("This app accompanies the following "),
-                                 a("paper", href="https://doi.org/10.1177/1745691617747398", target = "_blank"), 
-                                 ("where a more detailed explanation and an exemplary analysis can be found. Inclusion criteria and prior settings of the exemplary analysis correspond to thus app's default criteria."), br(), br(),
+                                 a("paper", href="https://doi.org/", target = "_blank"), 
                                  h4("Code and data:"),
-                                 ("This app's R Code and datasets can be found "),
+                                 ("This app's R Code and sample dataset can be found "),
                                  a("here", href="put github location here some day!!", target = "_blank"),
                                  ("on GitHub."), br(), br(),
                                  h4("Adding new results:"),
-                                 p("A living meta-analysis means a growing meta-analysis. Therefore, if we either missed a paper, you published results which are not yet shown in the 'Full texts screened'-table or you have unpublished HRV data of your taVNS experiments, please contact us."), br(), br(),
+                                 p("Someday you will be able to upload your own data! ****"), br(), br(),
                                  h4("Contact:"),
                                  p("The app is maintained by [someone goes here!]"),
                                  p("Contact/Visit us:"),
@@ -187,6 +190,11 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                      href="http://www.depaul.edu")
               
                                  ),
+                        tabPanel("Included Studies", br(),
+                          h4('This table lists all the studies included by the current selected criteria (updated only when "Re-Calculate Meta-Analysis" button is pressed)'),
+                          textOutput("warning"), br(),
+                          DT::dataTableOutput("studies") %>% withSpinner(type = 6, color = "#3498DB"), br()
+                        ),
                         tabPanel("Outlier check", br(),
                                  h4("Boxplot graph:"), plotOutput("boxplot") %>% withSpinner(type = 6, color = "#3498DB")),
                         tabPanel("Forest plot", br(),

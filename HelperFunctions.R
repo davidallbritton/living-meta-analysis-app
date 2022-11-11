@@ -1,49 +1,66 @@
 #######################################################################################
-################### EFFECT OF taVNS ON HRV - A BAYSEIAN META-ANALYSIS #################
+################### A Universal Tool for BAYSEIAN META-ANALYSIS #######################
 #######################################################################################
 
 ################### Helper functions #################################################
 #----
 # Load files
 
-## don't load the original app's data file:   
-## load(file = "df.RDa")
-## load(file = "screened.RDa")
-
-# Load the new data file
-load(file = "gen.RDa")  # data from Vasilev et al.
-
-# Change some columns from char to factor
-gen <- dplyr::mutate_at(gen, vars(design, sound, sample, cit, task, measure), as.factor)
-
-###  These next bits allow me to keep the old app's aggregation function
-###  over studies intact in case we want to use it in a future version:
-# Add a column for experiment number etc in case we later want to use their
-# method of aggregating experiments and measures from each paper into a 
-# single effect size for each paper.  Currently we have each experiment treated
-# as a separate study, and separate data files for each measure (though we
-# do have a column for "task" and for "measure" that perhaps could be used to 
-# define effect size number "ES.No" within each experiment "Study.No")
-if(!("Study.No" %in% colnames(gen))) {gen$"Study.No" <- 1}  # experiment number with a paper
-if(!("ES.No" %in% colnames(gen))) {gen$"ES.No" <- 1}        # effect size number within an experiment
+#  Data file format  
 #
-# copy our "cit" column to a "study" column.  cit includes "Exp 2" etc for multi-
-# experiment studies, but their "study" column does not. If we later add a "study" 
-# column to the data file that only lists one label (author and year) for each
-# paper, then we could aggregate over each study. 
-if(!("study" %in% colnames(gen))) {gen$study <- gen$cit}
+#     The data file should have one effect size per row
+#     (So if a paper has 3 effect sizes there should be 3 rows for that paper;
+#      If there are 2 studies/experiments in the paper and 3 effect sizes 
+#      from each experiment, then there should be 6 rows for that paper)
+#
+#     The data file must have columns called "yi" and "vi" for the effect size
+#     and effect size variance, assumed to be for Hedge's g (or call them g and g_variance?###)
+# 
+#     The data file must contain the following columns:
+#       [[insert some more stuff here]]
+
+load(file = "df3.Rda")
+
+# Preset factor list:
+# Change some columns to factors in case they were not already.  Should here
+# list all the "required" columns for data files that are factors
+# ### need to change this list once we standardize what an input data file contains###
+df <- dplyr::mutate_at(df, vars(Paper.and.Exp, Paper, Design, Begin.Selection.Factors:End.Selection.Factors), as.factor)
+
+# Add a column to mark the end of the original data file columns
+# if it does not already exist
+if(!("End.Original.Data" %in% colnames(df))) {df$"End.Original.Data" <- ""}    
+
+
+#  The input data file should contain columns for Experiment.Number and Effect.Size.Number
+#  for use in aggregating effects within each paper.
+#  The following lines are just in case an input file does not have those columns,
+#  because the paper had only one experiment and one measurement.
+## ** so far these are not used, so they are optional unless the aggregation function
+## ** gets rewritten to use them.  
+#
+if(!("Experiment.Number" %in% colnames(df))) {df$"Experiment.Number" <- 1}    # experiment number within a paper
+if(!("Effect.Size.Number" %in% colnames(df))) {df$"Effect.Size.Number" <- 1}  # effect size number within an experiment
+
+
+#
+# copy our "Paper.and.Exp" column to a "study" column.  
+# the study column is used by the aggregation functions
+df$study <- df$Paper.and.Exp
 #
 ###
 
 ###  The original app expects yi and vi instead of g and g_var, so add those columns:
-if(!("yi" %in% colnames(gen))) {gen$yi <- gen$g}
-if(!("vi" %in% colnames(gen))) {gen$vi <- gen$g_var}
+if(!("yi" %in% colnames(df))) {df$yi <- df$g}
+if(!("vi" %in% colnames(df))) {df$vi <- df$g_var}
+
+################## Get list of variable factors from input data file ##############
+Variable.Factor.Names <-  colnames(select(df, Begin.Selection.Factors:End.Selection.Factors & !c(Begin.Selection.Factors, End.Selection.Factors)))
+################## Get list of numeric selection variables from input data file ##############
+Variable.Numeric.Names <-  colnames(select(df, Begin.Selection.Numerics:End.Selection.Numerics & !c(Begin.Selection.Numerics, End.Selection.Numerics)))
 
 
-## temporarily(?) copy to the original app's name for the data file / data frame:
-## Or perhaps it would be better to continue in the server
-## and ui to use "df" as they did?
-df <- gen
+##################  Functions   ####################################################
 
 # Generate function "priorposteriorlikelihood.ggplot"
 ## Plots prior, posterior and likelihood distribution
