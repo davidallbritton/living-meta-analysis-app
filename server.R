@@ -65,7 +65,7 @@ server <- function(input, output) {
     }
   })
   
-  # Study overview panel  ** deleted this section **
+  # Study overview panel  
   output$studies <- DT::renderDataTable({
     MA <- as.data.frame(MA())
     MAclean <-  mutate(MA, "Included Studies" = study) %>% 
@@ -77,7 +77,7 @@ server <- function(input, output) {
     ## Warning message if 3 or less studies are included
     output$warning <- renderPrint({
       MA <- as.data.frame(MA())
-      if (nrow(MA) < 4) {print('WARNING: With the chosen inclusion criteria, 3 or less studies will be included in the analysis.')}
+      if (nrow(MA) < 4) {print('WARNING: With the chosen inclusion criteria, 3 or fewer studies will be included in the analysis.')}
   })
   # Outliers panel
   output$boxplot <- renderPlot({

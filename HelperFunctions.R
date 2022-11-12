@@ -20,16 +20,36 @@
 #       [[insert some more stuff here]]
 
 load(file = "df3.Rda")
-
-# Preset factor list:
-# Change some columns to factors in case they were not already.  Should here
-# list all the "required" columns for data files that are factors
-# ### need to change this list once we standardize what an input data file contains###
-df <- dplyr::mutate_at(df, vars(Paper.and.Exp, Paper, Design, Begin.Selection.Factors:End.Selection.Factors), as.factor)
+##load(file = "df4.Rda")  # just for debugging **********
 
 # Add a column to mark the end of the original data file columns
 # if it does not already exist
 if(!("End.Original.Data" %in% colnames(df))) {df$"End.Original.Data" <- ""}    
+
+################## Get list of variable factors from input data file ##############
+Variable.Factor.Names <-  colnames(select(df, Begin.Selection.Factors:End.Selection.Factors & !c(Begin.Selection.Factors, End.Selection.Factors)))
+################## Get list of numeric selection variables from input data file ##############
+Variable.Numeric.Names <-  colnames(select(df, Begin.Selection.Numerics:End.Selection.Numerics & !c(Begin.Selection.Numerics, End.Selection.Numerics)))
+
+################## Replace NAs in variable factors with "NA (missing)" string
+df <- dplyr::mutate_at(df, vars(Begin.Selection.Factors:End.Selection.Factors), as.character)
+for (vName in Variable.Factor.Names)  {
+  df[is.na(df[,vName]), vName]  <- "NA (missing)"
+}
+###### Change some columns to factors in case they were not already.  
+# Required columns that should be factors: Paper.and.Exp, Paper, Design
+# variable "Selection.Factors" should be factors as well
+df <- dplyr::mutate_at(df, vars(Paper.and.Exp, Paper, Design, Begin.Selection.Factors:End.Selection.Factors), as.factor)
+
+################# Create warnings for NAs in the variable numeric selection columns ####
+na.warning <- ""
+na.warning <- sapply(c(Variable.Numeric.Names), function(nvname){
+  if(nna <- sum(is.na(df[,nvname]))) {
+    na.warning <- paste0(na.warning, "WARNING! ",'"', nvname,'"', " contained ", nna, " NAs (missing values), which have now been recoded as zeroes.")
+  }
+})
+################ Recode NAs in the variable numeric selection columns as zeroes #####
+# do the recoding....
 
 
 #  The input data file should contain columns for Experiment.Number and Effect.Size.Number
@@ -42,8 +62,6 @@ if(!("End.Original.Data" %in% colnames(df))) {df$"End.Original.Data" <- ""}
 if(!("Experiment.Number" %in% colnames(df))) {df$"Experiment.Number" <- 1}    # experiment number within a paper
 if(!("Effect.Size.Number" %in% colnames(df))) {df$"Effect.Size.Number" <- 1}  # effect size number within an experiment
 
-
-#
 # copy our "Paper.and.Exp" column to a "study" column.  
 # the study column is used by the aggregation functions
 df$study <- df$Paper.and.Exp
@@ -53,11 +71,6 @@ df$study <- df$Paper.and.Exp
 ###  The original app expects yi and vi instead of g and g_var, so add those columns:
 if(!("yi" %in% colnames(df))) {df$yi <- df$g}
 if(!("vi" %in% colnames(df))) {df$vi <- df$g_var}
-
-################## Get list of variable factors from input data file ##############
-Variable.Factor.Names <-  colnames(select(df, Begin.Selection.Factors:End.Selection.Factors & !c(Begin.Selection.Factors, End.Selection.Factors)))
-################## Get list of numeric selection variables from input data file ##############
-Variable.Numeric.Names <-  colnames(select(df, Begin.Selection.Numerics:End.Selection.Numerics & !c(Begin.Selection.Numerics, End.Selection.Numerics)))
 
 
 ##################  Functions   ####################################################
