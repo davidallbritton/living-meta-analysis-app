@@ -45,12 +45,15 @@ df <- dplyr::mutate_at(df, vars(Paper.and.Exp, Paper, Design, Begin.Selection.Fa
 na.warning <- ""
 na.warning <- sapply(c(Variable.Numeric.Names), function(nvname){
   if(nna <- sum(is.na(df[,nvname]))) {
-    na.warning <- paste0(na.warning, "WARNING! ",'"', nvname,'"', " contained ", nna, " NAs (missing values), which have now been recoded as zeroes.")
+    na.warning <- paste0(na.warning, "**WARNING!** ",'"', nvname,'"', " contained ", nna, " NAs (missing values), which have now been recoded as zeroes.")
   }
 })
 ################ Recode NAs in the variable numeric selection columns as zeroes #####
 # do the recoding....
-
+################## Replace NAs in variable factors with "NA (missing)" string
+for (vName in Variable.Numeric.Names)  {
+  df[is.na(df[,vName]), vName]  <- 0
+}
 
 #  The input data file should contain columns for Experiment.Number and Effect.Size.Number
 #  for use in aggregating effects within each paper.

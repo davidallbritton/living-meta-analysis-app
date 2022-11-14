@@ -79,14 +79,15 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                                     choices = levels(df[,varName]), selected = levels(df[,varName]))
                                }),
                                
-                               ### loop over the variable numeric selection columns
-                               # ********************* add a loop and decide how to handle NAs
-                              sliderInput(inputId = varName, label = p(varName ,style="color:#333333"), 
-                                           min = min(df[,varName], na.rm = T), max = max(df[,varName], na.rm = T), value = c(min(df[,varName], na.rm = T), max(df[,varName], na.rm = T)), ticks = F),
-                              if(!is.na(na.warning[varName])) p(na.warning[varName]),
-
+                              ### loop over the variable numeric selection columns
+                              lapply(Variable.Numeric.Names, function(varName) {
+                                pp <- if(!is.na(na.warning[varName])) p(na.warning[varName]) else ""
+                                ss <- sliderInput(inputId = varName, label = p(varName ,style="color:#333333"), 
+                                            min = min(df[,varName], na.rm = T), max = max(df[,varName], na.rm = T), value = c(min(df[,varName], na.rm = T), max(df[,varName], na.rm = T)), ticks = F)
+                                list(ss, pp)
+                              }), 
                                
-                               
+                              
                                checkboxGroupInput(inputId = "included", label = p("Include/exclude specific studies",style="color:#333333",
                                                                           tags$style(type = "text/css", "#q9 {vertical-align: top;}"),
                                                                           bsButton("q9", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")), 
