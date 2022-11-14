@@ -25,6 +25,12 @@ server <- function(input, output) {
       df_sub <- df_sub[df_sub[,varName] %in% keepValues, ]
     }
     
+    ## Create subset based on the above plus input-file defined selection numerics
+    for (varName in Variable.Numeric.Names)  {
+      df_sub <- df_sub[df_sub[,varName] >= input[[varName]][1], ]
+      df_sub <- df_sub[df_sub[,varName] <= input[[varName]][2], ]
+    }
+    
     # replace ID with Paper.Number if aggregating over papers:
     if (input$aggregation == "Papers") {
       df_sub$ID <- df_sub$Paper.Number
