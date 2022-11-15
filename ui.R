@@ -26,8 +26,6 @@ library(xtable)
 source("HelperFunctions.R")
 #----
 
-varName <- "IF"  #for debugging only  *********************
-
 # Define UI
 ui <- fluidPage(theme = shinytheme("cosmo"),
                 titlePanel(title = div("A Universal Tool for BAYSEIAN META-ANALYSIS"),
