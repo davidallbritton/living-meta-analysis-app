@@ -14,18 +14,26 @@ server <- function(input, output) {
   
   ##### need to move all the data reading and formatting into a reactive context
   
-  dfreactive <- reactiveVal(as.data.frame(df))
+
+  ## Initialize with stored data, which will be replaced when a data file is uploaded
+  ## by the user
+  myrvs <- reactiveValues(df.reactive = df)
   
+  ## When the user uploads a data file, replace the existing data and update the UI
   observeEvent(input$infile1, {
-    df_up <- readxl::read_excel(input$infile1$datapath) %>% as.data.frame()
-    nrow(dfreactive()) %>% message()
-    dfreactive(df_up) 
-    message("input file uploaded")
-    nrow(dfreactive()) %>% message()
-    nrow(df_up) %>% message()
+     message("myrvs$df.reactive:")   ### ** for debugging
+     nrow(myrvs$df.reactive) %>% message()   ### ** for debugging
+    # Read the data from the excel or csv file the user uploaded:
+     ### may want to insert here some format checking before importing data file ** ###
+    myrvs$df.reactive <- readxl::read_excel(input$infile1$datapath) %>% as.data.frame()
+     message("input file uploaded")   ### ** for debugging
+     message("myrvs$df.reactive:")   ### ** for debugging
+     nrow(myrvs$df.reactive) %>% message()   ### ** for debugging
+    
+     
+     
   })
-## here insert some stuff to update dfreactive whenever a new input file is submitted **  
-  
+
   ################## Get list of variable factors from input data file ##############
 #  Variable.Factor.Names <- reactive({
 #    df <- dfreactive() %>% as.data.frame()
