@@ -11,9 +11,19 @@
 
 # Define server logic
 server <- function(input, output) {
+  
+  ##### need to move all the data reading and formatting into a reactive context
+  
+  dfreactive <- reactive(df)
+  
+  
+  
+  
 
   # Create MA reactive for all outputs
   MA <- reactive({
+    # import the reactive version of the data
+    df <- dfreactive() %>% as.data.frame()
     ## Create subset based on chosen inclusion criteria
     df_sub <- df %>% filter(Design %in% input$Design,
                             Publication.Year >= input$pubyear[1], Publication.Year <= input$pubyear[2],
