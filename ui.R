@@ -34,6 +34,16 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                   sidebarPanel(fluidRow(
                     submitButton("Re-Calculate Meta-Analysis", icon("sync")),
                   
+                    
+                    tabPanel("Upload Data", 
+                             br(),
+                             fileInput("infile1", "Upload your data file")
+                    ),
+                    
+                    
+                    
+                    
+                    
                     tabsetPanel(
                       tabPanel("Study criteria",
                                br(), 

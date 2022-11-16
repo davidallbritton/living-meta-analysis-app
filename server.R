@@ -15,9 +15,18 @@ server <- function(input, output) {
   ##### need to move all the data reading and formatting into a reactive context
   
   dfreactive <- reactive(df)
+## here insert some stuff to update dfreactive whenever a new input file is submitted **  
   
-  
-  
+  ################## Get list of variable factors from input data file ##############
+  Variable.Factor.Names <- reactive({
+    df <- dfreactive() %>% as.data.frame()
+    colnames(select(df, Begin.Selection.Factors:End.Selection.Factors & !c(Begin.Selection.Factors, End.Selection.Factors)))
+    
+  })
+    
+    colnames(select(df, Begin.Selection.Factors:End.Selection.Factors & !c(Begin.Selection.Factors, End.Selection.Factors)))
+  ################## Get list of numeric selection variables from input data file ##############
+  Variable.Numeric.Names <-  colnames(select(df, Begin.Selection.Numerics:End.Selection.Numerics & !c(Begin.Selection.Numerics, End.Selection.Numerics)))
   
 
   # Create MA reactive for all outputs
