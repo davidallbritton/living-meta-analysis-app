@@ -14,11 +14,15 @@ server <- function(input, output) {
   
   ##### need to move all the data reading and formatting into a reactive context
   
-  dfreactive <- reactive(df)
+  dfreactive <- reactiveVal(as.data.frame(df))
   
   observeEvent(input$infile1, {
+    df_up <- readxl::read_excel(input$infile1$datapath) %>% as.data.frame()
+    nrow(dfreactive()) %>% message()
+    dfreactive(df_up) 
     message("input file uploaded")
-    str(dfreactive())
+    nrow(dfreactive()) %>% message()
+    nrow(df_up) %>% message()
   })
 ## here insert some stuff to update dfreactive whenever a new input file is submitted **  
   
