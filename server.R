@@ -15,24 +15,29 @@ server <- function(input, output) {
   ##### need to move all the data reading and formatting into a reactive context
   
   dfreactive <- reactive(df)
+  
+  observeEvent(input$infile1, {
+    message("input file uploaded")
+    str(dfreactive())
+  })
 ## here insert some stuff to update dfreactive whenever a new input file is submitted **  
   
   ################## Get list of variable factors from input data file ##############
-  Variable.Factor.Names <- reactive({
-    df <- dfreactive() %>% as.data.frame()
-    colnames(select(df, Begin.Selection.Factors:End.Selection.Factors & !c(Begin.Selection.Factors, End.Selection.Factors)))
+#  Variable.Factor.Names <- reactive({
+#    df <- dfreactive() %>% as.data.frame()
+#    colnames(select(df, Begin.Selection.Factors:End.Selection.Factors & !c(Begin.Selection.Factors, End.Selection.Factors)))
     
-  })
+#  })
     
-    colnames(select(df, Begin.Selection.Factors:End.Selection.Factors & !c(Begin.Selection.Factors, End.Selection.Factors)))
+#    colnames(select(df, Begin.Selection.Factors:End.Selection.Factors & !c(Begin.Selection.Factors, End.Selection.Factors)))
   ################## Get list of numeric selection variables from input data file ##############
-  Variable.Numeric.Names <-  colnames(select(df, Begin.Selection.Numerics:End.Selection.Numerics & !c(Begin.Selection.Numerics, End.Selection.Numerics)))
+#  Variable.Numeric.Names <-  colnames(select(df, Begin.Selection.Numerics:End.Selection.Numerics & !c(Begin.Selection.Numerics, End.Selection.Numerics)))
   
 
   # Create MA reactive for all outputs
   MA <- reactive({
     # import the reactive version of the data
-    df <- dfreactive() %>% as.data.frame()
+   #### df <- dfreactive() %>% as.data.frame()
     ## Create subset based on chosen inclusion criteria
     df_sub <- df %>% filter(Design %in% input$Design,
                             Publication.Year >= input$pubyear[1], Publication.Year <= input$pubyear[2],

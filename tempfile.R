@@ -18,3 +18,10 @@ if(!is.na(na.warning[varName])) p(na.warning[varName])
 ################## Get list of numeric selection variables from input data file ##############
 Variable.Numeric.Names <-  colnames(select(df, Begin.Selection.Numerics:End.Selection.Numerics & !c(Begin.Selection.Numerics, End.Selection.Numerics)))
 
+
+tabPanel("Upload Data", 
+         br(),
+         fileInput("infile1", "Upload your data file")
+),
+
+
