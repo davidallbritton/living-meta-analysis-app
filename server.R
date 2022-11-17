@@ -26,7 +26,7 @@ server <- function(input, output) {
   message(myrvs$tempinfile)   ### ** for debugging
   if(is.null(myrvs$tempinfile))message("it's null....")   ### ** for debugging
   message("## ** myrvs$tempinfile on previous line")   ### ** for debugging
-  })       ### ** for debugging
+  })       ### ** for debugging ...
   
   ## When the user uploads a data file, replace the existing data and update the UI
   observeEvent(input$infile1, {
