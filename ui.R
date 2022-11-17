@@ -32,7 +32,6 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                            windowTitle = "A Universal Tool for BAYSEIAN META-ANALYSIS"),
                 sidebarLayout(
                   sidebarPanel(fluidRow(
-                    submitButton("Re-Calculate Meta-Analysis", icon("sync")),
                   
                     
                     tabPanel("Upload Data", 
@@ -40,12 +39,13 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                              fileInput("infile1", "Upload your data file")
                     ),
                     
+                    submitButton("Re-Calculate Meta-Analysis", icon("sync")),
                     
                     
                     
                     
                     tabsetPanel(
-                      tabPanel("Study criteria",
+                      tabPanel("Study criteria",    ##### ** this tabPanel needs to be created in server.R ###
                                br(), 
                                radioButtons(inputId = "aggregation", label = p("Aggregate over", style="color:#333333",
                                                                           tags$style(type = "text/css", "#q18 {vertical-align: top;}"),

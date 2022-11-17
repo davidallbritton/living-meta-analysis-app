@@ -19,6 +19,15 @@ server <- function(input, output) {
   ## by the user
   myrvs <- reactiveValues(df.reactive = df)
   
+  observe({       ### ** for debugging
+    myrvs$df.reactive       ### ** for debugging
+  myrvs$tempinfile <- input$infile1             ### ** for debugging
+  message("#######  ** myrvs$tempinfile")   ### ** for debugging
+  message(myrvs$tempinfile)   ### ** for debugging
+  if(is.null(myrvs$tempinfile))message("it's null....")   ### ** for debugging
+  message("## ** myrvs$tempinfile on previous line")   ### ** for debugging
+  })       ### ** for debugging
+  
   ## When the user uploads a data file, replace the existing data and update the UI
   observeEvent(input$infile1, {
      message("myrvs$df.reactive:")   ### ** for debugging
@@ -29,6 +38,8 @@ server <- function(input, output) {
      message("input file uploaded")   ### ** for debugging
      message("myrvs$df.reactive:")   ### ** for debugging
      nrow(myrvs$df.reactive) %>% message()   ### ** for debugging
+     message("what's in input$infile1")     ### ** for debugging
+     message(input$infile1)     ### ** for debugging
     
      
      
@@ -84,9 +95,6 @@ server <- function(input, output) {
     MA <- merge(x = aggES, y = df_sub, by.x = "id", by.y = "ID") 
     MA <- unique(setDT(MA) [sort.list(id)], by = "id")
     MA <- with(MA, MA[order(MA$es)])
-    ### next 2 lines for debugging; delete  when done: *******
-#    save(MA, file="temp.MA.Rda")
-#    MA
   })
 
   # Create bma reactive needed for all outputs
