@@ -17,66 +17,72 @@ server <- function(input, output) {
 
   ## Initialize with stored data, which will be replaced when a data file is uploaded
   ## by the user
-  myrvs <- reactiveValues(df.reactive = df)
-  
-  observe({       ### ** for debugging
-    myrvs$df.reactive       ### ** for debugging
-  myrvs$tempinfile <- input$infile1             ### ** for debugging
-  message("#######  ** myrvs$tempinfile")   ### ** for debugging
-  message(myrvs$tempinfile)   ### ** for debugging
-  if(is.null(myrvs$tempinfile))message("it's null....")   ### ** for debugging
-  message("## ** myrvs$tempinfile on previous line")   ### ** for debugging
-  })       ### ** for debugging ......
+  myrvs <- reactiveValues()
+  observe({
+    if(is.null(input$infile1)){   #this trigger works because input$infile1 gets initialized to null when the app first loads, which triggers the observer
+      isolate({                   #isolate so that changes in myrvs do not trigger the observer
+        newrvs <- reformat.df(df)
+        myrvs$df.reactive <- newrvs$df
+        myrvs$df.original <- newrvs$df.original
+        myrvs$Variable.Factor.Names <- newrvs$Variable.Factor.Names
+        myrvs$Variable.Numeric.Names <- newrvs$Variable.Numeric.Names
+        myrvs$na.warning <- newrvs$na.warning
+        message("names(myrvs)")   ## ** for debugging  
+        message(names(myrvs))   ## ** for debugging  
+      })
+    }
+  })
   
   ## When the user uploads a data file, replace the existing data and update the UI
   observeEvent(input$infile1, {
-     message("myrvs$df.reactive:")   ### ** for debugging
-     nrow(myrvs$df.reactive) %>% message()   ### ** for debugging
     # Read the data from the excel or csv file the user uploaded:
      ### may want to insert here some format checking before importing data file ** ###
-    myrvs$df.reactive <- readxl::read_excel(input$infile1$datapath) %>% as.data.frame()
+    df <- readxl::read_excel(input$infile1$datapath) %>% as.data.frame()
+    newrvs <- reformat.df(df)
+    myrvs$df.reactive <- newrvs$df
+    myrvs$df.original <- newrvs$df.original
+    myrvs$Variable.Factor.Names <- newrvs$Variable.Factor.Names
+    myrvs$Variable.Numeric.Names <- newrvs$Variable.Numeric.Names
+    myrvs$na.warning <- newrvs$na.warning
+    
      message("input file uploaded")   ### ** for debugging
      message("myrvs$df.reactive:")   ### ** for debugging
      nrow(myrvs$df.reactive) %>% message()   ### ** for debugging
      message("what's in input$infile1")     ### ** for debugging
      message(input$infile1)     ### ** for debugging
     
-     
-     
   })
 
-  ################## Get list of variable factors from input data file ##############
-#  Variable.Factor.Names <- reactive({
-#    df <- dfreactive() %>% as.data.frame()
-#    colnames(select(df, Begin.Selection.Factors:End.Selection.Factors & !c(Begin.Selection.Factors, End.Selection.Factors)))
-    
-#  })
-    
-#    colnames(select(df, Begin.Selection.Factors:End.Selection.Factors & !c(Begin.Selection.Factors, End.Selection.Factors)))
-  ################## Get list of numeric selection variables from input data file ##############
-#  Variable.Numeric.Names <-  colnames(select(df, Begin.Selection.Numerics:End.Selection.Numerics & !c(Begin.Selection.Numerics, End.Selection.Numerics)))
+
+  
+  
+  
+  
+  
+  
+  
   
 
   # Create MA reactive for all outputs
   MA <- reactive({
     # import the reactive version of the data
-   #### df <- dfreactive() %>% as.data.frame()
+    df <- myrvs$df.reactive
     ## Create subset based on chosen inclusion criteria
     df_sub <- df %>% filter(Design %in% input$Design,
                             Publication.Year >= input$pubyear[1], Publication.Year <= input$pubyear[2],
                             Paper.and.Exp %in% input$included)
  
     ## Create subset based on the above plus input-file defined selection factors
-    for (varName in Variable.Factor.Names)  {
-      keepValues <- input[[varName]]
-      df_sub <- df_sub[df_sub[,varName] %in% keepValues, ]
-    }
+#    for (varName in Variable.Factor.Names)  {
+#      keepValues <- input[[varName]]
+#      df_sub <- df_sub[df_sub[,varName] %in% keepValues, ]
+#    }
     
     ## Create subset based on the above plus input-file defined selection numerics
-    for (varName in Variable.Numeric.Names)  {
-      df_sub <- df_sub[df_sub[,varName] >= input[[varName]][1], ]
-      df_sub <- df_sub[df_sub[,varName] <= input[[varName]][2], ]
-    }
+#    for (varName in Variable.Numeric.Names)  {
+#      df_sub <- df_sub[df_sub[,varName] >= input[[varName]][1], ]
+#      df_sub <- df_sub[df_sub[,varName] <= input[[varName]][2], ]
+#    }
     
     # replace ID with Paper.Number if aggregating over papers:
     if (input$aggregation == "Papers") {

@@ -14,69 +14,95 @@
 #      from each experiment, then there should be 6 rows for that paper)
 #
 #     The data file must have columns called "yi" and "vi" for the effect size
-#     and effect size variance, assumed to be for Hedge's g (or call them g and g_variance?###)
+#     and effect size variance, assumed to be for Hedge's g 
 # 
 #     The data file must contain the following columns:
 #       [[insert some more stuff here]]
 
-load(file = "df3.Rda")
-##load(file = "df4.Rda")  # just for debugging **********
+# default data file for initial display, before user uploads their own data file:
+load(file = "df3.Rda")             # loads a dataframe called "df"
 
-# Add a column to mark the end of the original data file columns
-# if it does not already exist
-if(!("End.Original.Data" %in% colnames(df))) {df$"End.Original.Data" <- ""}    
-
-################## Get list of variable factors from input data file ##############
-Variable.Factor.Names <-  colnames(select(df, Begin.Selection.Factors:End.Selection.Factors & !c(Begin.Selection.Factors, End.Selection.Factors)))
-################## Get list of numeric selection variables from input data file ##############
-Variable.Numeric.Names <-  colnames(select(df, Begin.Selection.Numerics:End.Selection.Numerics & !c(Begin.Selection.Numerics, End.Selection.Numerics)))
-
-################## Replace NAs in variable factors with "NA (missing)" string
-df <- dplyr::mutate_at(df, vars(Begin.Selection.Factors:End.Selection.Factors), as.character)
-for (vName in Variable.Factor.Names)  {
-  df[is.na(df[,vName]), vName]  <- "NA (missing)"
-}
-###### Change some columns to factors in case they were not already.  
-# Required columns that should be factors: Paper.and.Exp, Paper, Design
-# variable "Selection.Factors" should be factors as well
-df <- dplyr::mutate_at(df, vars(Paper.and.Exp, Paper, Design, Begin.Selection.Factors:End.Selection.Factors), as.factor)
-
-################# Create warnings for NAs in the variable numeric selection columns ####
-na.warning <- ""
-na.warning <- sapply(c(Variable.Numeric.Names), function(nvname){
-  if(nna <- sum(is.na(df[,nvname]))) {
-    na.warning <- paste0(na.warning, "**WARNING!** ",'"', nvname,'"', " contained ", nna, " NAs (missing values), which have now been recoded as zeroes.")
-  }
-})
-################ Recode NAs in the variable numeric selection columns as zeroes #####
-# do the recoding....
-################## Replace NAs in variable factors with "NA (missing)" string
-for (vName in Variable.Numeric.Names)  {
-  df[is.na(df[,vName]), vName]  <- 0
-}
-
-#  The input data file should contain columns for Experiment.Number and Effect.Size.Number
-#  for use in aggregating effects within each paper.
-#  The following lines are just in case an input file does not have those columns,
-#  because the paper had only one experiment and one measurement.
-## ** so far these are not used, so they are optional unless the aggregation function
-## ** gets rewritten to use them.  
-#
-if(!("Experiment.Number" %in% colnames(df))) {df$"Experiment.Number" <- 1}    # experiment number within a paper
-if(!("Effect.Size.Number" %in% colnames(df))) {df$"Effect.Size.Number" <- 1}  # effect size number within an experiment
-
-# copy our "Paper.and.Exp" column to a "study" column.  
-# the study column is used by the aggregation functions
-df$study <- df$Paper.and.Exp
-#
-###
-
-###  The original app expects yi and vi instead of g and g_var, so add those columns:
-if(!("yi" %in% colnames(df))) {df$yi <- df$g}
-if(!("vi" %in% colnames(df))) {df$vi <- df$g_var}
 
 
 ##################  Functions   ####################################################
+
+# Reformat the data.  returns a list
+reformat.df <- function(df.input) {
+  df.original <- df.input
+  df <- df.original
+  ################## Get list of variable factors from input data file ##############
+  Variable.Factor.Names <-  colnames(select(df, Begin.Selection.Factors:End.Selection.Factors & !c(Begin.Selection.Factors, End.Selection.Factors)))
+  ################## Get list of numeric selection variables from input data file ##############
+  Variable.Numeric.Names <-  colnames(select(df, Begin.Selection.Numerics:End.Selection.Numerics & !c(Begin.Selection.Numerics, End.Selection.Numerics)))
+  #
+  # Add a column to mark the end of the original data file columns
+  # if it does not already exist
+  if(!("End.Original.Data" %in% colnames(df))) {df$"End.Original.Data" <- ""}    
+  ################## Replace NAs in variable factors with "NA (missing)" string
+  df <- dplyr::mutate_at(df, vars(Begin.Selection.Factors:End.Selection.Factors), as.character)
+  for (vName in Variable.Factor.Names)  {
+    df[is.na(df[,vName]), vName]  <- "NA (missing)"
+  }
+  ###### Change some columns to factors in case they were not already.  
+  # Required columns that should be factors: Paper.and.Exp, Paper, Design
+  # variable "Selection.Factors" should be factors as well
+  df <- dplyr::mutate_at(df, vars(Paper.and.Exp, Paper, Design, Begin.Selection.Factors:End.Selection.Factors), as.factor)
+  #
+  ################# Create warnings for NAs in the variable numeric selection columns ####
+  na.warning <- ""
+  na.warning <- sapply(c(Variable.Numeric.Names), function(nvname){
+    if(nna <- sum(is.na(df[,nvname]))) {
+      na.warning <- paste0(na.warning, "**WARNING!** ",'"', nvname,'"', " contained ", nna, " NAs (missing values), which have now been recoded as zeroes.")
+    }
+  })
+  ################ Recode NAs in the variable numeric selection columns as zeroes #####
+  for (vName in Variable.Numeric.Names)  {
+    df[is.na(df[,vName]), vName]  <- 0
+  }
+  #
+  #  The input data file should contain columns for Experiment.Number and Effect.Size.Number
+  #  for use in aggregating effects within each paper.
+  #  The following lines are just in case an input file does not have those columns,
+  #  because the paper had only one experiment and one measurement.
+  ## ** so far these are not used, so they are optional unless the aggregation function
+  ## ** gets rewritten to use them.  
+  #
+  if(!("Experiment.Number" %in% colnames(df))) {df$"Experiment.Number" <- 1}    # experiment number within a paper
+  if(!("Effect.Size.Number" %in% colnames(df))) {df$"Effect.Size.Number" <- 1}  # effect size number within an experiment
+  #
+  # copy the "Paper.and.Exp" column to a "study" column.  
+  # the study column is used by the aggregation functions
+  df$study <- df$Paper.and.Exp
+  #
+  ###
+  #
+  ###  The calculation functions expect yi and vi instead of g and g_var, so add those columns if needed:
+  if(!("yi" %in% colnames(df))) {df$yi <- df$g}
+  if(!("vi" %in% colnames(df))) {df$vi <- df$g_var}
+  #
+  # the function returns this list:
+  dfout <- list(
+    df.original = df.original,
+    df = df, 
+    Variable.Factor.Names = Variable.Factor.Names, 
+    Variable.Numeric.Names =Variable.Numeric.Names, 
+    na.warning = na.warning
+    )
+  dfout
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Generate function "priorposteriorlikelihood.ggplot"
 ## Plots prior, posterior and likelihood distribution

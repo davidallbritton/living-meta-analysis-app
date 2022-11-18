@@ -82,18 +82,18 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                
                                
                                ## loop over the variable factor columns
-                               lapply(Variable.Factor.Names, function(varName) {                             
-                                 checkboxGroupInput(inputId = varName, label = p(varName,style="color:#333333"), 
-                                                    choices = levels(df[,varName]), selected = levels(df[,varName]))
-                               }),
+#                               lapply(Variable.Factor.Names, function(varName) {                             
+#                                 checkboxGroupInput(inputId = varName, label = p(varName,style="color:#333333"), 
+#                                                    choices = levels(df[,varName]), selected = levels(df[,varName]))
+#                               }),
                                
                               ### loop over the variable numeric selection columns
-                              lapply(Variable.Numeric.Names, function(varName) {
-                                pp <- if(!is.na(na.warning[varName])) p(na.warning[varName]) else ""
-                                ss <- sliderInput(inputId = varName, label = p(varName ,style="color:#333333"), 
-                                            min = min(df[,varName], na.rm = T), max = max(df[,varName], na.rm = T), value = c(min(df[,varName], na.rm = T), max(df[,varName], na.rm = T)), ticks = F)
-                                list(ss, pp)
-                              }), 
+#                              lapply(Variable.Numeric.Names, function(varName) {
+#                                pp <- if(!is.na(na.warning[varName])) p(na.warning[varName]) else ""
+#                                ss <- sliderInput(inputId = varName, label = p(varName ,style="color:#333333"), 
+#                                            min = min(df[,varName], na.rm = T), max = max(df[,varName], na.rm = T), value = c(min(df[,varName], na.rm = T), max(df[,varName], na.rm = T)), ticks = F)
+#                                list(ss, pp)
+#                              }), 
                                
                               
                                checkboxGroupInput(inputId = "included", label = p("Include/exclude specific studies",style="color:#333333",
