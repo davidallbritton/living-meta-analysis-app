@@ -55,7 +55,19 @@ server <- function(input, output) {
 
 
   
-  
+  output$tempstudylist <- renderUI({
+    input$datafile1   # the trigger to make the UI get rewritten
+    isolate({
+      tagList(
+        checkboxGroupInput(
+          inputId = "included", label = p("Include/exclude specific studies",style="color:#333333",
+                                           tags$style(type = "text/css", "#q9 {vertical-align: top;}"),
+                                           bsButton("q9", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")), 
+           choices = levels(df$Paper.and.Exp), selected = levels(df$Paper.and.Exp)
+        )
+      )
+    })
+  })
   
   
   
@@ -173,6 +185,7 @@ server <- function(input, output) {
   output$MAP <- renderPrint({
     bma()$MAP[1,]
   })
+  
   # Full texts screened panel  #deleted this###
  
   # Additional plots panel

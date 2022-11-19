@@ -107,7 +107,14 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                                      "<p>However, if a study is selected for inclusion by the criteria above, but is unticked here, the study will not be included."),
                                    placement = "right", 
                                    trigger = "click",
-                                   options = list(container = "body"))
+                                   options = list(container = "body")),
+
+
+
+#insert checkboxGroupInput here from server
+uiOutput("tempstudylist")
+
+
                                ),
   
                       tabPanel("Prior specifications",
