@@ -27,8 +27,7 @@ server <- function(input, output) {
         myrvs$Variable.Factor.Names <- newrvs$Variable.Factor.Names
         myrvs$Variable.Numeric.Names <- newrvs$Variable.Numeric.Names
         myrvs$na.warning <- newrvs$na.warning
-        message("names(myrvs)")   ## ** for debugging  
-        message(names(myrvs))   ## ** for debugging  
+        message("Initialized with stored data, before any file is uploaded")   ## ** for debugging  
       })
     }
   })
@@ -45,28 +44,92 @@ server <- function(input, output) {
     myrvs$Variable.Numeric.Names <- newrvs$Variable.Numeric.Names
     myrvs$na.warning <- newrvs$na.warning
     
-     message("input file uploaded")   ### ** for debugging
-     message("myrvs$df.reactive:")   ### ** for debugging
+     message("-- input file uploaded")   ### ** for debugging
      nrow(myrvs$df.reactive) %>% message()   ### ** for debugging
-     message("what's in input$infile1")     ### ** for debugging
-     message(input$infile1)     ### ** for debugging
-    
   })
 
 
   
   output$tempstudylist <- renderUI({
-    input$datafile1   # the trigger to make the UI get rewritten
-    isolate({
-      tagList(
+    message(" === now in rendereUI block")     ### ** for debugging
+
+    ## would moving the file input observers into here make the updating more sensible?  Then would
+    ## everything only happen when "re-calculate" is clicked?  
+
+    ## read in the reactive values to use in creating the UI tabPanel entries:
+    df <- myrvs$df.reactive
+    Variable.Factor.Names <- myrvs$Variable.Factor.Names
+    Variable.Factor.Names <- myrvs$Variable.Factor.Names 
+    Variable.Numeric.Names <- myrvs$Variable.Numeric.Names 
+    na.warning <- myrvs$na.warning
+    
+    ##   tabPanel("Study criteria",    ## creating UI content for this tabPanel ##
+    tagList(    
+             br(), 
+             radioButtons(inputId = "aggregation", label = p("Aggregate over", style="color:#333333",
+                                                             tags$style(type = "text/css", "#q18 {vertical-align: top;}"),
+                                                             bsButton("q118", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")),    
+                          choices = c(ID = "ID", Papers = "Papers")),
+             bsPopover(id="q118", title = "Aggregation.",
+                       content = paste0("<p>Aggregate effect sizes over ID (default) or over papers.",
+                                        "<p>Selecting Papers will compute a single aggregated effect size for each paper. Selecting ID will aggregate based on the numbers in the ID column in the data file.  If you want no aggregation, make sure the data file has a unique ID number for each line.",
+                                        "<p>Default: ID."),
+                       placement = "right", 
+                       trigger = "click",
+                       options = list(container = "body")),
+             checkboxGroupInput(inputId = "Design", label = p("Study design",style="color:#333333",
+                                                              tags$style(type = "text/css", "#q1 {vertical-align: top;}"),
+                                                              bsButton("q1", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")), 
+                                choices = levels(df$Design), selected = levels(df$Design)),
+             bsPopover(id="q1", title = "Study design.",
+                       content = paste0("<p>Choose to include effect sizes calculated within subjects, between subjects, or both.",
+                                        "<p>Default: both."),
+                       placement = "right", 
+                       trigger = "click",
+                       options = list(container = "body")),
+             
+             sliderInput(inputId = "pubyear", label = p("Publication year",style="color:#333333",
+                                                        tags$style(type = "text/css", "#q8 {vertical-align: top;}"),
+                                                        bsButton("q8", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")), 
+                         min = min(df$Publication.Year), max = max(df$Publication.Year), value = c(min(df$Publication.Year), max(df$Publication.Year)), step = 1, sep = "", ticks = F),
+             bsPopover(id="q8", title = "Publication year.",
+                       content = paste0("<p>Choose to include effect sizes from studies with a certain range of publication years.",
+                                        "<p>Default: all."),
+                       placement = "right", 
+                       trigger = "click",
+                       options = list(container = "body")),
+             
+             
+             ## loop over the variable factor columns
+             #                               lapply(Variable.Factor.Names, function(varName) {                             
+             #                                 checkboxGroupInput(inputId = varName, label = p(varName,style="color:#333333"), 
+             #                                                    choices = levels(df[,varName]), selected = levels(df[,varName]))
+             #                               }),
+             
+             ### loop over the variable numeric selection columns
+             #                              lapply(Variable.Numeric.Names, function(varName) {
+             #                                pp <- if(!is.na(na.warning[varName])) p(na.warning[varName]) else ""
+             #                                ss <- sliderInput(inputId = varName, label = p(varName ,style="color:#333333"), 
+             #                                            min = min(df[,varName], na.rm = T), max = max(df[,varName], na.rm = T), value = c(min(df[,varName], na.rm = T), max(df[,varName], na.rm = T)), ticks = F)
+             #                                list(ss, pp)
+             #                              }), 
+          
+
         checkboxGroupInput(
           inputId = "included", label = p("Include/exclude specific studies",style="color:#333333",
                                            tags$style(type = "text/css", "#q9 {vertical-align: top;}"),
                                            bsButton("q9", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")), 
            choices = levels(df$Paper.and.Exp), selected = levels(df$Paper.and.Exp)
-        )
+        ),
+        bsPopover(id="q9", title = "Include/exclude specific studies.",
+                  content = paste0("<p>Exclude specific studies by removing the tick mark.",
+                                   "<p>This selection is hierarchically below the other inclusion/exclusion criteria.",
+                                   "<p>If a study is excluded by one of the selected criteria above, this study will not be included in the analysis, even though it is still ticked here.",
+                                   "<p>However, if a study is selected for inclusion by the criteria above, but is unticked here, the study will not be included."),
+                  placement = "right", 
+                  trigger = "click",
+                  options = list(container = "body"))
       )
-    })
   })
   
   
@@ -77,6 +140,7 @@ server <- function(input, output) {
 
   # Create MA reactive for all outputs
   MA <- reactive({
+    message(" **MA reactive section ....")  ### for debugging ***
     # import the reactive version of the data
     df <- myrvs$df.reactive
     ## Create subset based on chosen inclusion criteria
@@ -117,6 +181,7 @@ server <- function(input, output) {
 
   # Create bma reactive needed for all outputs
   bma <- reactive({
+    message(" ****bma reactive section ....")  ### for debugging ***
     ## Generate bayesmeta-object "bma" depending on tau prior chosen
     if (input$tauprior == "Half cauchy") {
       bma <- bayesmeta(y = MA()$es,sigma = sqrt(MA()$var), labels = MA()$study, 
@@ -135,6 +200,7 @@ server <- function(input, output) {
   
   # Study overview panel  
   output$studies <- DT::renderDataTable({
+    message(" &&& output$studies panel creation.")  ### for debugging ***
     MA <- as.data.frame(MA())
     MAclean <-  mutate(MA, "Included Studies" = study) %>% 
       select("Included Studies", Publication.Year)
