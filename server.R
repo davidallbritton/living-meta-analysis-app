@@ -18,6 +18,7 @@ server <- function(input, output) {
   ## Initialize with stored data, which will be replaced when a data file is uploaded
   ## by the user
   myrvs <- reactiveValues()
+  myrvs$nfiles <- 0
   observe({
     if(is.null(input$infile1)){   #this trigger works because input$infile1 gets initialized to null when the app first loads, which triggers the observer
       isolate({                   #isolate so that changes in myrvs do not trigger the observer
@@ -43,10 +44,9 @@ server <- function(input, output) {
     myrvs$Variable.Factor.Names <- newrvs$Variable.Factor.Names
     myrvs$Variable.Numeric.Names <- newrvs$Variable.Numeric.Names
     myrvs$na.warning <- newrvs$na.warning
+    myrvs$nfiles <- myrvs$nfiles + 1
     
-    #output$studies <-  DT::renderDataTable(NULL)
-    
-     message("-- input file uploaded")   ### ** for debugging
+     message("----------------------- input file uploaded")   ### ** for debugging
      nrow(myrvs$df.reactive) %>% message()   ### ** for debugging
   })
 
@@ -66,6 +66,12 @@ server <- function(input, output) {
     na.warning <- myrvs$na.warning
     
     ##   tabPanel("Study criteria",    ## creating UI content for this tabPanel ##
+    times <- myrvs$nfiles
+    message("times ****")
+    message(times)
+    message(letters[(times %% length(letters)) + 1])
+    div(id=letters[(times %% length(letters)) + 1],
+        
     tagList(    
              br(), 
              radioButtons(inputId = "aggregation", label = p("Aggregate over", style="color:#333333",
@@ -132,17 +138,28 @@ server <- function(input, output) {
                   trigger = "click",
                   options = list(container = "body"))
       )
+    )
   })
   
   
+  message("$$$$$$$$$$$$ nfiles and submit button:")
+  isolate(message(myrvs$nfiles))
+  isolate(message(input$replacementSubmitButton))
   
-  
-  
-  
+  # Create a trigger to redo the outputs whenever the "recalculate" button is 
+  # clicked OR a new data file is uploaded
+  triggerRecalc <- reactive({
+    message("^^^ triggerRecalc is getting updated")
+    isolate(message(myrvs$nfiles))
+    isolate(message(input$replacementSubmitButton))
+   # myrvs$nfiles + input$replacementSubmitButton
+    input$replacementSubmitButton
+  })
 
   # Create MA reactive for all outputs
-  MA <- reactive({
+  MA <- eventReactive(triggerRecalc(), {
     message(" **MA reactive section ....")  ### for debugging ***
+#    triggerRecalc
     # import the reactive version of the data
     df <- myrvs$df.reactive
     ## Create subset based on chosen inclusion criteria
