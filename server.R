@@ -44,6 +44,8 @@ server <- function(input, output) {
     myrvs$Variable.Numeric.Names <- newrvs$Variable.Numeric.Names
     myrvs$na.warning <- newrvs$na.warning
     
+    #output$studies <-  DT::renderDataTable(NULL)
+    
      message("-- input file uploaded")   ### ** for debugging
      nrow(myrvs$df.reactive) %>% message()   ### ** for debugging
   })

@@ -33,7 +33,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                 sidebarLayout(
                   sidebarPanel(fluidRow(
                     submitButton("Re-Calculate Meta-Analysis", icon("sync")),
-                    
+
                     tabsetPanel(
                       tabPanel("Study criteria",    ##### ** this tabPanel needs to be created in server.R ##
                                #insert checkboxGroupInput here from server
