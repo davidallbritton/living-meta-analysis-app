@@ -32,9 +32,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                            windowTitle = "A Universal Tool for BAYSEIAN META-ANALYSIS"),
                 sidebarLayout(
                   sidebarPanel(fluidRow(
-                    actionButton("replacementSubmitButton","Re-Calculate Meta-Analysis", icon("sync")),
-#                    submitButton("Re-Calculate Meta-Analysis", icon("sync")),
-                    
+                    actionButton("replacementSubmitButton","(Re)Calculate Meta-Analysis", icon("sync")),
+
                     tabsetPanel(
                       tabPanel("Study criteria",    
                                fileInput("infile1", "Upload your data file"),

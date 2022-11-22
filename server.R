@@ -12,12 +12,11 @@
 # Define server logic
 server <- function(input, output) {
   
-  ##### need to move all the data reading and formatting into a reactive context
   
 
   ## Initialize with stored data, which will be replaced when a data file is uploaded
   ## by the user
-  myrvs <- reactiveValues()
+  myrvs <- reactiveValues(okToOutput = NULL)   #what was I going to use this for???
   myrvs$nfiles <- 0
   observe({
     if(is.null(input$infile1)){   #this trigger works because input$infile1 gets initialized to null when the app first loads, which triggers the observer
@@ -57,10 +56,10 @@ server <- function(input, output) {
 
     ## would moving the file input observers into here make the updating more sensible?  Then would
     ## everything only happen when "re-calculate" is clicked?  
+   # input$infile1             # *** that did not do anything 
 
     ## read in the reactive values to use in creating the UI tabPanel entries:
     df <- myrvs$df.reactive
-    Variable.Factor.Names <- myrvs$Variable.Factor.Names
     Variable.Factor.Names <- myrvs$Variable.Factor.Names 
     Variable.Numeric.Names <- myrvs$Variable.Numeric.Names 
     na.warning <- myrvs$na.warning
@@ -70,9 +69,10 @@ server <- function(input, output) {
     message("times ****")
     message(times)
     message(letters[(times %% length(letters)) + 1])
-    div(id=letters[(times %% length(letters)) + 1],
-        
+    
+    div(id=letters[(times %% length(letters)) + 1],     
     tagList(    
+             div(id="testingdiv", "testingdivtext"),
              br(), 
              radioButtons(inputId = "aggregation", label = p("Aggregate over", style="color:#333333",
                                                              tags$style(type = "text/css", "#q18 {vertical-align: top;}"),
@@ -147,19 +147,20 @@ server <- function(input, output) {
   isolate(message(input$replacementSubmitButton))
   
   # Create a trigger to redo the outputs whenever the "recalculate" button is 
-  # clicked OR a new data file is uploaded
+  # clicked.  Could also add other triggers by accessing other reactive variables
   triggerRecalc <- reactive({
-    message("^^^ triggerRecalc is getting updated")
-    isolate(message(myrvs$nfiles))
-    isolate(message(input$replacementSubmitButton))
-   # myrvs$nfiles + input$replacementSubmitButton
-    input$replacementSubmitButton
+    message("^^^ triggerRecalc is getting updated")   ### for debugging ***
+    isolate(message(myrvs$nfiles))   ### for debugging ***
+    isolate(message(input$replacementSubmitButton)) #  input$replacementSubmitButton   ### for debugging ***
+    input$replacementSubmitButton  # + myrvs$nfiles   ## turns out it is better to only recalculated on press of action button
   })
 
+  isolate(message("myrvs$nfiles"))   ### for debugging ***
+  isolate(message(myrvs$nfiles))   ### for debugging ***
+  
   # Create MA reactive for all outputs
   MA <- eventReactive(triggerRecalc(), {
     message(" **MA reactive section ....")  ### for debugging ***
-#    triggerRecalc
     # import the reactive version of the data
     df <- myrvs$df.reactive
     ## Create subset based on chosen inclusion criteria
@@ -171,7 +172,7 @@ server <- function(input, output) {
 #    for (varName in Variable.Factor.Names)  {
 #      keepValues <- input[[varName]]
 #      df_sub <- df_sub[df_sub[,varName] %in% keepValues, ]
-#    }
+
     
     ## Create subset based on the above plus input-file defined selection numerics
 #    for (varName in Variable.Numeric.Names)  {
@@ -196,6 +197,7 @@ server <- function(input, output) {
     MA <- merge(x = aggES, y = df_sub, by.x = "id", by.y = "ID") 
     MA <- unique(setDT(MA) [sort.list(id)], by = "id")
     MA <- with(MA, MA[order(MA$es)])
+#    })
   })
 
   # Create bma reactive needed for all outputs
