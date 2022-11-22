@@ -2,7 +2,7 @@
 ################### A Universal Tool for BAYSEIAN META-ANALYSIS #################
 #######################################################################################
 
-################### Shiny App v.0.1 2022.11.10 SERVER ###################################
+################### Shiny App v.0.2 2022.11.21 SERVER ###################################
 #
 # Derived and adapted from https://vinzentwolf.shinyapps.io/taVNSHRVmeta/
 # as described in https://doi.org/10.1111/psyp.13933
@@ -109,18 +109,18 @@ server <- function(input, output) {
              
              
              ## loop over the variable factor columns
-             #                               lapply(Variable.Factor.Names, function(varName) {                             
-             #                                 checkboxGroupInput(inputId = varName, label = p(varName,style="color:#333333"), 
-             #                                                    choices = levels(df[,varName]), selected = levels(df[,varName]))
-             #                               }),
+                                            lapply(Variable.Factor.Names, function(varName) {                             
+                                              checkboxGroupInput(inputId = varName, label = p(varName,style="color:#333333"), 
+                                                                 choices = levels(df[,varName]), selected = levels(df[,varName]))
+                                            }),
              
              ### loop over the variable numeric selection columns
-             #                              lapply(Variable.Numeric.Names, function(varName) {
-             #                                pp <- if(!is.na(na.warning[varName])) p(na.warning[varName]) else ""
-             #                                ss <- sliderInput(inputId = varName, label = p(varName ,style="color:#333333"), 
-             #                                            min = min(df[,varName], na.rm = T), max = max(df[,varName], na.rm = T), value = c(min(df[,varName], na.rm = T), max(df[,varName], na.rm = T)), ticks = F)
-             #                                list(ss, pp)
-             #                              }), 
+                                           lapply(Variable.Numeric.Names, function(varName) {
+                                             pp <- if(!is.na(na.warning[varName])) p(na.warning[varName]) else ""
+                                             ss <- sliderInput(inputId = varName, label = p(varName ,style="color:#333333"), 
+                                                         min = min(df[,varName], na.rm = T), max = max(df[,varName], na.rm = T), value = c(min(df[,varName], na.rm = T), max(df[,varName], na.rm = T)), ticks = F)
+                                             list(ss, pp)
+                                           }), 
           
 
         checkboxGroupInput(
@@ -161,24 +161,27 @@ server <- function(input, output) {
   # Create MA reactive for all outputs
   MA <- eventReactive(triggerRecalc(), {
     message(" **MA reactive section ....")  ### for debugging ***
-    # import the reactive version of the data
+    # import the reactive version of the data and the relevant column names
     df <- myrvs$df.reactive
+    Variable.Factor.Names <- myrvs$Variable.Factor.Names 
+    Variable.Numeric.Names <- myrvs$Variable.Numeric.Names 
     ## Create subset based on chosen inclusion criteria
     df_sub <- df %>% filter(Design %in% input$Design,
                             Publication.Year >= input$pubyear[1], Publication.Year <= input$pubyear[2],
                             Paper.and.Exp %in% input$included)
  
     ## Create subset based on the above plus input-file defined selection factors
-#    for (varName in Variable.Factor.Names)  {
-#      keepValues <- input[[varName]]
-#      df_sub <- df_sub[df_sub[,varName] %in% keepValues, ]
+    for (varName in Variable.Factor.Names)  {
+      keepValues <- input[[varName]]
+      df_sub <- df_sub[df_sub[,varName] %in% keepValues, ]
+    }
 
     
     ## Create subset based on the above plus input-file defined selection numerics
-#    for (varName in Variable.Numeric.Names)  {
-#      df_sub <- df_sub[df_sub[,varName] >= input[[varName]][1], ]
-#      df_sub <- df_sub[df_sub[,varName] <= input[[varName]][2], ]
-#    }
+    for (varName in Variable.Numeric.Names)  {
+      df_sub <- df_sub[df_sub[,varName] >= input[[varName]][1], ]
+      df_sub <- df_sub[df_sub[,varName] <= input[[varName]][2], ]
+    }
     
     # replace ID with Paper.Number if aggregating over papers:
     if (input$aggregation == "Papers") {
