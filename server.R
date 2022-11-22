@@ -206,7 +206,9 @@ server <- function(input, output) {
   # Create bma reactive needed for all outputs
   bma <- reactive({
     message(" ****bma reactive section ....")  ### for debugging ***
+    MA()    #trigger to update bma
     ## Generate bayesmeta-object "bma" depending on tau prior chosen
+   isolate({
     if (input$tauprior == "Half cauchy") {
       bma <- bayesmeta(y = MA()$es,sigma = sqrt(MA()$var), labels = MA()$study, 
                        tau.prior = function(t) dhalfcauchy(t, scale = input$scaletau), 
@@ -220,6 +222,7 @@ server <- function(input, output) {
                        tau.prior = input$tauprior, 
                        mu.prior = c("mean" = input$mupriormean, "sd" = input$mupriorsd))
     }
+   })
   })
   
   # Study overview panel  
@@ -280,7 +283,10 @@ server <- function(input, output) {
  
   # Additional plots panel
   output$evupdate <- renderPlot({
-    priorposteriorlikelihood.ggplot(bma(), lowerbound = 0 - (input$mupriormean + 1) * 1.5, upperbound = 0 + (input$mupriormean + 1) * 1.5)
+    bma()  #trigger recalculation
+    isolate({
+      priorposteriorlikelihood.ggplot(bma(), lowerbound = 0 - (input$mupriormean + 1) * 1.5, upperbound = 0 + (input$mupriormean + 1) * 1.5)
+    })
   }, width = 800)
   output$joint <- renderPlot({
     plot.bayesmeta(bma(), which=2, main = "")
@@ -293,12 +299,15 @@ server <- function(input, output) {
   output$warning2 <- renderPrint({
     print("WARNING: Plot will not be computed, because an improper τ prior was chosen. Proper τ priors are 'Half student t' and 'Half cauchy'.")})
   output$robustplot <- renderPlot({
-    if (input$robust == "Yes" &
-        input$tauprior == "Half cauchy") {
-      robustness(MA(),SD = input$mupriorsd, tauprior = function(t) dhalfcauchy(t, scale = input$scaletau))
-    } else if (input$robust == "Yes" &
-               input$tauprior == "Half student t") {
-      robustness(MA(),SD = input$mupriorsd, tauprior = function(t) dhalfnormal(t, scale = input$scaletau))
-    } 
+    MA()  #trigger recalculation
+    isolate({
+      if (input$robust == "Yes" &
+          input$tauprior == "Half cauchy") {
+        robustness(MA(),SD = input$mupriorsd, tauprior = function(t) dhalfcauchy(t, scale = input$scaletau))
+      } else if (input$robust == "Yes" &
+                 input$tauprior == "Half student t") {
+        robustness(MA(),SD = input$mupriorsd, tauprior = function(t) dhalfnormal(t, scale = input$scaletau))
+      } 
+    })
   }, width = 800)
 }
