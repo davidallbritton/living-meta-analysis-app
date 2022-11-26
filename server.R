@@ -12,11 +12,9 @@
 # Define server logic
 server <- function(input, output) {
   
-  
-
   ## Initialize with stored data, which will be replaced when a data file is uploaded
   ## by the user
-  myrvs <- reactiveValues(okToOutput = NULL)   #what was I going to use this for???
+  myrvs <- reactiveValues(currentInputFile = NULL)   
   myrvs$nfiles <- 0
   observe({
     if(is.null(input$infile1)){   #this trigger works because input$infile1 gets initialized to null when the app first loads, which triggers the observer
@@ -36,6 +34,17 @@ server <- function(input, output) {
   observeEvent(input$infile1, {
     # Read the data from the excel or csv file the user uploaded:
      ### may want to insert here some format checking before importing data file ** ###
+    fileExtension <- tools::file_ext(input$infile1$datapath)
+    message(fileExtension)   ########## for debugging ***
+    message("fileextension above")     ########## for debugging ***
+    message("infile1$name")     ########## for debugging ***
+    message(input$infile1$name)     ########## for debugging ***
+    output$inputFileError <- renderUI({  # create error message in case file not uploaded successfully
+      if (!is.null(input$infile1)) p(style = "color:red", "***File was not read.  Must be .xls or .xlsx***")
+    })
+    message("before validate")
+    validate(need(fileExtension == "xlsx" | fileExtension == "xls" , "Please upload an Excel file"))
+    message("after validate")
     df <- readxl::read_excel(input$infile1$datapath) %>% as.data.frame()
     newrvs <- reformat.df(df)
     myrvs$df.reactive <- newrvs$df
@@ -44,14 +53,40 @@ server <- function(input, output) {
     myrvs$Variable.Numeric.Names <- newrvs$Variable.Numeric.Names
     myrvs$na.warning <- newrvs$na.warning
     myrvs$nfiles <- myrvs$nfiles + 1
+    myrvs$currentInputFile <- input$infile1$name
+    message("after validate")
+    output$inputFileError <- renderUI(NULL) # remove error message if file uploaded successfully
     
      message("----------------------- input file uploaded")   ### ** for debugging
+     message("fileinput label is:  ")   ### ** for debugging
+     message(input$infile1$label)   ### ** for debugging
+     
      nrow(myrvs$df.reactive) %>% message()   ### ** for debugging
   })
+  
+  
+      
 
+  observeEvent(input$replacementSubmitButton, {
+    output$currentDataFile <- renderUI({
+      isolate({
+        if (myrvs$nfiles > 0) {
+          p(
+            "The currently displayed results are from ", 
+            span(style = "white-space: nowrap", myrvs$currentInputFile)
+          )
+        } else {
+          p("The currently displayed results are from Vasilev et al., 2018 (the default data file)")
+        }
+      })
+    })
+  })
+  
+  
+  
 
   
-  output$tempstudylist <- renderUI({
+  output$studyCriteria <- renderUI({
     message(" === now in rendereUI block")     ### ** for debugging
 
     ## would moving the file input observers into here make the updating more sensible?  Then would
@@ -72,7 +107,6 @@ server <- function(input, output) {
     
     div(id=letters[(times %% length(letters)) + 1],     
     tagList(    
-             div(id="testingdiv", "testingdivtext"),
              br(), 
              radioButtons(inputId = "aggregation", label = p("Aggregate over", style="color:#333333",
                                                              tags$style(type = "text/css", "#q18 {vertical-align: top;}"),
@@ -310,4 +344,17 @@ server <- function(input, output) {
       } 
     })
   }, width = 800)
+  
+  # Downloads panel
+  ##### create things for the UI to download here....
+  output$currentData <- downloadHandler(
+    filename = function() {
+      "currentData.xlsx" 
+    },
+    content = function (file) {
+      writexl::write_xlsx(myrvs$df.reactive, file)
+    }
+  )
+#  output$originalData <- downloadHandler("currentData.xlsx", myrvs$df.original)
+  
 }

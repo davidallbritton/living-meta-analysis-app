@@ -6,6 +6,8 @@
 # revised for Vasilev et al. data 2022  
 
 # Load required packages and source helper functions #----
+library(readxl)
+library(tools)
 library(shiny)
 library(bayesmeta)
 library(cowplot)
@@ -32,21 +34,17 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                            windowTitle = "A Universal Tool for BAYSEIAN META-ANALYSIS"),
                 sidebarLayout(
                   sidebarPanel(fluidRow(
-                    actionButton("replacementSubmitButton","(Re)Calculate Meta-Analysis", icon("sync")),
+                    actionButton("replacementSubmitButton","(Re)Calculate Meta-Analysis", icon("sync"), style = "color: yellow; background-color: green"),
+                    uiOutput("currentDataFile"),
+                    fileInput("infile1", label = "Upload your data file (.xls or .xlsx)", accept = c(".xls", ".xlsx")),
+                    uiOutput("inputFileError"),
 
                     tabsetPanel(
                       tabPanel("Study criteria",    
-                               fileInput("infile1", "Upload your data file"),
-                               #
                                ##########  The study selection panel is created in the server:
-                               uiOutput("tempstudylist")
+                               uiOutput("studyCriteria")
                                ##########
                                ),
-
-
-
-
-
 
                       tabPanel("Prior specifications",
                                br(), numericInput(inputId = "mupriormean", label = p("µ prior mean",style="color:#333333",
@@ -194,7 +192,14 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  p("User: user selected standard deviation"),
                                  p("Wide: user selected standard deviation + 1"),
                                  p("Ultrawide: user selected standard deviation + 2"),
-                                 p("Interpretations of Bayes factors are based on Jeffreys (1961) with slight modifications by Lee and Wagenmakers (2013) and should be considered with caution.")))
+                                 p("Interpretations of Bayes factors are based on Jeffreys (1961) with slight modifications by Lee and Wagenmakers (2013) and should be considered with caution."))),
+                        tabPanel("Downloads", br(),
+                          h4("Download Data and Results"),
+                          p("From the currently loaded data file and most recent calculations"), br(),
+                          p(),
+                          downloadButton("currentData", "Current data file in use"),
+                          p()
+                        )
                           )
                         )
                       )
