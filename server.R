@@ -57,11 +57,8 @@ server <- function(input, output) {
     message("after validate")
     output$inputFileError <- renderUI(NULL) # remove error message if file uploaded successfully
     
-     message("----------------------- input file uploaded")   ### ** for debugging
-     message("fileinput label is:  ")   ### ** for debugging
-     message(input$infile1$label)   ### ** for debugging
-     
-     nrow(myrvs$df.reactive) %>% message()   ### ** for debugging
+    message("----------------------- input file uploaded")   ### ** for debugging
+    nrow(myrvs$df.reactive) %>% message()   ### ** for debugging
   })
   
   
@@ -85,26 +82,20 @@ server <- function(input, output) {
   
   
 
-  
+  ##   tabPanel("Study criteria",    ## creating UI content for this tabPanel ##
   output$studyCriteria <- renderUI({
     message(" === now in rendereUI block")     ### ** for debugging
-
-    ## would moving the file input observers into here make the updating more sensible?  Then would
-    ## everything only happen when "re-calculate" is clicked?  
-   # input$infile1             # *** that did not do anything 
-
     ## read in the reactive values to use in creating the UI tabPanel entries:
     df <- myrvs$df.reactive
     Variable.Factor.Names <- myrvs$Variable.Factor.Names 
     Variable.Numeric.Names <- myrvs$Variable.Numeric.Names 
     na.warning <- myrvs$na.warning
     
-    ##   tabPanel("Study criteria",    ## creating UI content for this tabPanel ##
+    # putting a <div> around the whole thing:
     times <- myrvs$nfiles
     message("times ****")
     message(times)
     message(letters[(times %% length(letters)) + 1])
-    
     div(id=letters[(times %% length(letters)) + 1],     
     tagList(    
              br(), 
@@ -346,15 +337,44 @@ server <- function(input, output) {
   }, width = 800)
   
   # Downloads panel
+  #
+  ##### create download buttons to display in UI
+  #
+  output$downloadButtons <- renderUI({
+    if (input$replacementSubmitButton){
+      tagList(
+        p(),
+        downloadButton("originalData", "Data as originally uploaded"),
+        p(),
+        downloadButton("currentData", "Data as currently in use (primarily for debugging)"),
+        p()
+      ) 
+    }
+    else(p("Must (Re)Calculate first...."))
+  })
+  #
   ##### create things for the UI to download here....
+  output$originalData <- downloadHandler(   
+    filename = function() {
+      "currentData.xlsx" 
+    },
+    content = function (file) {
+      writexl::write_xlsx(myrvs$df.original, file)
+    }
+  )
+  #  
   output$currentData <- downloadHandler(
     filename = function() {
       "currentData.xlsx" 
     },
     content = function (file) {
-      writexl::write_xlsx(myrvs$df.reactive, file)
+      if (is.null(myrvs$currentInputFile)) {Source <- "Vasilev et al., 2018"} else Source <- myrvs$currentInputFile
+      Source <- req(as.data.frame(Source))
+      sheetList <- list(original_Data = myrvs$df.original, current_Data = myrvs$df.reactive, selected_data = req(as.data.frame(MA())), Source = Source )
+      writexl::write_xlsx(sheetList, file)
     }
   )
-#  output$originalData <- downloadHandler("currentData.xlsx", myrvs$df.original)
+  #
+
   
 }

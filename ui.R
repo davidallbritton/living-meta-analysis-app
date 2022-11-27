@@ -196,9 +196,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                         tabPanel("Downloads", br(),
                           h4("Download Data and Results"),
                           p("From the currently loaded data file and most recent calculations"), br(),
-                          p(),
-                          downloadButton("currentData", "Current data file in use"),
-                          p()
+                          uiOutput("downloadButtons")
                         )
                           )
                         )
