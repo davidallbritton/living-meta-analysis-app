@@ -17,7 +17,7 @@ server <- function(input, output) {
   myrvs <- reactiveValues(currentInputFile = NULL)   
   myrvs$nfiles <- 0
   observe({
-    if(is.null(input$infile1)){   #this trigger works because input$infile1 gets initialized to null when the app first loads, which triggers the observer
+    if(is.null(input$DataFileUp)){   #this trigger works because input$DataFileUp gets initialized to null when the app first loads, which triggers the observer
       isolate({                   #isolate so that changes in myrvs do not trigger the observer
         newrvs <- reformat.df(df)
         myrvs$df.reactive <- newrvs$df
@@ -31,21 +31,21 @@ server <- function(input, output) {
   })
   
   ## When the user uploads a data file, replace the existing data and update the UI
-  observeEvent(input$infile1, {
+  observeEvent(input$DataFileUp, {
     # Read the data from the excel or csv file the user uploaded:
      ### may want to insert here some format checking before importing data file ** ###
-    fileExtension <- tools::file_ext(input$infile1$datapath)
+    fileExtension <- tools::file_ext(input$DataFileUp$datapath)
     message(fileExtension)   ########## for debugging ***
     message("fileextension above")     ########## for debugging ***
-    message("infile1$name")     ########## for debugging ***
-    message(input$infile1$name)     ########## for debugging ***
+    message("DataFileUp$name")     ########## for debugging ***
+    message(input$DataFileUp$name)     ########## for debugging ***
     output$inputFileError <- renderUI({  # create error message in case file not uploaded successfully
-      if (!is.null(input$infile1)) p(style = "color:red", "***File was not read.  Must be .xls or .xlsx***")
+      if (!is.null(input$DataFileUp)) p(style = "color:red", "***File was not read.  Must be .xls or .xlsx***")
     })
     message("before validate")
     validate(need(fileExtension == "xlsx" | fileExtension == "xls" , "Please upload an Excel file"))
     message("after validate")
-    df <- readxl::read_excel(input$infile1$datapath) %>% as.data.frame()
+    df <- readxl::read_excel(input$DataFileUp$datapath) %>% as.data.frame()
     newrvs <- reformat.df(df)
     myrvs$df.reactive <- newrvs$df
     myrvs$df.original <- newrvs$df.original
@@ -53,7 +53,7 @@ server <- function(input, output) {
     myrvs$Variable.Numeric.Names <- newrvs$Variable.Numeric.Names
     myrvs$na.warning <- newrvs$na.warning
     myrvs$nfiles <- myrvs$nfiles + 1
-    myrvs$currentInputFile <- input$infile1$name
+    myrvs$currentInputFile <- input$DataFileUp$name
     message("after validate")
     output$inputFileError <- renderUI(NULL) # remove error message if file uploaded successfully
     
@@ -252,9 +252,9 @@ server <- function(input, output) {
   
   # Study overview panel  
   output$studies <- DT::renderDataTable({
-    message(" &&& output$studies panel creation.")  ### for debugging ***
-    MA <- as.data.frame(MA())
-    MAclean <-  mutate(MA, "Included Studies" = study) %>% 
+#    message(" &&& output$studies panel creation.")  ### for debugging ***
+    MAs <- as.data.frame(MA())
+    MAclean <-  mutate(MAs, "Included Studies" = study) %>% 
       select("Included Studies", Publication.Year)
     DT::datatable(MAclean,
                   options = list(pageLength = nrow(MAclean)))
@@ -262,8 +262,8 @@ server <- function(input, output) {
  
     ## Warning message if 3 or less studies are included
     output$warning <- renderPrint({
-      MA <- as.data.frame(MA())
-      if (nrow(MA) < 4) {print('WARNING: With the chosen inclusion criteria, 3 or fewer studies will be included in the analysis.')}
+      MAs <- as.data.frame(MA())
+      if (nrow(MAs) < 4) {print('WARNING: With the chosen inclusion criteria, 3 or fewer studies will be included in the analysis.')}
   })
   # Outliers panel
   output$boxplot <- renderPlot({
@@ -347,7 +347,8 @@ server <- function(input, output) {
         downloadButton("originalData", "Data as originally uploaded"),
         p(),
         downloadButton("currentData", "Data as currently in use (primarily for debugging)"),
-        p()
+        p(),
+        downloadButton("listInputs", "List of all UI input selections")
       ) 
     }
     else(p("Must (Re)Calculate first...."))
@@ -375,6 +376,28 @@ server <- function(input, output) {
     }
   )
   #
+  output$listInputs <- downloadHandler(
+    filename = function() {
+      "currentInputSelections.xlsx" 
+    },
+    content = function (file) {
+      inputslist <<- reactiveValuesToList(input) # sends it to the global environment; for debugging ***
+      inputslist <- reactiveValuesToList(input)
+      ns <- names(inputslist)
+      skipnames1 <- c("website","q8","q18","q118", "replacementSubmitButton","q16","q19", "q1","q17", "q20" ,"email1", "q9"  )
+      skipnames2 <- c( "studies_cells_selected" ,  "studies_rows_all"    ,     "studies_rows_selected"  , 
+                       "studies_state"     ,       "studies_search"       ,    "studies_cell_clicked"  ,  
+                       "studies_columns_selected", "studies_rows_current")
+      skipnames <- c(skipnames1, skipnames2)
+      namestolist <- ns[! ns %in% skipnames]
+      orderednames <- c("mupriormean", "mupriorsd", "tauprior", "scaletau", "robust", "DataFileUp", "aggregation", "Design", "pubyear","included" )
+      extranames <- namestolist[! namestolist %in% orderednames]
+      allnames <- c(orderednames, extranames)
+      ilist <- inputslist[allnames]
+      ilist2 <- lapply(ilist, function(x) as.data.frame(x))
+      writexl::write_xlsx(ilist2, col_names = F, file)
+    }
+  )
 
   
 }

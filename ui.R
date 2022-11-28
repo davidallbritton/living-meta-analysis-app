@@ -36,7 +36,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                   sidebarPanel(fluidRow(
                     actionButton("replacementSubmitButton","(Re)Calculate Meta-Analysis", icon("sync"), style = "color: yellow; background-color: green"),
                     uiOutput("currentDataFile"),
-                    fileInput("infile1", label = "Upload your data file (.xls or .xlsx)", accept = c(".xls", ".xlsx")),
+                    fileInput("DataFileUp", label = "Upload your data file (.xls or .xlsx)", accept = c(".xls", ".xlsx")),
                     uiOutput("inputFileError"),
 
                     tabsetPanel(
@@ -197,7 +197,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                           h4("Download Data and Results"),
                           p("From the currently loaded data file and most recent calculations"), br(),
                           uiOutput("downloadButtons")
-                        )
+                        ) #end of Downloads tab
+                        
                           )
                         )
                       )
