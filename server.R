@@ -25,26 +25,21 @@ server <- function(input, output) {
         myrvs$Variable.Factor.Names <- newrvs$Variable.Factor.Names
         myrvs$Variable.Numeric.Names <- newrvs$Variable.Numeric.Names
         myrvs$na.warning <- newrvs$na.warning
-        message("Initialized with stored data, before any file is uploaded")   ## ** for debugging  
+        myrvs$recalculatedSinceUpload <- 0
       })
     }
   })
   
   ## When the user uploads a data file, replace the existing data and update the UI
   observeEvent(input$DataFileUp, {
-    # Read the data from the excel or csv file the user uploaded:
-     ### may want to insert here some format checking before importing data file ** ###
+    # Read the data from the excel file the user uploaded:
     fileExtension <- tools::file_ext(input$DataFileUp$datapath)
-    message(fileExtension)   ########## for debugging ***
-    message("fileextension above")     ########## for debugging ***
     message("DataFileUp$name")     ########## for debugging ***
     message(input$DataFileUp$name)     ########## for debugging ***
     output$inputFileError <- renderUI({  # create error message in case file not uploaded successfully
       if (!is.null(input$DataFileUp)) p(style = "color:red", "***File was not read.  Must be .xls or .xlsx***")
     })
-    message("before validate")
     validate(need(fileExtension == "xlsx" | fileExtension == "xls" , "Please upload an Excel file"))
-    message("after validate")
     df <- readxl::read_excel(input$DataFileUp$datapath) %>% as.data.frame()
     newrvs <- reformat.df(df)
     myrvs$df.reactive <- newrvs$df
@@ -53,10 +48,9 @@ server <- function(input, output) {
     myrvs$Variable.Numeric.Names <- newrvs$Variable.Numeric.Names
     myrvs$na.warning <- newrvs$na.warning
     myrvs$nfiles <- myrvs$nfiles + 1
+    myrvs$recalculatedSinceUpload <- 0
     myrvs$currentInputFile <- input$DataFileUp$name
-    message("after validate")
     output$inputFileError <- renderUI(NULL) # remove error message if file uploaded successfully
-    
     message("----------------------- input file uploaded")   ### ** for debugging
     nrow(myrvs$df.reactive) %>% message()   ### ** for debugging
   })
@@ -64,9 +58,10 @@ server <- function(input, output) {
   
       
 
-  observeEvent(input$replacementSubmitButton, {
+  observeEvent(input$recalculateButton, {
     output$currentDataFile <- renderUI({
       isolate({
+        myrvs$recalculatedSinceUpload <- 1
         if (myrvs$nfiles > 0) {
           p(
             "The currently displayed results are from ", 
@@ -82,6 +77,7 @@ server <- function(input, output) {
   
   
 
+  #################### 
   ##   tabPanel("Study criteria",    ## creating UI content for this tabPanel ##
   output$studyCriteria <- renderUI({
     message(" === now in rendereUI block")     ### ** for debugging
@@ -165,27 +161,10 @@ server <- function(input, output) {
       )
     )
   })
-  
-  
-  message("$$$$$$$$$$$$ nfiles and submit button:")
-  isolate(message(myrvs$nfiles))
-  isolate(message(input$replacementSubmitButton))
-  
-  # Create a trigger to redo the outputs whenever the "recalculate" button is 
-  # clicked.  Could also add other triggers by accessing other reactive variables
-  triggerRecalc <- reactive({
-    message("^^^ triggerRecalc is getting updated")   ### for debugging ***
-    isolate(message(myrvs$nfiles))   ### for debugging ***
-    isolate(message(input$replacementSubmitButton)) #  input$replacementSubmitButton   ### for debugging ***
-    input$replacementSubmitButton  # + myrvs$nfiles   ## turns out it is better to only recalculated on press of action button
-  })
-
-  isolate(message("myrvs$nfiles"))   ### for debugging ***
-  isolate(message(myrvs$nfiles))   ### for debugging ***
+  #################### End of study criteria panel 
   
   # Create MA reactive for all outputs
-  MA <- eventReactive(triggerRecalc(), {
-    message(" **MA reactive section ....")  ### for debugging ***
+  MA <- eventReactive(input$recalculateButton, {
     # import the reactive version of the data and the relevant column names
     df <- myrvs$df.reactive
     Variable.Factor.Names <- myrvs$Variable.Factor.Names 
@@ -194,26 +173,24 @@ server <- function(input, output) {
     df_sub <- df %>% filter(Design %in% input$Design,
                             Publication.Year >= input$pubyear[1], Publication.Year <= input$pubyear[2],
                             Paper.and.Exp %in% input$included)
- 
+    #
     ## Create subset based on the above plus input-file defined selection factors
     for (varName in Variable.Factor.Names)  {
       keepValues <- input[[varName]]
       df_sub <- df_sub[df_sub[,varName] %in% keepValues, ]
     }
-
-    
+    #
     ## Create subset based on the above plus input-file defined selection numerics
     for (varName in Variable.Numeric.Names)  {
       df_sub <- df_sub[df_sub[,varName] >= input[[varName]][1], ]
       df_sub <- df_sub[df_sub[,varName] <= input[[varName]][2], ]
     }
-    
     # replace ID with Paper.Number if aggregating over papers:
     if (input$aggregation == "Papers") {
       df_sub$ID <- df_sub$Paper.Number
       df_sub$study <- df_sub$Paper
     }
-    
+    #
     ## Aggregate effect sizes
     aggES <- agg(id     = ID,
                  es     = yi,
@@ -225,7 +202,6 @@ server <- function(input, output) {
     MA <- merge(x = aggES, y = df_sub, by.x = "id", by.y = "ID") 
     MA <- unique(setDT(MA) [sort.list(id)], by = "id")
     MA <- with(MA, MA[order(MA$es)])
-#    })
   })
 
   # Create bma reactive needed for all outputs
@@ -248,7 +224,11 @@ server <- function(input, output) {
                        mu.prior = c("mean" = input$mupriormean, "sd" = input$mupriorsd))
     }
    })
+#   ma2 <<- MA() # for debugging ***
+#   bma2 <<- bma # for debugging ***
+#   bma # for debugging ***
   })
+  
   
   # Study overview panel  
   output$studies <- DT::renderDataTable({
@@ -341,14 +321,16 @@ server <- function(input, output) {
   ##### create download buttons to display in UI
   #
   output$downloadButtons <- renderUI({
-    if (input$replacementSubmitButton){
+    if (myrvs$recalculatedSinceUpload > 0){
       tagList(
         p(),
         downloadButton("originalData", "Data as originally uploaded"),
         p(),
         downloadButton("currentData", "Data as currently in use (primarily for debugging)"),
         p(),
-        downloadButton("listInputs", "List of all UI input selections")
+        downloadButton("listInputs", "List of all selected Study Criteria and Prior Specifications"),
+        p(),
+        downloadButton("bayesmetaCall", "Data, function call, and parameters for the current analysis")
       ) 
     }
     else(p("Must (Re)Calculate first...."))
@@ -357,7 +339,7 @@ server <- function(input, output) {
   ##### create things for the UI to download here....
   output$originalData <- downloadHandler(   
     filename = function() {
-      "currentData.xlsx" 
+      "originalData.xlsx" 
     },
     content = function (file) {
       writexl::write_xlsx(myrvs$df.original, file)
@@ -376,6 +358,35 @@ server <- function(input, output) {
     }
   )
   #
+  output$bayesmetaCall <- downloadHandler(
+    filename = function() {
+      "bayesmeta_call.xlsx" 
+    },
+    content = function (file) {
+      if (is.null(myrvs$currentInputFile)) {Source <- "Vasilev et al., 2018"} else Source <- myrvs$currentInputFile
+      Source <- req(as.data.frame(Source))
+      Bayesmeta.Summary <- req(as.data.frame(bma()$summary))
+      Bayesmeta.Call <- capture.output(bma()$call) %>% paste(collapse = "") %>% as.data.frame() 
+        names(Bayesmeta.Call) <- "bayesmeta analysis command"
+      mupriormean <- req(as.data.frame(input$mupriormean))
+      mupriorsd <- req(as.data.frame(input$mupriorsd))
+      tauprior <- req(as.data.frame(input$tauprior))
+      scaletau <- req(as.data.frame(input$scaletau))
+      robust <- req(as.data.frame(input$robust))
+      sheetList <- list(Bayesmeta.Summary = Bayesmeta.Summary, 
+                        Bayesmeta.Call = Bayesmeta.Call, 
+                        mupriormean = mupriormean,
+                        mupriorsd = mupriorsd,
+                        tauprior = tauprior,
+                        scaletau = scaletau,
+                        MA.selected.data = req(as.data.frame(MA())), 
+                        Source = Source 
+                        )
+      writexl::write_xlsx(sheetList, file)
+    }
+  )
+  
+  #
   output$listInputs <- downloadHandler(
     filename = function() {
       "currentInputSelections.xlsx" 
@@ -384,7 +395,7 @@ server <- function(input, output) {
       inputslist <<- reactiveValuesToList(input) # sends it to the global environment; for debugging ***
       inputslist <- reactiveValuesToList(input)
       ns <- names(inputslist)
-      skipnames1 <- c("website","q8","q18","q118", "replacementSubmitButton","q16","q19", "q1","q17", "q20" ,"email1", "q9"  )
+      skipnames1 <- c("website","q8","q18","q118", "recalculateButton","q16","q19", "q1","q17", "q20" ,"email1", "q9"  )
       skipnames2 <- c( "studies_cells_selected" ,  "studies_rows_all"    ,     "studies_rows_selected"  , 
                        "studies_state"     ,       "studies_search"       ,    "studies_cell_clicked"  ,  
                        "studies_columns_selected", "studies_rows_current")

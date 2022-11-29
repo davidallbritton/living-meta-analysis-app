@@ -34,13 +34,14 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                            windowTitle = "A Universal Tool for BAYSEIAN META-ANALYSIS"),
                 sidebarLayout(
                   sidebarPanel(fluidRow(
-                    actionButton("replacementSubmitButton","(Re)Calculate Meta-Analysis", icon("sync"), style = "color: yellow; background-color: green"),
+                    actionButton("recalculateButton","(Re)Calculate Meta-Analysis", icon("sync"), style = "color: yellow; background-color: green"),
                     uiOutput("currentDataFile"),
-                    fileInput("DataFileUp", label = "Upload your data file (.xls or .xlsx)", accept = c(".xls", ".xlsx")),
-                    uiOutput("inputFileError"),
 
                     tabsetPanel(
                       tabPanel("Study criteria",    
+                               fileInput("DataFileUp", label = "Upload your data file (.xls or .xlsx)", accept = c(".xls", ".xlsx")),
+                               uiOutput("inputFileError"),
+                               
                                ##########  The study selection panel is created in the server:
                                uiOutput("studyCriteria")
                                ##########
@@ -108,7 +109,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                   mainPanel(
                     fluidRow(
                       tabsetPanel(
-                        tabPanel("Explanation", br(),
+                        tabPanel("Explanation", 
+                                 printButton,
                                  h3("Welcome to the interactive Bayesian meta-analysis tool [fill in some info here!]"), br(),
                                  h4("Purpose:"),
                                  p("[something can go here]."), br(),
@@ -134,22 +136,26 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                                          label = "Web", 
                                                          icon = icon("globe", lib = "font-awesome")),
                                      href="http://www.depaul.edu")
-              
                                  ),
-                        tabPanel("Included Studies", br(),
+                        tabPanel("Included Studies", printButton,
                           h4('This table lists all the studies included by the current selected criteria (updated only when "Re-Calculate Meta-Analysis" button is pressed)'),
                           textOutput("warning"), br(),
                           DT::dataTableOutput("studies") %>% withSpinner(type = 6, color = "#3498DB"), br()
-                        ),
-                        tabPanel("Outlier check", br(),
-                                 h4("Boxplot graph:"), plotOutput("boxplot") %>% withSpinner(type = 6, color = "#3498DB")),
-                        tabPanel("Forest plot", br(),
+                          ),
+                        tabPanel("Outlier check", 
+                                 printButton, 
+                                 h4("Boxplot graph:"), 
+                                 plotOutput("boxplot") %>% withSpinner(type = 6, color = "#3498DB")),
+                        tabPanel("Forest plot", 
+                                 printButton, 
                                  h4("Forest plot with 95% credible intervals:"),
-                                 plotOutput("forest") %>% withSpinner(type = 6, color = "#3498DB")),
-                        tabPanel("Funnel plot", br(),
+                                 plotOutput("forest") %>% withSpinner(type = 6, color = "#3498DB")
+                                 ),
+                        tabPanel("Funnel plot", printButton,
                                  h4("Funnel plot to assess publication bias:"),
-                                 plotOutput("funnel")  %>% withSpinner(type = 6, color = "#3498DB")),
-                        tabPanel("Statistics", br(),
+                                 plotOutput("funnel")  %>% withSpinner(type = 6, color = "#3498DB")
+                                 ),
+                        tabPanel("Statistics", printButton,
                                  h4("Parameters:"),
                                  p("τ (tau): posterior distribution of heterogeneity."),
                                  p("μ (mu): posterior distribution of effect."),
@@ -162,8 +168,9 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  p("Bayes factors are only computed if the priors for τ and μ are proper."), br(),
                                  h4("Marginal posterior summary:"), verbatimTextOutput("summary") %>% withSpinner(type = 6, color = "#3498DB"), br(),
                                  h4("Maximum-likelihood:"), verbatimTextOutput("ML") %>% withSpinner(type = 6, color = "#3498DB"), br(),
-                                 h4("Joint maximum-a-posteriori:"), verbatimTextOutput("MAP") %>% withSpinner(type = 6, color = "#3498DB")),
-                        tabPanel("Additional plots", br(),
+                                 h4("Joint maximum-a-posteriori:"), verbatimTextOutput("MAP") %>% withSpinner(type = 6, color = "#3498DB")
+                                 ),
+                        tabPanel("Additional plots", printButton,
                                  h4("Joint posterior density of heterogeneity τ and effect μ:"), plotOutput("joint") %>%  withSpinner(type = 6, color = "#3498DB"),
                                  p("Darker shading corresponds to higher probability density."),
                                  p("Red lines indicate (approximate) 2-dimensional credible regions,"),
@@ -172,8 +179,9 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  p("Red cross (+): posterior mode"),
                                  p("Pink cross (x): ML estimate"), br(),
                                  h4("Prior, posterior, & likelihood:"), plotOutput("evupdate") %>% withSpinner(type = 6, color = "#3498DB"), br(),
-                                 h4("τ prior distribution:"), plotOutput("taupriorplot") %>% withSpinner(type = 6, color = "#3498DB")),
-                        tabPanel("Bayes factor robustness check", br(),
+                                 h4("τ prior distribution:"), plotOutput("taupriorplot") %>% withSpinner(type = 6, color = "#3498DB")
+                                 ),
+                        tabPanel("Bayes factor robustness check", printButton,
                                  h4("Bayes Factors over a variety of prior standard deviations:"),
                                  p("Will only be computed if 'Yes' is selected for 'µ Bayes Factor robustness check' and the priors for τ and μ are proper."),br(),
                                  conditionalPanel(condition = "input.tauprior == 'uniform' | 
@@ -192,7 +200,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  p("User: user selected standard deviation"),
                                  p("Wide: user selected standard deviation + 1"),
                                  p("Ultrawide: user selected standard deviation + 2"),
-                                 p("Interpretations of Bayes factors are based on Jeffreys (1961) with slight modifications by Lee and Wagenmakers (2013) and should be considered with caution."))),
+                                 p("Interpretations of Bayes factors are based on Jeffreys (1961) with slight modifications by Lee and Wagenmakers (2013) and should be considered with caution."))
+                                 ),
                         tabPanel("Downloads", br(),
                           h4("Download Data and Results"),
                           p("From the currently loaded data file and most recent calculations"), br(),

@@ -22,7 +22,8 @@
 # default data file for initial display, before user uploads their own data file:
 load(file = "df3.Rda")             # loads a dataframe called "df"
 
-
+################## Constants #######################################################
+printButton <- HTML('<p  style="text-align:right; font-size: 8px;"><button  onClick="window.print()">PRINT</button></p>')
 
 ##################  Functions   ####################################################
 
@@ -62,8 +63,8 @@ reformat.df <- function(df.input) {
   #
   #  The input data file should contain columns for Experiment.Number and Effect.Size.Number
   #  for use in aggregating effects within each paper.
-  #  The following lines are just in case an input file does not have those columns,
-  #  because the paper had only one experiment and one measurement.
+  #  The following lines are just in case an input file does not have those columns, perhaps
+  #  because the papers each had only one experiment and one measurement.
   ## ** so far these are not used, so they are optional unless the aggregation function
   ## ** gets rewritten to use them.  
   #
@@ -90,18 +91,6 @@ reformat.df <- function(df.input) {
     )
   dfout
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # Generate function "priorposteriorlikelihood.ggplot"
