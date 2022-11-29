@@ -330,7 +330,7 @@ server <- function(input, output) {
         p(),
         downloadButton("listInputs", "List of all selected Study Criteria and Prior Specifications"),
         p(),
-        downloadButton("bayesmetaCall", "Data, function call, and parameters for the current analysis")
+        downloadButton("bayesmetaCall", "Function call, parameters, and selected data for the current analysis")
       ) 
     }
     else(p("Must (Re)Calculate first...."))
@@ -366,6 +366,8 @@ server <- function(input, output) {
       if (is.null(myrvs$currentInputFile)) {Source <- "Vasilev et al., 2018"} else Source <- myrvs$currentInputFile
       Source <- req(as.data.frame(Source))
       Bayesmeta.Summary <- req(as.data.frame(bma()$summary))
+      Bayesmeta.Summary$statistic <-   row.names(Bayesmeta.Summary) 
+      Bayesmeta.Summary <- select(Bayesmeta.Summary, statistic, tau, mu, theta)
       Bayesmeta.Call <- capture.output(bma()$call) %>% paste(collapse = "") %>% as.data.frame() 
         names(Bayesmeta.Call) <- "bayesmeta analysis command"
       mupriormean <- req(as.data.frame(input$mupriormean))
@@ -385,7 +387,6 @@ server <- function(input, output) {
       writexl::write_xlsx(sheetList, file)
     }
   )
-  
   #
   output$listInputs <- downloadHandler(
     filename = function() {
