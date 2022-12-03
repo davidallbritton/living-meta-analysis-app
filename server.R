@@ -163,6 +163,88 @@ server <- function(input, output) {
   })
   #################### End of study criteria panel 
   
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  ##  addStudies
+  #################### 
+  ##   tabPanel   addStudies   ## creating UI content for this tabPanel ##
+  output$addStudies <- renderUI({
+    ## read in the reactive values to use in creating the UI tabPanel entries:
+    df <- myrvs$df.reactive
+    Variable.Factor.Names <- myrvs$Variable.Factor.Names 
+    Variable.Numeric.Names <- myrvs$Variable.Numeric.Names 
+    na.warning <- myrvs$na.warning
+    
+    # putting a <div> around the whole thing:
+    times <- myrvs$nfiles
+    message("times ****")
+    message(times)
+    message(letters[(times %% length(letters)) + 11])
+    div(id=letters[(times %% length(letters)) + 11],     
+        tagList(    
+          br(),
+          numericInput(inputId = "ID_add",  label = "ID number for new study", max(df$ID) +1, min = max(df$ID) +1),
+          textInput(inputId = "newstudy_add", label = "Citation for study you wish to add"),
+          numericInput(inputId = "pubyear_add",  label = "Publication Year", value =2023),
+          radioButtons(inputId = "Design_add", label = p("Study design"), 
+                       choices = levels(df$Design)),
+          
+
+          
+          
+          ## loop over the variable factor columns
+          lapply(Variable.Factor.Names, function(varName) {  
+            varName_add <- paste0(varName, "_add")
+            radioButtons(inputId = varName_add, label = p(varName), 
+                               choices = c(levels(df[,varName]), "Other (not listed)"), selected = "")
+          }),
+          
+          ### loop over the variable numeric selection columns
+          lapply(Variable.Numeric.Names, function(varName) {
+            varName_add <- paste0(varName, "_add")
+            numericInput(inputId = varName_add, label = varName, value = "")
+          }), 
+          hr(),
+          p(strong("Required:")," Number of subjects in each group"),
+          numericInput(inputId = "Total.N_add",  label = "Total N", value =0),
+          numericInput(inputId = "N_Intervention_add",  label = "Intervention N", value =0),
+          numericInput(inputId = "N_Control_add",  label = "Control N", value =0),
+          
+          hr(),
+          p(strong("Required:"),"Either group means and variabilities, OR effect size information"),
+          p("Group means and variabilities:"),
+          numericInput(inputId = "mean_E_add",  label = "Intervention mean", value =""),
+          numericInput(inputId = "mean_C_add",  label = "Control mean", value =""),
+          numericInput(inputId = "var_E_add",  label = "Intervention variability (SD, SE, or variance)", value =""),
+          numericInput(inputId = "var_C_add",  label = "Control variability (SD, SE, or variance)", value =""),
+          radioButtons(inputId = "var_type_add", choices = c("Standard deviation", "Standard error", "Variance"), 
+                       selected = "Standard deviation", label = "Variance type"),
+          p("Effect size (either g or d) and variance:", 
+            ),
+          numericInput(inputId = "g_add",  label = "effect size (g)", value =""),
+          numericInput(inputId = "gvar_add",  label = "variance of g", value =""),
+          numericInput(inputId = "d_add",  label = "effect size (d)", value =""),
+          numericInput(inputId = "dvar_add",  label = "variance of d", value =""),
+
+
+p("for debugging only")          
+        )
+    )
+  })
+  #################### End of add studies panel 
+  
+  
+  
+  
+  
+  
   # Create MA reactive for all outputs
   MA <- eventReactive(input$recalculateButton, {
     # import the reactive version of the data and the relevant column names

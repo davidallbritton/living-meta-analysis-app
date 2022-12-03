@@ -104,6 +104,23 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                          trigger = "click",
                                          options = list(container = "body")),
                                a("Further information on choosing an appropriate τ prior.", href="https://cran.r-project.org/web/packages/bayesmeta/bayesmeta.pdf", target = "_blank")),
+                      
+                      
+                      
+                      
+                      tabPanel("Add a Study",    
+                               ##########  The study selection panel is created in the server:
+                               uiOutput("addStudies")
+                               ##########
+                      ),
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
                       hr()
                     ))),
                   mainPanel(
