@@ -190,15 +190,26 @@ server <- function(input, output) {
     div(id=letters[(times %% length(letters)) + 11],     
         tagList(    
           br(),
-          numericInput(inputId = "ID_add",  label = "ID number for new study", max(df$ID) +1, min = max(df$ID) +1),
-          textInput(inputId = "newstudy_add", label = "Citation for study you wish to add"),
+          p("Add new studies here.  Each effect size from a multi-experiment or multi-measurement",
+            "paper should be a separate entry with a unique ID number.  You will need to provide ", 
+            "either group means and variabilities OR an effect size measure (g or d) and its variance.",
+            "After adding one or more",
+            "studies and recalculating, you can download the updated data file.", 
+            "An alternative method for adding studies is to download the original data as a .xlsx file,",
+            "add new rows of data, then upload the new .xlsx file for analysis."),
+          hr(),
+          numericInput(inputId = "ID_add",  label = "ID number for new effect size", max(df$ID) +1, min = max(df$ID) +1),
+          textInput(inputId = "newstudy_add", label = "Study citation for new effect size"),
+          # might want to allow to select an existing study or "add new" and then enter one,
+          # so that I can use the existing paper # if they are adding a new 
+          # experiment or effect size for an already existing or previously entered paper
+          #   Might also want to collect exp# and es# (default=1) in case they are 
+          #   adding multiple effect sizes from a single paper. 
           numericInput(inputId = "pubyear_add",  label = "Publication Year", value =2023),
           radioButtons(inputId = "Design_add", label = p("Study design"), 
                        choices = levels(df$Design)),
           
-
-          
-          
+          hr(),
           ## loop over the variable factor columns
           lapply(Variable.Factor.Names, function(varName) {  
             varName_add <- paste0(varName, "_add")
@@ -212,6 +223,7 @@ server <- function(input, output) {
             numericInput(inputId = varName_add, label = varName, value = "")
           }), 
           hr(),
+          
           p(strong("Required:")," Number of subjects in each group"),
           numericInput(inputId = "Total.N_add",  label = "Total N", value =0),
           numericInput(inputId = "N_Intervention_add",  label = "Intervention N", value =0),
@@ -226,6 +238,7 @@ server <- function(input, output) {
           numericInput(inputId = "var_C_add",  label = "Control variability (SD, SE, or variance)", value =""),
           radioButtons(inputId = "var_type_add", choices = c("Standard deviation", "Standard error", "Variance"), 
                        selected = "Standard deviation", label = "Variance type"),
+          hr(),
           p("Effect size (either g or d) and variance:", 
             ),
           numericInput(inputId = "g_add",  label = "effect size (g)", value =""),
@@ -233,8 +246,9 @@ server <- function(input, output) {
           numericInput(inputId = "d_add",  label = "effect size (d)", value =""),
           numericInput(inputId = "dvar_add",  label = "variance of d", value =""),
 
-
-p("for debugging only")          
+          p()   ###  *** p() is for debugging only. need a submit button here, perhaps
+          # with error checking for between/within and total N, and for 
+          # whether all required info is provided
         )
     )
   })
