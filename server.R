@@ -34,8 +34,6 @@ server <- function(input, output) {
   observeEvent(input$DataFileUp, {
     # Read the data from the excel file the user uploaded:
     fileExtension <- tools::file_ext(input$DataFileUp$datapath)
-    message("DataFileUp$name")     ########## for debugging ***
-    message(input$DataFileUp$name)     ########## for debugging ***
     output$inputFileError <- renderUI({  # create error message in case file not uploaded successfully
       if (!is.null(input$DataFileUp)) p(style = "color:red", "***File was not read.  Must be .xls or .xlsx***")
     })
@@ -51,13 +49,8 @@ server <- function(input, output) {
     myrvs$recalculatedSinceUpload <- 0
     myrvs$currentInputFile <- input$DataFileUp$name
     output$inputFileError <- renderUI(NULL) # remove error message if file uploaded successfully
-    message("----------------------- input file uploaded")   ### ** for debugging
-    nrow(myrvs$df.reactive) %>% message()   ### ** for debugging
   })
   
-  
-      
-
   observeEvent(input$recalculateButton, {
     output$currentDataFile <- renderUI({
       isolate({
@@ -74,9 +67,6 @@ server <- function(input, output) {
     })
   })
   
-  
-  
-
   #################### 
   ##   tabPanel("Study criteria",    ## creating UI content for this tabPanel ##
   output$studyCriteria <- renderUI({
@@ -128,7 +118,6 @@ server <- function(input, output) {
                        trigger = "click",
                        options = list(container = "body")),
              
-             
              ## loop over the variable factor columns
                                             lapply(Variable.Factor.Names, function(varName) {                             
                                               checkboxGroupInput(inputId = varName, label = p(varName,style="color:#333333"), 
@@ -143,7 +132,6 @@ server <- function(input, output) {
                                              list(ss, pp)
                                            }), 
           
-
         checkboxGroupInput(
           inputId = "included", label = p("Include/exclude specific studies",style="color:#333333",
                                            tags$style(type = "text/css", "#q9 {vertical-align: top;}"),
@@ -164,93 +152,94 @@ server <- function(input, output) {
   #################### End of study criteria panel 
   
   
-  
-  
-  
-  
-  
-  
-  
-  
+
   ##  addStudies
   #################### 
   ##   tabPanel   addStudies   ## creating UI content for this tabPanel ##
   output$addStudies <- renderUI({
+    
     ## read in the reactive values to use in creating the UI tabPanel entries:
     df <- myrvs$df.reactive
     Variable.Factor.Names <- myrvs$Variable.Factor.Names 
     Variable.Numeric.Names <- myrvs$Variable.Numeric.Names 
     na.warning <- myrvs$na.warning
     
-    # putting a <div> around the whole thing:
+    # preparing to put a <div> around the whole thing:
     times <- myrvs$nfiles
     message("times ****")
     message(times)
     message(letters[(times %% length(letters)) + 11])
-    div(id=letters[(times %% length(letters)) + 11],     
-        tagList(    
-          br(),
-          p("Add new studies here.  Each effect size from a multi-experiment or multi-measurement",
-            "paper should be a separate entry with a unique ID number.  You will need to provide ", 
-            "either group means and variabilities OR an effect size measure (g or d) and its variance.",
-            "After adding one or more",
-            "studies and recalculating, you can download the updated data file.", 
-            "An alternative method for adding studies is to download the original data as a .xlsx file,",
-            "add new rows of data, then upload the new .xlsx file for analysis."),
-          hr(),
-          numericInput(inputId = "ID_add",  label = "ID number for new effect size", max(df$ID) +1, min = max(df$ID) +1),
-          textInput(inputId = "newstudy_add", label = "Study citation for new effect size"),
-          # might want to allow to select an existing study or "add new" and then enter one,
-          # so that I can use the existing paper # if they are adding a new 
-          # experiment or effect size for an already existing or previously entered paper
-          #   Might also want to collect exp# and es# (default=1) in case they are 
-          #   adding multiple effect sizes from a single paper. 
-          numericInput(inputId = "pubyear_add",  label = "Publication Year", value =2023),
-          radioButtons(inputId = "Design_add", label = p("Study design"), 
-                       choices = levels(df$Design)),
-          
-          hr(),
-          ## loop over the variable factor columns
-          lapply(Variable.Factor.Names, function(varName) {  
-            varName_add <- paste0(varName, "_add")
-            radioButtons(inputId = varName_add, label = p(varName), 
-                               choices = c(levels(df[,varName]), "Other (not listed)"), selected = "")
-          }),
-          
-          ### loop over the variable numeric selection columns
-          lapply(Variable.Numeric.Names, function(varName) {
-            varName_add <- paste0(varName, "_add")
-            numericInput(inputId = varName_add, label = varName, value = "")
-          }), 
-          hr(),
-          
-          p(strong("Required:")," Number of subjects in each group"),
-          numericInput(inputId = "Total.N_add",  label = "Total N", value =0),
-          numericInput(inputId = "N_Intervention_add",  label = "Intervention N", value =0),
-          numericInput(inputId = "N_Control_add",  label = "Control N", value =0),
-          
-          hr(),
-          p(strong("Required:"),"Either group means and variabilities, OR effect size information"),
-          p("Group means and variabilities:"),
-          numericInput(inputId = "mean_E_add",  label = "Intervention mean", value =""),
-          numericInput(inputId = "mean_C_add",  label = "Control mean", value =""),
-          numericInput(inputId = "var_E_add",  label = "Intervention variability (SD, SE, or variance)", value =""),
-          numericInput(inputId = "var_C_add",  label = "Control variability (SD, SE, or variance)", value =""),
-          radioButtons(inputId = "var_type_add", choices = c("Standard deviation", "Standard error", "Variance"), 
-                       selected = "Standard deviation", label = "Variance type"),
-          hr(),
-          p("Effect size (either g or d) and variance:", 
+    
+    if (myrvs$recalculatedSinceUpload > 0){      # force recalculation before adding a study
+      div(id=letters[(times %% length(letters)) + 11],     
+          tagList(    
+            br(),
+            p("Add new studies here.  Each effect size from a multi-experiment or multi-measurement",
+              "paper should be a separate entry with a unique ID number.  You will need to provide ", 
+              "either group means and variabilities OR an effect size measure (g or d) and its variance.",
+              "After adding one or more",
+              "studies and recalculating, you can download the updated data file.", 
+              "An alternative method for adding studies is to download the original data as a .xlsx file,",
+              "add new rows of data, then upload the new .xlsx file for analysis."),
+            hr(),
+            numericInput(inputId = "ID_add",  label = "ID number for new effect size", max(df$ID) +1, min = max(df$ID) +1),
+            textInput(inputId = "newstudy_add", label = "Study citation for new effect size"),
+            # might want to allow to select an existing study or "add new" and then enter one,
+            # so that I can use the existing paper # if they are adding a new 
+            # experiment or effect size for an already existing or previously entered paper
+            #   Might also want to collect exp# and es# (default=1) in case they are 
+            #   adding multiple effect sizes from a single paper. 
+            numericInput(inputId = "pubyear_add",  label = "Publication Year", value =2023),
+            radioButtons(inputId = "Design_add", label = p("Study design"), 
+                         choices = levels(df$Design)),
+            
+            hr(),
+            ## loop over the variable factor columns
+            lapply(Variable.Factor.Names, function(varName) {  
+              varName_add <- paste0(varName, "_add")
+              radioButtons(inputId = varName_add, label = p(varName), 
+                           choices = c(levels(df[,varName]), "Other (not listed)"), selected = "")
+            }),
+            
+            ### loop over the variable numeric selection columns
+            lapply(Variable.Numeric.Names, function(varName) {
+              varName_add <- paste0(varName, "_add")
+              numericInput(inputId = varName_add, label = varName, value = "")
+            }), 
+            hr(),
+            
+            p(strong("Required:")," Number of subjects in each group"),
+            numericInput(inputId = "Total.N_add",  label = "Total N", value =0),
+            numericInput(inputId = "N_Intervention_add",  label = "Intervention N", value =0),
+            numericInput(inputId = "N_Control_add",  label = "Control N", value =0),
+            
+            hr(),
+            p(strong("Required:"),"Either group means and variabilities, OR effect size information"),
+            p("Group means and variabilities:"),
+            numericInput(inputId = "mean_E_add",  label = "Intervention mean", value =""),
+            numericInput(inputId = "mean_C_add",  label = "Control mean", value =""),
+            numericInput(inputId = "var_E_add",  label = "Intervention variability (SD, SE, or variance)", value =""),
+            numericInput(inputId = "var_C_add",  label = "Control variability (SD, SE, or variance)", value =""),
+            radioButtons(inputId = "var_type_add", choices = c("Standard deviation", "Standard error", "Variance"), 
+                         selected = "Standard deviation", label = "Variance type"),
+            hr(),
+            p("Effect size (either g or d) and variance:", 
             ),
-          numericInput(inputId = "g_add",  label = "effect size (g)", value =""),
-          numericInput(inputId = "gvar_add",  label = "variance of g", value =""),
-          numericInput(inputId = "d_add",  label = "effect size (d)", value =""),
-          numericInput(inputId = "dvar_add",  label = "variance of d", value =""),
+            numericInput(inputId = "g_add",  label = "effect size (g)", value =""),
+            numericInput(inputId = "gvar_add",  label = "variance of g", value =""),
+            numericInput(inputId = "d_add",  label = "effect size (d)", value =""),
+            numericInput(inputId = "dvar_add",  label = "variance of d", value =""),
+            
+            p()   ###  *** p() is for debugging only. need a submit button here, perhaps
+            # with error checking for between/within and total N, and for 
+            # whether all required info is provided
+          )
+      ) 
+    }
+    else(p("Must (Re)Calculate first...."))
+    
+    
 
-          p()   ###  *** p() is for debugging only. need a submit button here, perhaps
-          # with error checking for between/within and total N, and for 
-          # whether all required info is provided
-        )
-    )
   })
   #################### End of add studies panel 
   
