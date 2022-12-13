@@ -11,19 +11,21 @@
 #     The data file should have one effect size per row
 #     (So if a paper has 3 effect sizes there should be 3 rows for that paper;
 #      If there are 2 studies/experiments in the paper and 3 effect sizes 
+#     The data file must contain the following columns:
+#       [[insert some more stuff here]]
 #      from each experiment, then there should be 6 rows for that paper)
 #
 #     The data file must have columns called "yi" and "vi" for the effect size
 #     and effect size variance, assumed to be for Hedge's g 
 # 
-#     The data file must contain the following columns:
-#       [[insert some more stuff here]]
 
 # default data file for initial display, before user uploads their own data file:
 load(file = "df3.Rda")             # loads a dataframe called "df"
 
 ################## Constants #######################################################
 printButton <- HTML('<p  style="text-align:right; font-size: 8px;"><button  onClick="window.print()">PRINT</button></p>')
+r_estimate <- 0.74  # Vasilev et al.'s estimate of the correlation between outcomes in a single study (for "within" designs)
+
 
 ##################  Functions   ####################################################
 
@@ -266,4 +268,70 @@ myUni<-function(rand){
                 colnames = c("estimate","lower CI","upper CI"))
 }
 
+########################### Functions for users adding a study ##########
+# calculate effect size from user input
+##
+getEffectSize <- function(g=NULL, g_var=NULL, d=NULL, d_var=NULL, mean_E=NULL, mean_C=NULL,
+                  var_E=NULL, var_C=NULL, var_type=NULL, Total.N=NULL, N_Intervention=NULL, 
+                  N_Control=NULL, Design="between", r = r_estimate,
+                  reverseCode="No") {
+  if (is.null(g) | is.null(g_var)) {
+    if (is.null(d) | is.null(d_var)) {
+      if (is.null(N_Control) | is.null(N_Intervention)) {message("Add throwing an error here for Ns"); return("error")} #throw an error
+      if (is.null(mean_E) | is.null(mean_C)) {message("Add throwing an error here for means"); return("error")}   #throw an error
+      type <- "E-C"
+      if (reverseCode =="Yes") {
+        type <- "C-E"
+        mean_E <- -mean_E
+        mean_C <- -mean_C
+      }
+      if (is.null(var_C)) {message("Add throwing an error here***"); return("error")} #throw an error
+      if (var_type == "Standard deviation"){
+        sd2i <- var_C
+        sd1i <- var_E
+      } else if (var_type == "Variance"){
+        sd2i <- sqrt(var_C)
+        sd1i <- sqrt(var_E)
+      } else if (var_type == "Standard error") {
+        sd2i <- var_C * sqrt(N_Control)
+        sd1i <- var_E * sqrt(N_Intervention)
+        }
+      #
+      # calculate g for a between design from group means and SDs
+      if (Design == "between"){
+        if (is.null(var_E)) { # using control SD only; SDM1 for between groups design
+          gcalc <- metafor::escalc (measure = "SMD1", vtype = "LS2",
+                           m1i = mean_E, m2i = mean_C,
+                           sd2i = sd2i, n1i = N_Intervention, n2i = N_Control)
+        } else { # using both control SD and intervention SD;  SMD for between groups design
+          gcalc <- metafor::escalc (measure = "SMD", vtype = "LS2",
+                           m1i = mean_E, m2i = mean_C, 
+                           sd1i = sd1i, sd2i = sd2i, n1i = N_Intervention, n2i = N_Control)   
+        }
+      }
+      else { # for within designs (anything other than "between")
+        if (is.null(var_E)) { # using control SD only; SMCR for within group design
+          gcalc <- metafor::escalc (measure = "SMCR", vtype = "LS2",
+                           m1i = mean_E, m2i = mean_C,
+                           sd1i = sd2i, ni = Total.N, ri = r)   # using SD of the control condition sd2i
+        } else { # using both control SD and intervention SD; SMCC for within group design
+          gcalc <- metafor::escalc (measure = "SMCC", vtype = "LS2",
+                           m1i = mean_E, m2i = mean_C, 
+                           sd1i = sd1i, sd2i = sd2i, ni = Total.N, ri = r)
+        }
+      }
+      g <- gcalc$yi[[1]]
+      g_var <- gcalc$vi
+    } else {  # if d and d_var were provided by the user
+      # calculate g from d, using the functions from Vasilev et al., 2022 
+      g <- Hedges_g(d = d, design = Design, N_C = N_Control, N_E = N_Intervention, N = Total.N)
+      g_var <- Hedges_g_var(d_var = d_var, design = Design, N_C = N_Control, N_E = N_Intervention, N = Total.N)
+
+    }
+  } # should have g and g_var at this point to return in a list
+  req(g)
+  req(g_var)
+  list(yi = g, vi = g_var)
+}
+###########  End of function for calculating g and g_var from user input #############
 

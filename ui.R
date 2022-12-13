@@ -6,6 +6,7 @@
 # revised for Vasilev et al. data 2022  
 
 # Load required packages and source helper functions #----
+library(metafor)
 library(readxl)
 library(tools)
 library(shiny)
@@ -26,6 +27,7 @@ library(stringr)
 library(tidyr)
 library(xtable)
 source("HelperFunctions.R")
+source("effect_sizes.R")
 #----
 
 # Define UI

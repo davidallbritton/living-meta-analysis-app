@@ -20,8 +20,9 @@ server <- function(input, output) {
     if(is.null(input$DataFileUp)){   #this trigger works because input$DataFileUp gets initialized to null when the app first loads, which triggers the observer
       isolate({                   #isolate so that changes in myrvs do not trigger the observer
         newrvs <- reformat.df(df)
-        myrvs$df.reactive <- newrvs$df
-        myrvs$df.original <- newrvs$df.original
+        myrvs$df.reactive <- newrvs$df          # for manipulating and calculating; gets altered
+        myrvs$df.original <- newrvs$df.original # as originally loaded or uploaded; does not change
+        myrvs$df.updated <- myrvs$df.original   # original data plus any data points input by the user
         myrvs$Variable.Factor.Names <- newrvs$Variable.Factor.Names
         myrvs$Variable.Numeric.Names <- newrvs$Variable.Numeric.Names
         myrvs$na.warning <- newrvs$na.warning
@@ -42,6 +43,7 @@ server <- function(input, output) {
     newrvs <- reformat.df(df)
     myrvs$df.reactive <- newrvs$df
     myrvs$df.original <- newrvs$df.original
+    myrvs$df.updated <- myrvs$df.original 
     myrvs$Variable.Factor.Names <- newrvs$Variable.Factor.Names
     myrvs$Variable.Numeric.Names <- newrvs$Variable.Numeric.Names
     myrvs$na.warning <- newrvs$na.warning
@@ -183,15 +185,20 @@ server <- function(input, output) {
               "add new rows of data, then upload the new .xlsx file for analysis."),
             hr(),
             numericInput(inputId = "ID_add",  label = "ID number for new effect size", max(df$ID) +1, min = max(df$ID) +1),
-            textInput(inputId = "newstudy_add", label = "Study citation for new effect size"),
+            textInput(inputId = "Paper_add", label = "Paper (citation)"),
             # might want to allow to select an existing study or "add new" and then enter one,
             # so that I can use the existing paper # if they are adding a new 
             # experiment or effect size for an already existing or previously entered paper
             #   Might also want to collect exp# and es# (default=1) in case they are 
             #   adding multiple effect sizes from a single paper. 
             numericInput(inputId = "pubyear_add",  label = "Publication Year", value =2023),
+            numericInput(inputId = "Experiment.Number_add",  label = "Experiment.Number (within paper)", value =1),
+            numericInput(inputId = "Effect.Size.Number_add",  label = "Effect.Size.Number (within experiment)", value =1),
             radioButtons(inputId = "Design_add", label = p("Study design"), 
                          choices = levels(df$Design)),
+            numericInput(inputId = "r_add",  
+                         label = 'Within-study outcome correlation (for "within" designs)', 
+                         value = r_estimate,  min = 0, max = 1, step = 0.01),
             
             hr(),
             ## loop over the variable factor columns
@@ -218,10 +225,12 @@ server <- function(input, output) {
             p("Group means and variabilities:"),
             numericInput(inputId = "mean_E_add",  label = "Intervention mean", value =""),
             numericInput(inputId = "mean_C_add",  label = "Control mean", value =""),
+            radioButtons(inputId = "reverseCode_add", choices = c("More is better (e.g., % correct)", "More is worse (e.g., % errors, RT)"), 
+                         selected = "More is better (e.g., % correct)", label = "Means require regular coding (more is better) or reverse coding (more is worse)?"),
             numericInput(inputId = "var_E_add",  label = "Intervention variability (SD, SE, or variance)", value =""),
             numericInput(inputId = "var_C_add",  label = "Control variability (SD, SE, or variance)", value =""),
-            radioButtons(inputId = "var_type_add", choices = c("Standard deviation", "Standard error", "Variance"), 
-                         selected = "Standard deviation", label = "Variance type"),
+            radioButtons(inputId = "var_type_add", choices = c("Standard deviation", "Variance", "Standard error"), 
+                         selected = "Standard deviation", label = "Variance type (SD is preferred; variance is acceptable; SE is discouraged"),
             hr(),
             p("Effect size (either g or d) and variance:", 
             ),
@@ -230,6 +239,8 @@ server <- function(input, output) {
             numericInput(inputId = "d_add",  label = "effect size (d)", value =""),
             numericInput(inputId = "dvar_add",  label = "variance of d", value =""),
             
+            actionButton(inputId = "add1study","Add this study", icon("sync"), style = "color: green; background-color: white"),
+            
             p()   ###  *** p() is for debugging only. need a submit button here, perhaps
             # with error checking for between/within and total N, and for 
             # whether all required info is provided
@@ -237,12 +248,47 @@ server <- function(input, output) {
       ) 
     }
     else(p("Must (Re)Calculate first...."))
-    
-    
-
   })
   #################### End of add studies panel 
   
+  
+  ########### Adding a study that was input by the user
+  observeEvent(input$add1study, {     #when a study is input to add, do this:
+    ### check the user input for errors
+    
+    ### add the study 
+    other.Names_add <- c("ID_add",  "Paper_add", "pubyear_add",  "Experiment.Number_add", 
+                         "Effect.Size.Number_add", "Design_add",  "mean_E_add",  "mean_C_add", 
+                         "reverseCode_add",
+                         "var_E_add",   "var_C_add",   "var_type_add",
+                         "g_add",  "g_var_add",  "d_add",  "d_var_add", "r_add"
+                         )
+    other.Names <- str_replace(other.Names_add, "_add", "")
+    # The inputfields and calculatedfields will need to be added to the dataset
+    calculatedfields <- c("Paper.and.Exp", "yi", "vi")
+    inputfields <- c(myrvs$Variable.Factor.Names, myrvs$Variable.Numeric.Names, other.Names)
+    # Get the values for yi and vi:
+    ### call the function and pass it arguments from the user input; assign yi and vi values
+    # add a row to the data file with yi, vi, and all the input variables.
+    ### what if the original data file did not contain columns for all the input variables?
+    ### need to add them if they don't exist.  The "other.Names" might not exist.
+    # display the updated data file.  Maybe add an output tab for displaying the data file.
+    ### data file dependency should be:  df.original -> df.updated -> df.reactive 
+    
+    ### temp stuff:
+ #   probably should use metafor::escalc to calculate g.
+    #  Need another input field to indicate whether higher is good or bad for the means
+    #  good: proportion correct, reading score; bad: reaction time, errors
+    message(inputfields)                 ### for debugging ***
+    message(length(inputfields))       ### for debugging ***
+    message(other.Names_add)       ### for debugging ***
+    message(length(other.Names_add))       ### for debugging ***
+    message("Here is the g and g_var to be added")       ### for debugging ***
+    message(length(other.Names_add))       ### for debugging ***
+    message(length(other.Names_add))       ### for debugging ***
+    message(length(other.Names_add))       ### for debugging ***
+    
+  })  # end of adding a study
   
   
   
