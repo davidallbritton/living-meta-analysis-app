@@ -187,7 +187,7 @@ server <- function(input, output) {
               "add new rows of data, then upload the new .xlsx file for analysis."),
             hr(),
             numericInput(inputId = "ID_add",  label = "ID number for new effect size", max(df$ID) +1, min = max(df$ID) +1),
-            textInput(inputId = "Paper_add", label = "Paper (citation)", as.character(max(df$ID) +1)),
+            textInput(inputId = "Paper_add", label = "Paper (citation)", paste0(as.character(max(df$ID) +1), "_author (year)")),
             # might want to allow to select an existing study or "add new" and then enter one,
             # so that I can use the existing paper # if they are adding a new 
             # experiment or effect size for an already existing or previously entered paper
