@@ -1,5 +1,5 @@
 #######################################################################################
-################### A Universal Tool for BAYSEIAN META-ANALYSIS #######################
+################### A General Tool for BAYSEIAN META-ANALYSIS #######################
 #######################################################################################
 
 ################### Helper functions #################################################
@@ -275,17 +275,20 @@ getEffectSize <- function(g=NULL, g_var=NULL, d=NULL, d_var=NULL, mean_E=NULL, m
                   var_E=NULL, var_C=NULL, var_type=NULL, Total.N=NULL, N_Intervention=NULL, 
                   N_Control=NULL, Design="between", r = r_estimate,
                   reverseCode="No") {
-  if (is.null(g) | is.null(g_var)) {
-    if (is.null(d) | is.null(d_var)) {
-      if (is.null(N_Control) | is.null(N_Intervention)) {message("Add throwing an error here for Ns"); return("error")} #throw an error
-      if (is.null(mean_E) | is.null(mean_C)) {message("Add throwing an error here for means"); return("error")}   #throw an error
+  if (is.null(g)|is.null(g_var)  |  is.na(g)|is.na(g_var)) {
+    if (is.null(d)|is.null(d_var)   |   is.na(d)|is.na(d_var)) {
+      if (is.null(N_Control)|is.null(N_Intervention)  |  is.na(N_Control)|is.na(N_Intervention)) {
+        message("Add throwing an error here for Ns"); return("error: must specify Ns")} #throw an error
+      if (is.null(mean_E)|is.null(mean_C)   |   is.na(mean_E)|is.na(mean_C)) {
+        message("Add throwing an error here for means"); return("error: must specify means")}   #throw an error
       type <- "E-C"
       if (reverseCode =="Yes") {
         type <- "C-E"
         mean_E <- -mean_E
         mean_C <- -mean_C
       }
-      if (is.null(var_C)) {message("Add throwing an error here***"); return("error")} #throw an error
+      if (is.null(var_C)  |  is.na(var_C)) {
+        message("Add throwing an error here***"); return("error: must specify control group SD")} #throw an error
       if (var_type == "Standard deviation"){
         sd2i <- var_C
         sd1i <- var_E
@@ -299,7 +302,7 @@ getEffectSize <- function(g=NULL, g_var=NULL, d=NULL, d_var=NULL, mean_E=NULL, m
       #
       # calculate g for a between design from group means and SDs
       if (Design == "between"){
-        if (is.null(var_E)) { # using control SD only; SDM1 for between groups design
+        if (is.null(var_E)  |  is.na(var_E)) { # using control SD only; SDM1 for between groups design
           gcalc <- metafor::escalc (measure = "SMD1", vtype = "LS2",
                            m1i = mean_E, m2i = mean_C,
                            sd2i = sd2i, n1i = N_Intervention, n2i = N_Control)
@@ -310,7 +313,7 @@ getEffectSize <- function(g=NULL, g_var=NULL, d=NULL, d_var=NULL, mean_E=NULL, m
         }
       }
       else { # for within designs (anything other than "between")
-        if (is.null(var_E)) { # using control SD only; SMCR for within group design
+        if (is.null(var_E)  |  is.na(var_E)) { # using control SD only; SMCR for within group design
           gcalc <- metafor::escalc (measure = "SMCR", vtype = "LS2",
                            m1i = mean_E, m2i = mean_C,
                            sd1i = sd2i, ni = Total.N, ri = r)   # using SD of the control condition sd2i

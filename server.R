@@ -1,5 +1,5 @@
 #######################################################################################
-################### A Universal Tool for BAYSEIAN META-ANALYSIS #################
+################### A General Tool for BAYSEIAN META-ANALYSIS #################
 #######################################################################################
 
 ################### Shiny App v.0.2 2022.11.21 SERVER ###################################
@@ -29,6 +29,8 @@ server <- function(input, output) {
         myrvs$recalculatedSinceUpload <- 0
       })
     }
+    tempnames <<- myrvs$Variable.Factor.Names
+    
   })
   
   ## When the user uploads a data file, replace the existing data and update the UI
@@ -185,7 +187,7 @@ server <- function(input, output) {
               "add new rows of data, then upload the new .xlsx file for analysis."),
             hr(),
             numericInput(inputId = "ID_add",  label = "ID number for new effect size", max(df$ID) +1, min = max(df$ID) +1),
-            textInput(inputId = "Paper_add", label = "Paper (citation)"),
+            textInput(inputId = "Paper_add", label = "Paper (citation)", as.character(max(df$ID) +1)),
             # might want to allow to select an existing study or "add new" and then enter one,
             # so that I can use the existing paper # if they are adding a new 
             # experiment or effect size for an already existing or previously entered paper
@@ -223,7 +225,7 @@ server <- function(input, output) {
             hr(),
             p(strong("Required:"),"Either group means and variabilities, OR effect size information"),
             p("Group means and variabilities:"),
-            numericInput(inputId = "mean_E_add",  label = "Intervention mean", value =""),
+            numericInput(inputId = "mean_E_add",  label = "Intervention mean", value =NULL), ### ****
             numericInput(inputId = "mean_C_add",  label = "Control mean", value =""),
             radioButtons(inputId = "reverseCode_add", choices = c("More is better (e.g., % correct)", "More is worse (e.g., % errors, RT)"), 
                          selected = "More is better (e.g., % correct)", label = "Means require regular coding (more is better) or reverse coding (more is worse)?"),
@@ -235,9 +237,9 @@ server <- function(input, output) {
             p("Effect size (either g or d) and variance:", 
             ),
             numericInput(inputId = "g_add",  label = "effect size (g)", value =""),
-            numericInput(inputId = "gvar_add",  label = "variance of g", value =""),
+            numericInput(inputId = "g_var_add",  label = "variance of g", value =""),
             numericInput(inputId = "d_add",  label = "effect size (d)", value =""),
-            numericInput(inputId = "dvar_add",  label = "variance of d", value =""),
+            numericInput(inputId = "d_var_add",  label = "variance of d", value =""),
             
             actionButton(inputId = "add1study","Add this study", icon("sync"), style = "color: green; background-color: white"),
             
@@ -252,41 +254,85 @@ server <- function(input, output) {
   #################### End of add studies panel 
   
   
+  
   ########### Adding a study that was input by the user
   observeEvent(input$add1study, {     #when a study is input to add, do this:
     ### check the user input for errors
     
     ### add the study 
     other.Names_add <- c("ID_add",  "Paper_add", "pubyear_add",  "Experiment.Number_add", 
-                         "Effect.Size.Number_add", "Design_add",  "mean_E_add",  "mean_C_add", 
+                         "Effect.Size.Number_add", "Design_add", 
+                         "r_add",
+                         "Total.N_add", "N_Intervention_add", "N_Control_add", 
+                         "mean_E_add",  "mean_C_add", 
                          "reverseCode_add",
                          "var_E_add",   "var_C_add",   "var_type_add",
-                         "g_add",  "g_var_add",  "d_add",  "d_var_add", "r_add"
-                         )
+                         "g_add",  "g_var_add",  "d_add",  "d_var_add"
+    )
     other.Names <- str_replace(other.Names_add, "_add", "")
     # The inputfields and calculatedfields will need to be added to the dataset
     calculatedfields <- c("Paper.and.Exp", "yi", "vi")
     inputfields <- c(myrvs$Variable.Factor.Names, myrvs$Variable.Numeric.Names, other.Names)
+    
+    # Create the study label: Paper.and.Exp
+    Paper.and.Exp <- paste0(input$Paper_add, " Exp. ", input$Experiment.Number_add)
+    
     # Get the values for yi and vi:
     ### call the function and pass it arguments from the user input; assign yi and vi values
-    # add a row to the data file with yi, vi, and all the input variables.
-    ### what if the original data file did not contain columns for all the input variables?
-    ### need to add them if they don't exist.  The "other.Names" might not exist.
-    # display the updated data file.  Maybe add an output tab for displaying the data file.
-    ### data file dependency should be:  df.original -> df.updated -> df.reactive 
+    gstats <- getEffectSize (g = as.numeric(input$g_add), 
+                             g_var = as.numeric(input$g_var_add), 
+                             d = as.numeric(input$d_add), 
+                             d_var = as.numeric(input$d_var_add), 
+                             mean_E = as.numeric(input$mean_E_add), 
+                             mean_C = as.numeric(input$mean_C_add),
+                             var_E = as.numeric(input$var_E_add), 
+                             var_C = as.numeric(input$var_C_add), 
+                             var_type = input$var_type_add, 
+                             Total.N = as.numeric(input$Total.N_add), 
+                             N_Intervention = as.numeric(input$N_Intervention_add), 
+                             N_Control = as.numeric(input$N_Control_add), 
+                             Design = input$Design_add, 
+                             r = as.numeric(input$r_add),
+                             reverseCode = input$reverseCode_add
+                             )
+
+    tempgstats <<- gstats  #### *** debugging
+
+    # create a 1-row dataframe for the values that were input by the user and the calculated effect size:
+    newstudy <- data.frame(yi = gstats$yi, vi = gstats$vi, Paper.and.Exp = Paper.and.Exp)
     
+    tempnewstudy <<- newstudy  #### *** debugging
+    
+    
+    
+    # add the new row of data to the current data:
+    
+    
+    # update the relevant data frames:
+    
+    
+      
+      
+          
+          
+      ### what if the original data file did not contain columns for all the input variables?
+      ### need to add them if they don't exist.  The "other.Names" might not exist.
+      # display the updated data file.  Maybe add an output tab for displaying the data file.
+      ### data file dependency should be:  df.original -> df.updated -> df.reactive 
+      # 1. add the new data to myrvs$df.updated
+      # 2. newdatalist <- reformat.df(myrvs$df.updated) 
+      # 3. copy newdatalist$df.reactive to myrvs$df.reactive
+      # 4. trigger the "must recalculate" message like uploading a new data file does
+      ### ******* stopped here
+      
     ### temp stuff:
- #   probably should use metafor::escalc to calculate g.
-    #  Need another input field to indicate whether higher is good or bad for the means
-    #  good: proportion correct, reading score; bad: reaction time, errors
     message(inputfields)                 ### for debugging ***
     message(length(inputfields))       ### for debugging ***
     message(other.Names_add)       ### for debugging ***
     message(length(other.Names_add))       ### for debugging ***
     message("Here is the g and g_var to be added")       ### for debugging ***
-    message(length(other.Names_add))       ### for debugging ***
-    message(length(other.Names_add))       ### for debugging ***
-    message(length(other.Names_add))       ### for debugging ***
+    #   message(g)       ### for debugging ***
+    #   message(g_var)       ### for debugging ***
     
   })  # end of adding a study
   
@@ -334,6 +380,7 @@ server <- function(input, output) {
     MA <- unique(setDT(MA) [sort.list(id)], by = "id")
     MA <- with(MA, MA[order(MA$es)])
   })
+  
 
   # Create bma reactive needed for all outputs
   bma <- reactive({
