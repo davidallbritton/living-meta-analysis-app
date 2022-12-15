@@ -111,7 +111,7 @@ server <- function(input, output) {
                        trigger = "click",
                        options = list(container = "body")),
              
-             sliderInput(inputId = "pubyear", label = p("Publication year",style="color:#333333",
+             sliderInput(inputId = "Publication.Year", label = p("Publication year",style="color:#333333",
                                                         tags$style(type = "text/css", "#q8 {vertical-align: top;}"),
                                                         bsButton("q8", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")), 
                          min = min(df$Publication.Year), max = max(df$Publication.Year), value = c(min(df$Publication.Year), max(df$Publication.Year)), step = 1, sep = "", ticks = F),
@@ -174,7 +174,7 @@ server <- function(input, output) {
     message(times)
     message(letters[(times %% length(letters)) + 11])
     
-    if (myrvs$recalculatedSinceUpload > 0){      # force recalculation before adding a study
+    if (myrvs$recalculatedSinceUpload >= 0){      # force recalculation before adding a study  ###*** disabled for debugging; >= should be >
       div(id=letters[(times %% length(letters)) + 11],     
           tagList(    
             br(),
@@ -193,7 +193,7 @@ server <- function(input, output) {
             # experiment or effect size for an already existing or previously entered paper
             #   Might also want to collect exp# and es# (default=1) in case they are 
             #   adding multiple effect sizes from a single paper. 
-            numericInput(inputId = "pubyear_add",  label = "Publication Year", value =2023),
+            numericInput(inputId = "Publication.Year_add",  label = "Publication Year", value =2023),
             numericInput(inputId = "Experiment.Number_add",  label = "Experiment.Number (within paper)", value =1),
             numericInput(inputId = "Effect.Size.Number_add",  label = "Effect.Size.Number (within experiment)", value =1),
             radioButtons(inputId = "Design_add", label = p("Study design"), 
@@ -217,18 +217,19 @@ server <- function(input, output) {
             }), 
             hr(),
             
-            p(strong("Required:")," Number of subjects in each group"),
-            numericInput(inputId = "Total.N_add",  label = "Total N", value =0),
-            numericInput(inputId = "N_Intervention_add",  label = "Intervention N", value =0),
-            numericInput(inputId = "N_Control_add",  label = "Control N", value =0),
+            p(strong("Required unless providing g and g_var:")," Number of subjects in each group"),
+            numericInput(inputId = "Total.N_add",  label = "Total N", value = NA),
+            numericInput(inputId = "N_Intervention_add",  label = "Intervention N", value = NA),
+            numericInput(inputId = "N_Control_add",  label = "Control N", value = NA),
             
             hr(),
             p(strong("Required:"),"Either group means and variabilities, OR effect size information"),
             p("Group means and variabilities:"),
             numericInput(inputId = "mean_E_add",  label = "Intervention mean", value =NULL), ### ****
             numericInput(inputId = "mean_C_add",  label = "Control mean", value =""),
-            radioButtons(inputId = "reverseCode_add", choices = c("More is better (e.g., % correct)", "More is worse (e.g., % errors, RT)"), 
-                         selected = "More is better (e.g., % correct)", label = "Means require regular coding (more is better) or reverse coding (more is worse)?"),
+            radioButtons(inputId = "reverseCode_add", choiceNames = c("More is better (e.g., % correct)", "More is worse (e.g., % errors, RT)"),
+                         choiceValues = c("No", "Yes"),
+                         selected = "No", label = "Means require regular coding (more is better) or reverse coding (more is worse)?"),
             numericInput(inputId = "var_E_add",  label = "Intervention variability (SD, SE, or variance)", value =""),
             numericInput(inputId = "var_C_add",  label = "Control variability (SD, SE, or variance)", value =""),
             radioButtons(inputId = "var_type_add", choices = c("Standard deviation", "Variance", "Standard error"), 
@@ -249,7 +250,7 @@ server <- function(input, output) {
           )
       ) 
     }
-    else(p("Must (Re)Calculate first...."))
+    else(p("Must (Re)Calculate before adding another study...."))  ###*** currently disabled
   })
   #################### End of add studies panel 
   
@@ -257,10 +258,12 @@ server <- function(input, output) {
   
   ########### Adding a study that was input by the user
   observeEvent(input$add1study, {     #when a study is input to add, do this:
+    # require a recalculation before showing the add study panel again:
+    myrvs$recalculatedSinceUpload <- 0
     ### check the user input for errors
     
     ### add the study 
-    other.Names_add <- c("ID_add",  "Paper_add", "pubyear_add",  "Experiment.Number_add", 
+    other.Names_add <- c("ID_add",  "Paper_add", "Publication.Year_add",  "Experiment.Number_add", 
                          "Effect.Size.Number_add", "Design_add", 
                          "r_add",
                          "Total.N_add", "N_Intervention_add", "N_Control_add", 
@@ -295,35 +298,31 @@ server <- function(input, output) {
                              r = as.numeric(input$r_add),
                              reverseCode = input$reverseCode_add
                              )
+    #
 
     tempgstats <<- gstats  #### *** debugging
 
     # create a 1-row dataframe for the values that were input by the user and the calculated effect size:
     newstudy <- data.frame(yi = gstats$yi, vi = gstats$vi, Paper.and.Exp = Paper.and.Exp)
-    
-    tempnewstudy <<- newstudy  #### *** debugging
-    
-    
-    
+    # add all the values that were input by the user
+    for (n in inputfields){
+      i <- i + 1
+      nn <- paste0(n, "_add")
+      newstudy[n] <- input[[nn]]
+    }
+    #
     # add the new row of data to the current data:
-    
-    
-    # update the relevant data frames:
-    
-    
-      
-      
+    myrvs$df.updated <- bind_rows(myrvs$df.updated, newstudy)
+    tempnewstudy <<- newstudy  #### *** debugging
+    tempnewdf <<- myrvs$df.updated
+    #
+    newdatalist <- reformat.df(myrvs$df.updated)   
+    myrvs$df.reactive <- newdatalist$df
           
-          
-      ### what if the original data file did not contain columns for all the input variables?
-      ### need to add them if they don't exist.  The "other.Names" might not exist.
-      # display the updated data file.  Maybe add an output tab for displaying the data file.
-      ### data file dependency should be:  df.original -> df.updated -> df.reactive 
-      # 1. add the new data to myrvs$df.updated
-      # 2. newdatalist <- reformat.df(myrvs$df.updated) 
-      # 3. copy newdatalist$df.reactive to myrvs$df.reactive
-      # 4. trigger the "must recalculate" message like uploading a new data file does
+      ### Maybe add an output tab for displaying the data file.
       ### ******* stopped here
+    #  Need to: select whether it is an existing paper or not, and create
+    # a paper number for user-input entries.  currently all newly input ones are "NA"
       
     ### temp stuff:
     message(inputfields)                 ### for debugging ***
@@ -348,7 +347,7 @@ server <- function(input, output) {
     Variable.Numeric.Names <- myrvs$Variable.Numeric.Names 
     ## Create subset based on chosen inclusion criteria
     df_sub <- df %>% filter(Design %in% input$Design,
-                            Publication.Year >= input$pubyear[1], Publication.Year <= input$pubyear[2],
+                            Publication.Year >= input$Publication.Year[1], Publication.Year <= input$Publication.Year[2],
                             Paper.and.Exp %in% input$included)
     #
     ## Create subset based on the above plus input-file defined selection factors
@@ -580,7 +579,7 @@ server <- function(input, output) {
                        "studies_columns_selected", "studies_rows_current")
       skipnames <- c(skipnames1, skipnames2)
       namestolist <- ns[! ns %in% skipnames]
-      orderednames <- c("mupriormean", "mupriorsd", "tauprior", "scaletau", "robust", "DataFileUp", "aggregation", "Design", "pubyear","included" )
+      orderednames <- c("mupriormean", "mupriorsd", "tauprior", "scaletau", "robust", "DataFileUp", "aggregation", "Design", "Publication.Year","included" )
       extranames <- namestolist[! namestolist %in% orderednames]
       allnames <- c(orderednames, extranames)
       ilist <- inputslist[allnames]

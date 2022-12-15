@@ -36,11 +36,11 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                            windowTitle = "A Universal Tool for BAYSEIAN META-ANALYSIS"),
                 sidebarLayout(
                   sidebarPanel(fluidRow(
-                    actionButton("recalculateButton","(Re)Calculate Meta-Analysis", icon("sync"), style = "color: yellow; background-color: green"),
                     uiOutput("currentDataFile"),
 
                     tabsetPanel(
                       tabPanel("Study criteria",    
+                               actionButton("recalculateButton","(Re)Calculate Meta-Analysis", icon("sync"), style = "color: yellow; background-color: green"),
                                fileInput("DataFileUp", label = "Upload your data file (.xls or .xlsx)", accept = c(".xls", ".xlsx")),
                                uiOutput("inputFileError"),
                                
