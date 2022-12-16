@@ -32,8 +32,8 @@ source("effect_sizes.R")
 
 # Define UI
 ui <- fluidPage(theme = shinytheme("cosmo"),
-                titlePanel(title = div("A Universal Tool for BAYSEIAN META-ANALYSIS"),
-                           windowTitle = "A Universal Tool for BAYSEIAN META-ANALYSIS"),
+                titlePanel(title = div("A General Tool for BAYSEIAN META-ANALYSIS"),
+                           windowTitle = "A General Tool for BAYSEIAN META-ANALYSIS"),
                 sidebarLayout(
                   sidebarPanel(fluidRow(
                     uiOutput("currentDataFile"),

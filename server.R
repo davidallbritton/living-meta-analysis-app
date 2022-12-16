@@ -175,6 +175,7 @@ server <- function(input, output) {
     message(letters[(times %% length(letters)) + 11])
     
     if (myrvs$recalculatedSinceUpload >= 0){      # force recalculation before adding a study  ###*** disabled for debugging; >= should be >
+      myrvs$ID_add <-  max(df$ID) +1
       div(id=letters[(times %% length(letters)) + 11],     
           tagList(    
             br(),
@@ -186,7 +187,8 @@ server <- function(input, output) {
               "An alternative method for adding studies is to download the original data as a .xlsx file,",
               "add new rows of data, then upload the new .xlsx file for analysis."),
             hr(),
-            numericInput(inputId = "ID_add",  label = "ID number for new effect size", max(df$ID) +1, min = max(df$ID) +1),
+ #delete           #numericInput(inputId = "ID_add",  label = "ID number for new effect size", max(df$ID) +1, min = max(df$ID) +1),
+            p("ID = ", myrvs$ID_add),
             textInput(inputId = "Paper_add", label = "Paper (citation)", paste0(as.character(max(df$ID) +1), "_author (year)")),
             # might want to allow to select an existing study or "add new" and then enter one,
             # so that I can use the existing paper # if they are adding a new 
@@ -265,7 +267,7 @@ message("line 1")    ### *** debugging
     message("line 2")    ### *** debugging
     
     ### add the study 
-    other.Names_add <- c("ID_add",  "Paper_add", "Publication.Year_add",  "Experiment.Number_add", 
+    other.Names_add <- c("Paper_add", "Publication.Year_add",  "Experiment.Number_add", 
                          "Effect.Size.Number_add", "Design_add", 
                          "r_add",
                          "N_Total_add", "N_Intervention_add", "N_Control_add", 
@@ -309,7 +311,7 @@ message("line 1")    ### *** debugging
     message("line 6")    ### *** debugging
     
     # create a 1-row dataframe for the values that were input by the user and the calculated effect size:
-    newstudy <- data.frame(yi = gstats$yi, vi = gstats$vi, Paper.and.Exp = Paper.and.Exp)
+    newstudy <- data.frame(yi = gstats$yi, vi = gstats$vi, ID = myrvs$ID_add, Paper.and.Exp = Paper.and.Exp)
     # add all the values that were input by the user
     for (n in inputfields){
       nn <- paste0(n, "_add")
@@ -406,9 +408,9 @@ message("line 1")    ### *** debugging
                        mu.prior = c("mean" = input$mupriormean, "sd" = input$mupriorsd))
     }
    })
-#   ma2 <<- MA() # for debugging ***
-#   bma2 <<- bma # for debugging ***
-#   bma # for debugging ***
+   ma2 <<- MA() # for debugging ***
+   bma2 <<- bma # for debugging ***
+   bma # for debugging ***
   })
   
   
