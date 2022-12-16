@@ -160,6 +160,32 @@ server <- function(input, output) {
   ##  addStudies
   #################### 
   ##   tabPanel   addStudies   ## creating UI content for this tabPanel ##
+  #
+  # Choose an existing paper or add a new one
+  output$setNewPaper <- renderUI({    #myrvs$ID_add
+    df <- myrvs$df.reactive   # if not requiring recalculation first, then use df.current instead ***
+    #myrvs$Paper.Number_add <- max(df$ID) +1
+    if(input$existingPaper == "Yes") {
+      selectInput(inputId = "Paper_add", 
+                  label = "Select the paper to enter an additional effect size for",
+                  choices = sort(df$Paper)
+                  )
+    }
+    else {
+      textInput(inputId = "Paper_add", label = "Paper to add (citation)", paste0(as.character(max(df$ID) +1), "_author (year)"))
+    }
+  })
+  #
+  Paper.Number_add <- reactive (
+    if (input$existingPaper == "Yes") {
+      if (is.na(input$Paper_add)) max(df$ID) +1
+      else df[df$Paper == input$Paper_add, "Paper.Number"]
+      }
+    else {max(df$ID) +1}
+  )
+ 
+  #
+  # Create the rest of the tabPanel for adding studies
   output$addStudies <- renderUI({
     
     ## read in the reactive values to use in creating the UI tabPanel entries:
@@ -174,27 +200,20 @@ server <- function(input, output) {
     message(times)
     message(letters[(times %% length(letters)) + 11])
     
-    if (myrvs$recalculatedSinceUpload >= 0){      # force recalculation before adding a study  ###*** disabled for debugging; >= should be >
+    if (myrvs$recalculatedSinceUpload >= 0){      # force recalculation before adding a study  ###*** disabled for debugging; >= should be >.  But maybe don't need this "if" at all?
       myrvs$ID_add <-  max(df$ID) +1
       div(id=letters[(times %% length(letters)) + 11],     
           tagList(    
-            br(),
-            p("Add new studies here.  Each effect size from a multi-experiment or multi-measurement",
-              "paper should be a separate entry with a unique ID number.  You will need to provide ", 
-              "either group means and variabilities OR an effect size measure (g or d) and its variance.",
-              "After adding one or more",
-              "studies and recalculating, you can download the updated data file.", 
-              "An alternative method for adding studies is to download the original data as a .xlsx file,",
-              "add new rows of data, then upload the new .xlsx file for analysis."),
+
             hr(),
- #delete           #numericInput(inputId = "ID_add",  label = "ID number for new effect size", max(df$ID) +1, min = max(df$ID) +1),
             p("ID = ", myrvs$ID_add),
-            textInput(inputId = "Paper_add", label = "Paper (citation)", paste0(as.character(max(df$ID) +1), "_author (year)")),
-            # might want to allow to select an existing study or "add new" and then enter one,
-            # so that I can use the existing paper # if they are adding a new 
-            # experiment or effect size for an already existing or previously entered paper
-            #   Might also want to collect exp# and es# (default=1) in case they are 
-            #   adding multiple effect sizes from a single paper. 
+            p("Paper.Number = ", Paper.Number_add()),
+            
+            ### *** add something about the paperID here?  display it?
+            
+            
+            
+ 
             numericInput(inputId = "Publication.Year_add",  label = "Publication Year", value =2023),
             numericInput(inputId = "Experiment.Number_add",  label = "Experiment.Number (within paper)", value =1),
             numericInput(inputId = "Effect.Size.Number_add",  label = "Effect.Size.Number (within experiment)", value =1),
@@ -266,7 +285,7 @@ message("line 1")    ### *** debugging
     ### check the user input for errors
     message("line 2")    ### *** debugging
     
-    ### add the study 
+    ### add the study   
     other.Names_add <- c("Paper_add", "Publication.Year_add",  "Experiment.Number_add", 
                          "Effect.Size.Number_add", "Design_add", 
                          "r_add",
@@ -311,7 +330,8 @@ message("line 1")    ### *** debugging
     message("line 6")    ### *** debugging
     
     # create a 1-row dataframe for the values that were input by the user and the calculated effect size:
-    newstudy <- data.frame(yi = gstats$yi, vi = gstats$vi, ID = myrvs$ID_add, Paper.and.Exp = Paper.and.Exp)
+    newstudy <- data.frame(yi = gstats$yi, vi = gstats$vi, ID = myrvs$ID_add, 
+                           Paper.and.Exp = Paper.and.Exp, Paper.Number = Paper.Number_add())
     # add all the values that were input by the user
     for (n in inputfields){
       nn <- paste0(n, "_add")

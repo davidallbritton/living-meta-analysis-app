@@ -110,8 +110,21 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                       
                       
                       
-                      tabPanel("Add a Study",    
-                               ##########  The study selection panel is created in the server:
+                      tabPanel("Add a Study",   
+                               p("Add new studies here.  Each effect size from a multi-experiment or multi-measurement",
+                                 "paper should be a separate entry.",
+                                 "After adding one or more",
+                                 'studies and recalculating, you can download the updated "Current data".', 
+                                 "An alternative method for adding studies is to download the original data as a .xlsx file,",
+                                 "add new rows of data, then upload the new .xlsx file for analysis."),
+                               # Determine whether the new data point goes with an existing paper:
+                               radioButtons(inputId = "existingPaper", 
+                                            label = 'Is the new effect size from a paper that exists in the "Current data"?', 
+                                            choices = c("No","Yes"), selected = "No"),
+                               uiOutput("setNewPaper"),
+                               
+                               
+                               ##########  The rest of the study selection panel is created in the server:
                                uiOutput("addStudies")
                                ##########
                       ),
