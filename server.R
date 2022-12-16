@@ -259,8 +259,10 @@ server <- function(input, output) {
   ########### Adding a study that was input by the user
   observeEvent(input$add1study, {     #when a study is input to add, do this:
     # require a recalculation before showing the add study panel again:
+message("line 1")    ### *** debugging
     myrvs$recalculatedSinceUpload <- 0
     ### check the user input for errors
+    message("line 2")    ### *** debugging
     
     ### add the study 
     other.Names_add <- c("ID_add",  "Paper_add", "Publication.Year_add",  "Experiment.Number_add", 
@@ -276,9 +278,11 @@ server <- function(input, output) {
     # The inputfields and calculatedfields will need to be added to the dataset
     calculatedfields <- c("Paper.and.Exp", "yi", "vi")
     inputfields <- c(myrvs$Variable.Factor.Names, myrvs$Variable.Numeric.Names, other.Names)
+    message("line 3")    ### *** debugging
     
     # Create the study label: Paper.and.Exp
     Paper.and.Exp <- paste0(input$Paper_add, " Exp. ", input$Experiment.Number_add)
+    message("line 4")    ### *** debugging
     
     # Get the values for yi and vi:
     ### call the function and pass it arguments from the user input; assign yi and vi values
@@ -299,14 +303,15 @@ server <- function(input, output) {
                              reverseCode = input$reverseCode_add
                              )
     #
-
+    message("line 5")    ### *** debugging
+    
     tempgstats <<- gstats  #### *** debugging
-
+    message("line 6")    ### *** debugging
+    
     # create a 1-row dataframe for the values that were input by the user and the calculated effect size:
     newstudy <- data.frame(yi = gstats$yi, vi = gstats$vi, Paper.and.Exp = Paper.and.Exp)
     # add all the values that were input by the user
     for (n in inputfields){
-      i <- i + 1
       nn <- paste0(n, "_add")
       newstudy[n] <- input[[nn]]
     }
