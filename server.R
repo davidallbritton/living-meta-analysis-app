@@ -163,8 +163,7 @@ server <- function(input, output) {
   #
   # Choose an existing paper or add a new one
   output$setNewPaper <- renderUI({    #myrvs$ID_add
-    df <- myrvs$df.reactive   # if not requiring recalculation first, then use df.current instead ***
-    #myrvs$Paper.Number_add <- max(df$ID) +1
+    df <- myrvs$df.reactive   # if not requiring recalculation first, then use df.updated instead?? ***
     if(input$existingPaper == "Yes") {
       selectInput(inputId = "Paper_add", 
                   label = "Select the paper to enter an additional effect size for",
@@ -176,13 +175,16 @@ server <- function(input, output) {
     }
   })
   #
-  Paper.Number_add <- reactive (
+  Paper.Number_add <- reactive ({
+    message("updating Paper.Number_add()")
+    df <- myrvs$df.reactive
+    df <<- df
     if (input$existingPaper == "Yes") {
       if (is.na(input$Paper_add)) max(df$ID) +1
-      else df[df$Paper == input$Paper_add, "Paper.Number"]
+      else df[df$Paper == input$Paper_add, "Paper.Number"][[1]]
       }
     else {max(df$ID) +1}
-  )
+  })
  
   #
   # Create the rest of the tabPanel for adding studies
@@ -218,7 +220,8 @@ server <- function(input, output) {
             numericInput(inputId = "Experiment.Number_add",  label = "Experiment.Number (within paper)", value =1),
             numericInput(inputId = "Effect.Size.Number_add",  label = "Effect.Size.Number (within experiment)", value =1),
             radioButtons(inputId = "Design_add", label = p("Study design"), 
-                         choices = levels(df$Design)),
+                         choices = c("between", "within")
+                         ),
             numericInput(inputId = "r_add",  
                          label = 'Within-study outcome correlation (for "within" designs)', 
                          value = r_estimate,  min = 0, max = 1, step = 0.01),
@@ -286,7 +289,7 @@ message("line 1")    ### *** debugging
     message("line 2")    ### *** debugging
     
     ### add the study   
-    other.Names_add <- c("Paper_add", "Publication.Year_add",  "Experiment.Number_add", 
+    other.Names_add <- c("Publication.Year_add",  "Experiment.Number_add", 
                          "Effect.Size.Number_add", "Design_add", 
                          "r_add",
                          "N_Total_add", "N_Intervention_add", "N_Control_add", 
@@ -301,8 +304,18 @@ message("line 1")    ### *** debugging
     inputfields <- c(myrvs$Variable.Factor.Names, myrvs$Variable.Numeric.Names, other.Names)
     message("line 3")    ### *** debugging
     
+    #
+    # Change the paper name if it was entered as a "new" paper but duplicates the name of an existing paper
+    #  (it would be better to catch it at input and prompt the user to fix it, but for now this will
+    #   at least prevent errors when inputting more additional studies)
+    Paper <- input$Paper_add
+    if ((df[df$Paper == input$Paper_add, "Paper"] %>% length() > 0) & (input$existingPaper == "No")) {
+      message ("oops, duplicate name for a 'new' paper!!")
+      Paper <- paste0(Paper, "_x")
+    }
+    #
     # Create the study label: Paper.and.Exp
-    Paper.and.Exp <- paste0(input$Paper_add, " Exp. ", input$Experiment.Number_add)
+    Paper.and.Exp <- paste0(Paper, " Exp. ", input$Experiment.Number_add)
     message("line 4")    ### *** debugging
     
     # Get the values for yi and vi:
@@ -331,7 +344,9 @@ message("line 1")    ### *** debugging
     
     # create a 1-row dataframe for the values that were input by the user and the calculated effect size:
     newstudy <- data.frame(yi = gstats$yi, vi = gstats$vi, ID = myrvs$ID_add, 
-                           Paper.and.Exp = Paper.and.Exp, Paper.Number = Paper.Number_add())
+                           Paper = Paper,
+                           Paper.and.Exp = Paper.and.Exp, 
+                           Paper.Number = Paper.Number_add())
     # add all the values that were input by the user
     for (n in inputfields){
       nn <- paste0(n, "_add")
@@ -567,7 +582,11 @@ message("line 1")    ### *** debugging
     content = function (file) {
       if (is.null(myrvs$currentInputFile)) {Source <- "Vasilev et al., 2018"} else Source <- myrvs$currentInputFile
       Source <- req(as.data.frame(Source))
-      sheetList <- list(original_Data = myrvs$df.original, current_Data = myrvs$df.reactive, selected_data = req(as.data.frame(MA())), Source = Source )
+      sheetList <- list(original_Data = myrvs$df.original, 
+                        current_Data = myrvs$df.updated,
+                        current_df = myrvs$df.reactive, 
+                        selected_data = req(as.data.frame(MA())), 
+                        Source = Source )
       writexl::write_xlsx(sheetList, file)
     }
   )
