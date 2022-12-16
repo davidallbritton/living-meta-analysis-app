@@ -20,7 +20,7 @@
 # 
 
 # default data file for initial display, before user uploads their own data file:
-load(file = "df3.Rda")             # loads a dataframe called "df"
+load(file = "df_Vasilev_et_al.Rda")             # loads a dataframe called "df"
 
 ################## Constants #######################################################
 printButton <- HTML('<p  style="text-align:right; font-size: 8px;"><button  onClick="window.print()">PRINT</button></p>')
@@ -272,7 +272,7 @@ myUni<-function(rand){
 # calculate effect size from user input
 ##
 getEffectSize <- function(g=NULL, g_var=NULL, d=NULL, d_var=NULL, mean_E=NULL, mean_C=NULL,
-                  var_E=NULL, var_C=NULL, var_type=NULL, Total.N=NULL, N_Intervention=NULL, 
+                  var_E=NULL, var_C=NULL, var_type=NULL, N_Total=NULL, N_Intervention=NULL, 
                   N_Control=NULL, Design="between", r = r_estimate,
                   reverseCode="No") {
   if (is.null(g)|is.null(g_var)  |  is.na(g)|is.na(g_var)) {
@@ -316,19 +316,19 @@ getEffectSize <- function(g=NULL, g_var=NULL, d=NULL, d_var=NULL, mean_E=NULL, m
         if (is.null(var_E)  |  is.na(var_E)) { # using control SD only; SMCR for within group design
           gcalc <- metafor::escalc (measure = "SMCR", vtype = "LS2",
                            m1i = mean_E, m2i = mean_C,
-                           sd1i = sd2i, ni = Total.N, ri = r)   # using SD of the control condition sd2i
+                           sd1i = sd2i, ni = N_Total, ri = r)   # using SD of the control condition sd2i
         } else { # using both control SD and intervention SD; SMCC for within group design
           gcalc <- metafor::escalc (measure = "SMCC", vtype = "LS2",
                            m1i = mean_E, m2i = mean_C, 
-                           sd1i = sd1i, sd2i = sd2i, ni = Total.N, ri = r)
+                           sd1i = sd1i, sd2i = sd2i, ni = N_Total, ri = r)
         }
       }
       g <- gcalc$yi[[1]]
       g_var <- gcalc$vi
     } else {  # if d and d_var were provided by the user
       # calculate g from d, using the functions from Vasilev et al., 2022 
-      g <- Hedges_g(d = d, design = Design, N_C = N_Control, N_E = N_Intervention, N = Total.N)
-      g_var <- Hedges_g_var(d_var = d_var, design = Design, N_C = N_Control, N_E = N_Intervention, N = Total.N)
+      g <- Hedges_g(d = d, design = Design, N_C = N_Control, N_E = N_Intervention, N = N_Total)
+      g_var <- Hedges_g_var(d_var = d_var, design = Design, N_C = N_Control, N_E = N_Intervention, N = N_Total)
 
     }
   } # should have g and g_var at this point to return in a list

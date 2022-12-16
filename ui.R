@@ -2,7 +2,7 @@
 ################### A General Tool for BAYSEIAN META-ANALYSIS #######################
 #######################################################################################
 
-###################  Shiny App v.0.1 2022.11.10 UI ####################################
+###################  Shiny App v.0.3 2022.12.15 UI ####################################
 # revised for Vasilev et al. data 2022  
 
 # Load required packages and source helper functions #----
@@ -161,6 +161,10 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                           textOutput("warning"), br(),
                           DT::dataTableOutput("studies") %>% withSpinner(type = 6, color = "#3498DB"), br()
                           ),
+                        tabPanel("Current data", printButton,
+                                 h4('This table displays the current data file plus any added studies'), br(),
+                                 DT::dataTableOutput("currentData.display") %>% withSpinner(type = 6, color = "#3498DB"), br()
+                        ),
                         tabPanel("Outlier check", 
                                  printButton, 
                                  h4("Boxplot graph:"), 

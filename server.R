@@ -2,7 +2,7 @@
 ################### A General Tool for BAYSEIAN META-ANALYSIS #################
 #######################################################################################
 
-################### Shiny App v.0.2 2022.11.21 SERVER ###################################
+################### Shiny App v.0.3 2022.11.21 SERVER ###################################
 #
 # Derived and adapted from https://vinzentwolf.shinyapps.io/taVNSHRVmeta/
 # as described in https://doi.org/10.1111/psyp.13933
@@ -218,7 +218,7 @@ server <- function(input, output) {
             hr(),
             
             p(strong("Required unless providing g and g_var:")," Number of subjects in each group"),
-            numericInput(inputId = "Total.N_add",  label = "Total N", value = NA),
+            numericInput(inputId = "N_Total_add",  label = "Total N", value = NA),
             numericInput(inputId = "N_Intervention_add",  label = "Intervention N", value = NA),
             numericInput(inputId = "N_Control_add",  label = "Control N", value = NA),
             
@@ -266,7 +266,7 @@ server <- function(input, output) {
     other.Names_add <- c("ID_add",  "Paper_add", "Publication.Year_add",  "Experiment.Number_add", 
                          "Effect.Size.Number_add", "Design_add", 
                          "r_add",
-                         "Total.N_add", "N_Intervention_add", "N_Control_add", 
+                         "N_Total_add", "N_Intervention_add", "N_Control_add", 
                          "mean_E_add",  "mean_C_add", 
                          "reverseCode_add",
                          "var_E_add",   "var_C_add",   "var_type_add",
@@ -291,7 +291,7 @@ server <- function(input, output) {
                              var_E = as.numeric(input$var_E_add), 
                              var_C = as.numeric(input$var_C_add), 
                              var_type = input$var_type_add, 
-                             Total.N = as.numeric(input$Total.N_add), 
+                             N_Total = as.numeric(input$N_Total_add), 
                              N_Intervention = as.numeric(input$N_Intervention_add), 
                              N_Control = as.numeric(input$N_Control_add), 
                              Design = input$Design_add, 
@@ -409,13 +409,23 @@ server <- function(input, output) {
   
   # Study overview panel  
   output$studies <- DT::renderDataTable({
-#    message(" &&& output$studies panel creation.")  ### for debugging ***
     MAs <- as.data.frame(MA())
     MAclean <-  mutate(MAs, "Included Studies" = study) %>% 
       select("Included Studies", Publication.Year)
     DT::datatable(MAclean,
                   options = list(pageLength = nrow(MAclean)))
   })
+  
+  
+  # Current data panel  
+  output$currentData.display <- DT::renderDataTable({
+    current.data <- as.data.frame(myrvs$df.updated)
+    message("current.data nrows")  ### **** debugging
+    message(nrow(current.data))  ### **** debugging
+    DT::datatable(current.data,
+                  options = list(pageLength = nrow(current.data)))
+  })
+  
  
     ## Warning message if 3 or less studies are included
     output$warning <- renderPrint({
@@ -503,7 +513,7 @@ server <- function(input, output) {
         p(),
         downloadButton("originalData", "Data as originally uploaded"),
         p(),
-        downloadButton("currentData", "Data as currently in use (primarily for debugging)"),
+        downloadButton("currentData.down", "Data as currently in use (primarily for debugging)"),
         p(),
         downloadButton("listInputs", "List of all selected Study Criteria and Prior Specifications"),
         p(),
@@ -523,7 +533,7 @@ server <- function(input, output) {
     }
   )
   #  
-  output$currentData <- downloadHandler(
+  output$currentData.down <- downloadHandler(
     filename = function() {
       "currentData.xlsx" 
     },
