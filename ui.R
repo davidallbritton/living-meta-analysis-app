@@ -113,27 +113,17 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                       tabPanel("Add a Study",   
                                p("Add new studies here.  Each effect size from a multi-experiment or multi-measurement",
                                  "paper should be a separate entry.",
-                                 "After adding one or more",
-                                 'studies and recalculating, you can download the updated "Current data".', 
-                                 "An alternative method for adding studies is to download the original data as a .xlsx file,",
+                                 'An alternative method for adding studies is to download the "Current data" as a .xlsx file,',
                                  "add new rows of data, then upload the new .xlsx file for analysis."),
                                # Determine whether the new data point goes with an existing paper:
                                radioButtons(inputId = "existingPaper", 
                                             label = 'Is the new effect size from a paper that exists in the "Current data"?', 
                                             choices = c("No","Yes"), selected = "No"),
-                               uiOutput("setNewPaper"),
-                               
-                               
                                ##########  The rest of the study selection panel is created in the server:
+                               uiOutput("setNewPaper"),
                                uiOutput("addStudies")
                                ##########
                       ),
-                      
-                      
-                      
-                      
-                      
-                      
                       
                       
                       hr()
@@ -143,11 +133,52 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                       tabsetPanel(
                         tabPanel("Explanation", 
                                  printButton,
-                                 h3("Welcome to the interactive Bayesian meta-analysis tool [fill in some info here!]"), br(),
+                                 h3("Welcome to the interactive Bayesian meta-analysis tool!"), br(),
                                  h4("Purpose:"),
                                  p("[something can go here]."), br(),
                                  h4("Explanation:"),
-                                 p("[something can go here]"), br(),
+                                 p('Except for the "Current data" tab, all results tabs are only updated when the "Re-calculate Meta-analysis" button is pressed.', 
+                                   "It is not necessary to re-calculate for each tab, however.  All tabs are updated after each recalculation."), br(),
+                                 h4("Adding new studies:"),
+                                 p("You can add new effect sizes one at a time using the",
+                                   '"Add a Study" tab. You can save the updated data file',
+                                   "that includes the added studies in the", '"Downloads" tab.'), 
+                                 p('You can also upload an entirely new data file in the "Study criteria" tab.',
+                                   "This will replace the current data entirely, including anything that was",
+                                   "previously input through the", '"Add a Study" tab.',
+                                   "The file to upload should be .xls or .xlsx format, and should contain the following columns:"),
+                                 tags$ul(
+                                   tags$li(tags$b("yi"), "- a standardized effect size (Hedges g)"),
+                                   tags$li(tags$b("vi"), "- the variance of g"),
+                                   tags$li(tags$b("ID"), "- a unique number for each effect size"),
+                                   tags$li(tags$b("Paper.Number"), "- a unique number for each paper (study)"),
+                                   tags$li(tags$b("Experiment.Number"), "- within each paper"),
+                                   tags$li(tags$b("Effect.Size.Number"), "- within each experiment"),
+                                   tags$li(tags$b("Paper"), "- citation such as: Author (year)"),
+                                   tags$li(tags$b("Paper.and.Exp"), "- citation plus Experiment and/or Effect Size number"),
+                                   tags$li(tags$b("Publication.Year"), "- appears as a slider input in the",
+                                           '"Study criteria" panel for selecting which studies to include.'
+                                           ),
+                                   tags$li(tags$b("Design"), '- "between" or "within", lower case, no quotes.',
+                                           "Appears as a checkbox input in the",
+                                           '"Study criteria" panel for selecting which studies to include.'
+                                           ),
+                                   tags$li(tags$b("N_Intervention"), "- number of subjects in the intervention condition"),
+                                   tags$li(tags$b("N_Control"), "- number of subjects in the baseline condition"),
+                                   tags$li(tags$b("N_Total"), "- sum of N_Intervention and N_Control for between-subjects designs; equal to N_Intervention for within-subjects designs"),
+                                   tags$li(tags$b("Begin.Selection.Factors"), "and", tags$b("End.Selection.Factors"), 
+                                           "- all columns between these two columns will appear as checkbox inputs in the",
+                                           '"Study criteria" panel for selecting which studies to include.',
+                                           ),
+                                   tags$li(tags$b("Begin.Selection.Numerics"), "and", tags$b("End.Selection.Numerics"), 
+                                           "- all columns between these two columns will appear as numeric slider inputs in the",
+                                           '"Study criteria" panel for selecting which studies to include.',
+                                           'The columns "N_Intervention", "N_Control", and "N_Total" can be',
+                                           "placed between these columns if you wish to use them for study selection criteria."
+                                           ),
+                                   tags$li("Any number of additional columns (that will be ignored)")
+                                 ),
+                                 br(),
                                  h4("Paper:"),
                                  ("This app accompanies the following "),
                                  a("paper", href="https://doi.org/", target = "_blank"), 
@@ -155,8 +186,6 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  ("This app's R Code and sample dataset can be found "),
                                  a("here", href="put github location here some day!!", target = "_blank"),
                                  ("on GitHub."), br(), br(),
-                                 h4("Adding new results:"),
-                                 p("Someday you will be able to upload your own data! ****"), br(), br(),
                                  h4("Contact:"),
                                  p("The app is maintained by [someone goes here!]"),
                                  p("Contact/Visit us:"),
@@ -170,7 +199,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                      href="http://www.depaul.edu")
                                  ),
                         tabPanel("Included Studies", printButton,
-                          h4('This table lists all the studies included by the current selected criteria (updated only when "Re-Calculate Meta-Analysis" button is pressed)'),
+                          h4('This table lists all the studies included by the current selected criteria'),
+                          p('(updated only when "Re-Calculate Meta-Analysis" button is pressed)'),
                           textOutput("warning"), br(),
                           DT::dataTableOutput("studies") %>% withSpinner(type = 6, color = "#3498DB"), br()
                           ),

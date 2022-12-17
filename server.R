@@ -178,10 +178,12 @@ server <- function(input, output) {
   Paper.Number_add <- reactive ({
     message("updating Paper.Number_add()")
     df <- myrvs$df.reactive
-    df <<- df
+    #df <<- df  *** debugging
     if (input$existingPaper == "Yes") {
       if (is.na(input$Paper_add)) max(df$ID) +1
-      else df[df$Paper == input$Paper_add, "Paper.Number"][[1]]
+      else if (input$Paper_add %in% df$Paper) { #this "if" prevents a temporary error message
+        df[df$Paper == input$Paper_add, "Paper.Number"][[1]]
+        } 
       }
     else {max(df$ID) +1}
   })
@@ -197,25 +199,18 @@ server <- function(input, output) {
     na.warning <- myrvs$na.warning
     
     # preparing to put a <div> around the whole thing:
-    times <- myrvs$nfiles
-    message("times ****")
-    message(times)
-    message(letters[(times %% length(letters)) + 11])
+  #  times <- myrvs$nfiles
+  #  message("times ****")
+  #  message(times)
+  #  message(letters[(times %% length(letters)) + 11])
     
     if (myrvs$recalculatedSinceUpload >= 0){      # force recalculation before adding a study  ###*** disabled for debugging; >= should be >.  But maybe don't need this "if" at all?
       myrvs$ID_add <-  max(df$ID) +1
-      div(id=letters[(times %% length(letters)) + 11],     
+   #   div(id=letters[(times %% length(letters)) + 11],     
           tagList(    
-
-            hr(),
             p("ID = ", myrvs$ID_add),
             p("Paper.Number = ", Paper.Number_add()),
-            
-            ### *** add something about the paperID here?  display it?
-            
-            
-            
- 
+            #
             numericInput(inputId = "Publication.Year_add",  label = "Publication Year", value =2023),
             numericInput(inputId = "Experiment.Number_add",  label = "Experiment.Number (within paper)", value =1),
             numericInput(inputId = "Effect.Size.Number_add",  label = "Effect.Size.Number (within experiment)", value =1),
@@ -272,7 +267,7 @@ server <- function(input, output) {
             # with error checking for between/within and total N, and for 
             # whether all required info is provided
           )
-      ) 
+   #   ) 
     }
     else(p("Must (Re)Calculate before adding another study...."))  ###*** currently disabled
   })
@@ -352,6 +347,7 @@ message("line 1")    ### *** debugging
       nn <- paste0(n, "_add")
       newstudy[n] <- input[[nn]]
     }
+    newstudy$FromUserInput <- "Yes"
     #
     # add the new row of data to the current data:
     myrvs$df.updated <- bind_rows(myrvs$df.updated, newstudy)
