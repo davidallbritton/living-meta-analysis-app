@@ -271,11 +271,11 @@ myUni<-function(rand){
 ########################### Functions for users adding a study ##########
 # calculate effect size from user input
 ##
-getEffectSize <- function(g=NULL, g_var=NULL, d=NULL, d_var=NULL, mean_E=NULL, mean_C=NULL,
-                  var_E=NULL, var_C=NULL, var_type=NULL, N_Total=NULL, N_Intervention=NULL, 
-                  N_Control=NULL, Design="between", r = r_estimate,
+getEffectSize <- function(g=NA, g_var=NA, d=NA, d_var=NA, mean_E=NA, mean_C=NA,
+                  var_E=NA, var_C=NA, var_type=NA, N_Total=NA, N_Intervention=NA, 
+                  N_Control=NA, Design="between", r = r_estimate,
                   reverseCode="No") {
-  if (is.null(g)|is.null(g_var)  |  is.na(g)|is.na(g_var)) {
+  if  (is.na(g)|is.na(g_var)  |  is.null(g)|is.null(g_var)) {
     if (is.null(d)|is.null(d_var)   |   is.na(d)|is.na(d_var)) {
       if (is.null(N_Control)|is.null(N_Intervention)  |  is.na(N_Control)|is.na(N_Intervention)) {
         message("Add throwing an error here for Ns"); return("error: must specify Ns")} #throw an error
