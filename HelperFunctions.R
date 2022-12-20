@@ -278,9 +278,9 @@ getEffectSize <- function(g=NA, g_var=NA, d=NA, d_var=NA, mean_E=NA, mean_C=NA,
   if  (is.na(g)|is.na(g_var)  |  is.null(g)|is.null(g_var)) {
     if (is.null(d)|is.null(d_var)   |   is.na(d)|is.na(d_var)) {
       if (is.null(N_Control)|is.null(N_Intervention)  |  is.na(N_Control)|is.na(N_Intervention)) {
-        message("Add throwing an error here for Ns"); return("error: must specify Ns")} #throw an error
+        message("Add throwing an error here for Ns"); return(NA)} #throw an error: must specify Ns
       if (is.null(mean_E)|is.null(mean_C)   |   is.na(mean_E)|is.na(mean_C)) {
-        message("Add throwing an error here for means"); return("error: must specify means")}   #throw an error
+        message("Add throwing an error here for means"); return(NA)}   #throw an error: must specify control group SD
       type <- "E-C"
       if (reverseCode =="Yes") {
         type <- "C-E"
@@ -288,7 +288,7 @@ getEffectSize <- function(g=NA, g_var=NA, d=NA, d_var=NA, mean_E=NA, mean_C=NA,
         mean_C <- -mean_C
       }
       if (is.null(var_C)  |  is.na(var_C)) {
-        message("Add throwing an error here***"); return("error: must specify control group SD")} #throw an error
+        message("Add throwing an error here***"); return(NA)} #throw an error: must specify control group SD
       if (var_type == "Standard deviation"){
         sd2i <- var_C
         sd1i <- var_E

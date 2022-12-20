@@ -31,30 +31,19 @@ for (i in 1:nrow(df)) {
   n1i = df[i,"N_Intervention"]
   n2i = df[i,"N_Control"]
   var_type = df[i,"var_type"]
+  if (!is.na(var_type) & var_type == "SE") {
+    sd2i <- sd2i * sqrt(N_C)
+    sd1i <- sd1i * sqrt(N_E)
+  }
   
   g2 <- Hedges_g(d=d, N = N, N_C=N_C, N_E=N_E, design=design) #from Martin's scripts
   df[i,"g2"] <- g2
   g3 <- (metafor::escalc (measure = "SMD", di = d,  n1i = N_E, n2i = N_C, vtype = "LS2"))$yi
-  if (df$Design[i] == "within") g3 <- ""
+  if (df$Design[i] == "within") g3 <- NA
   df[i,"g3"] <- g3
-  g4 <- (metafor::escalc (measure = "SMD", m1i = df[i,"mean_E"], m2i = df[i,"mean_C"], 
-                         sd1i = df[i,"var_C"], sd2i = df[i,"var_E"], n1i = df[i,"N_Intervention"],
-                         n2i = df[i,"N_Control"], vtype = "LS2"))$yi
   
-  if (df$Design[i] == "within") {
-    g4 <- (metafor::escalc (measure = "SMCC", vtype = "LS2",
-                            m1i = df[i,"mean_E"], m2i = df[i,"mean_C"], 
-                            sd1i = df[i,"var_C"], sd2i = df[i,"var_E"],
-                            ni = N,  ri = r))$yi 
-  }
-  if (is.na(df[i,"var_type"]) | df[i,"var_type"] != "SD") g4 <- ""
-  if (df$Design[i] == "within") g4 <- ""
-  df[i,"g4"] <- g4
-  
-  nratio <- N_E / N_C
-  df[i,"nratio"] <- nratio
   g5 <- (compute.es::des(d= d, n.1 = N_E, n.2 = N_C, dig = 6))[["g"]]
-  if (df$Design[i] == "within") g5 <- ""
+  if (df$Design[i] == "within") g5 <- NA
   df[i,"g5"] <- g5
 
   g6 <- if(df$Design[i] == "between") {
@@ -79,7 +68,7 @@ for (i in 1:nrow(df)) {
       r = r
     )
   }
-  if (is.na(df[i,"var_type"]) | df[i,"var_type"] != "SD") g6 <- ""
+ # if (is.na(df[i,"var_type"]) | df[i,"var_type"] != "SD") g6 <- NA
   df[i,"g6"] <- g6
   g7 <- esc::hedges_g(d = d, totaln = N)
   df[i,"g7"] <- g7
@@ -95,22 +84,49 @@ for (i in 1:nrow(df)) {
                        var_E=sd1i, var_C=sd2i, var_type=var_type, N_Total=N, N_Intervention=N_E, 
                        N_Control=N_C, Design= design, r = r,
                        reverseCode="No")
+  df[i,"g8"] <- g8
+  df[i,"g9"] <- g9
+  
+  g10 <- getEffectSize (  mean_E=m1i, mean_C=m2i,
+                         var_E=sd1i, var_C=sd2i, var_type=var_type, N_Total=N, N_Intervention=N_E, 
+                         N_Control=N_C, Design= "between", 
+                         reverseCode="No")
+  df[i,"g10"] <- g10
+  
+  d2 <- Cohens_d(M_C=m2i, 
+                  M_E=m1i, 
+                  S_C=sd2i, 
+                  S_E=sd1i, 
+                  N_C=N_C, 
+                  N_E=N_E, 
+                  N=N, 
+                  r=r, 
+                  design=design, 
+                  type= "E-C"
+                  )
+  df[i,"d2"] <- d2
+  
+  
 }
 
 
 df$ratio <- df$g / df$g2
 
-df2 <- (select(df, ID, Design, d, g, g2, g3, g5, g7,  g4, g6, N_Total, nratio, ratio) %>% 
+df2 <- (select(df, ID, Design, d2, d, g, g2, g3, g5, g8, g9, g10, g7,  g6, N_Total, ratio) %>% 
        arrange(., Design, N_Total))
 
 df2 <- dplyr::rename(df2, metafor_d_to_g = g3)
-df2 <- dplyr::rename(df2, metafor_means_to_g = g4)
 df2 <- dplyr::rename(df2, compute.es_des = g5)
 df2 <- dplyr::rename(df2, esc_mean_sd = g6)
 df2 <- dplyr::rename(df2, esc_d_to_g = g7)
+df2 <- dplyr::rename(df2, app_d_to_g = g8)
+df2 <- dplyr::rename(df2, app_means_to_g = g9)
+df2 <- dplyr::rename(df2, app_as_if_between = g10)
+
 
 View(df2)
-save(df2, file = "df2.Rda")
+#   save(df2, file = "df2.Rda")
+
 # g = g in the data file for the paper
 # g2 = g recalculated from the d's in the data file, using Martin's functions in effect_sizes.R
 # g3 = g calculated from d, using metafor, for "between" designs
@@ -118,8 +134,56 @@ save(df2, file = "df2.Rda")
 # g5 = g calculated from d using compute.es::des  (can not find anything in compute.es for within designs)
 # g6 = g calculated from means and sds using esc::esc_mean_sd
 # g7 = g calculated from d using esc::hedges_g
+# g8 = my app function, g from d
+# g9 = my app function, g from means
+# g10 = my app function, as if all were between designs
+# d2 = cohen's d, calculated by Martin's function
 
 
+ggplot(df2, aes(x = d2, y = d, color = Design)) + geom_line()
+ggplot(df2, aes(x = d, y = g, color = Design)) + geom_line()
+ggplot(df2, aes(x = g2, y = g, color = Design)) + geom_line()
 
+#ggplot(df2, aes(x = metafor_d_to_g, y = app_means_to_g, color = Design)) + geom_line() #only for between
+
+ggplot(df2, aes(x = d, y = app_means_to_g, color = Design)) + geom_line()
+ggplot(df2, aes(x = d2, y = app_means_to_g, color = Design)) + geom_line()
+ggplot(df2, aes(x = g, y = app_means_to_g, color = Design)) + geom_line()
+ggplot(df2, aes(x = g2, y = app_means_to_g, color = Design)) + geom_line()
+ggplot(df2, aes(x = esc_d_to_g, y = app_means_to_g, color = Design)) + geom_line()
+ggplot(df2, aes(x = app_d_to_g, y = app_means_to_g, color = Design)) + geom_line()
+ggplot(df2, aes(x = app_as_if_between, y = app_means_to_g, color = Design)) + geom_line()
+ggplot(df2, aes(x = app_means_to_g, y = app_means_to_g, color = Design)) + geom_line()
+ggplot(df2, aes(x = esc_mean_sd, y = app_means_to_g, color = Design)) + geom_line() #these are about the same
+
+ggplot(df2, aes(x = d, y = g2, color = Design)) + geom_line()
+ggplot(df2, aes(x = d2, y = g2, color = Design)) + geom_line()
+ggplot(df2, aes(x = g, y = g2, color = Design)) + geom_line()
+ggplot(df2, aes(x = g2, y = g2, color = Design)) + geom_line()
+ggplot(df2, aes(x = esc_d_to_g, y = g2, color = Design)) + geom_line()
+ggplot(df2, aes(x = app_d_to_g, y = g2, color = Design)) + geom_line()
+ggplot(df2, aes(x = app_as_if_between, y = g2, color = Design)) + geom_line()
+ggplot(df2, aes(x = app_means_to_g, y = g2, color = Design)) + geom_line()
+ggplot(df2, aes(x = esc_mean_sd, y = g2, color = Design)) + geom_line() #these are about the same
+
+ggplot(df2, aes(x = d, y = app_means_to_g, color = Design)) + geom_line()
+ggplot(df2, aes(x = d2, y = app_means_to_g, color = Design)) + geom_line()
+ggplot(df2, aes(x = g, y = app_means_to_g, color = Design)) + geom_line()
+ggplot(df2, aes(x = g2, y = app_means_to_g, color = Design)) + geom_line()
+ggplot(df2, aes(x = esc_d_to_g, y = app_means_to_g, color = Design)) + geom_line()
+ggplot(df2, aes(x = app_d_to_g, y = app_means_to_g, color = Design)) + geom_line()
+ggplot(df2, aes(x = app_as_if_between, y = app_means_to_g, color = Design)) + geom_line()
+ggplot(df2, aes(x = app_means_to_g, y = app_means_to_g, color = Design)) + geom_line()
+ggplot(df2, aes(x = esc_mean_sd, y = app_means_to_g, color = Design)) + geom_line() #these are about the same
+
+
+ggplot(df2, aes(x = d, y = d2, color = Design)) + geom_line()
+ggplot(df2, aes(x = d2, y = d2, color = Design)) + geom_line()
+ggplot(df2, aes(x = g, y = d2, color = Design)) + geom_line()
+ggplot(df2, aes(x = g2, y = d2, color = Design)) + geom_line()
+ggplot(df2, aes(x = metafor_d_to_g, y = d2, color = Design)) + geom_line()
+ggplot(df2, aes(x = app_d_to_g, y = d2, color = Design)) + geom_line()
+ggplot(df2, aes(x = app_means_to_g, y = d2, color = Design)) + geom_line()
+ggplot(df2, aes(x = esc_mean_sd, y = d2, color = Design)) + geom_line()
 
 
