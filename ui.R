@@ -121,7 +121,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                             choices = c("No","Yes"), selected = "No"),
                                ##########  The rest of the study selection panel is created in the server:
                                uiOutput("setNewPaper"),
-                               uiOutput("addStudies")
+                               uiOutput("addStudies1")
                                ##########
                       ),
                       
@@ -173,8 +173,6 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                    tags$li(tags$b("Begin.Selection.Numerics"), "and", tags$b("End.Selection.Numerics"), 
                                            "- all columns between these two columns will appear as numeric slider inputs in the",
                                            '"Study criteria" panel for selecting which studies to include.',
-                                           'The columns "N_Intervention", "N_Control", and "N_Total" can be',
-                                           "placed between these columns if you wish to use them for study selection criteria."
                                            ),
                                    tags$li("Any number of additional columns (that will be ignored)")
                                  ),

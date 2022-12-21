@@ -24,7 +24,7 @@ load(file = "df_Vasilev_et_al.Rda")             # loads a dataframe called "df"
 
 ################## Constants #######################################################
 printButton <- HTML('<p  style="text-align:right; font-size: 8px;"><button  onClick="window.print()">PRINT</button></p>')
-r_estimate <- 0.74  # Vasilev et al.'s estimate of the correlation between outcomes in a single study (for "within" designs)
+r_estimate <- 0.74326344959  # Vasilev et al.'s estimate of the correlation between outcomes in a single study (for "within" designs)
 
 
 ##################  Functions   ####################################################
@@ -288,7 +288,7 @@ getEffectSize <- function(g=NA, g_var=NA, d=NA, d_var=NA, mean_E=NA, mean_C=NA,
         mean_C <- -mean_C
       }
       if (is.null(var_C)  |  is.na(var_C)) {
-        message("Add throwing an error here***"); return(NA)} #throw an error: must specify control group SD
+        message("Add throwing an error here; no control SD provided***"); return(NA)} #throw an error: must specify control group SD
       if (var_type == "Standard deviation"){
         sd2i <- var_C
         sd1i <- var_E

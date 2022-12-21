@@ -82,11 +82,11 @@ server <- function(input, output) {
     na.warning <- myrvs$na.warning
     
     # putting a <div> around the whole thing:
-    times <- myrvs$nfiles
-    message("times ****")
-    message(times)
-    message(letters[(times %% length(letters)) + 1])
-    div(id=letters[(times %% length(letters)) + 1],     
+#    times <- myrvs$nfiles
+#    message("times ****")
+#    message(times)
+#    message(letters[(times %% length(letters)) + 1])
+#    div(id=letters[(times %% length(letters)) + 1],     
     tagList(    
              br(), 
              radioButtons(inputId = "aggregation", label = p("Aggregate over", style="color:#333333",
@@ -151,7 +151,7 @@ server <- function(input, output) {
                   trigger = "click",
                   options = list(container = "body"))
       )
-    )
+#    )
   })
   #################### End of study criteria panel 
   
@@ -190,7 +190,7 @@ server <- function(input, output) {
  
   #
   # Create the rest of the tabPanel for adding studies
-  output$addStudies <- renderUI({
+  output$addStudies1 <- renderUI({
     
     ## read in the reactive values to use in creating the UI tabPanel entries:
     df <- myrvs$df.reactive
@@ -218,23 +218,11 @@ server <- function(input, output) {
                          choices = c("between", "within")
                          ),
             numericInput(inputId = "r_add",  
-                         label = 'Within-study outcome correlation (for "within" designs)', 
-                         value = r_estimate,  min = 0, max = 1, step = 0.01),
+                         label = paste('Within-study outcome correlation (for "within" designs).',  
+                                       "If blank, the default estimate of 0.74 from Vasilev et al. (2017) will be used"), 
+                         value = NULL,  min = 0, max = 1, step = 0.01),
             
-            hr(),
-            ## loop over the variable factor columns
-            lapply(Variable.Factor.Names, function(varName) {  
-              varName_add <- paste0(varName, "_add")
-              radioButtons(inputId = varName_add, label = p(varName), 
-                           choices = c(levels(df[,varName]), "Other (not listed)"), selected = "")
-            }),
             
-            ### loop over the variable numeric selection columns
-            lapply(Variable.Numeric.Names, function(varName) {
-              varName_add <- paste0(varName, "_add")
-              numericInput(inputId = varName_add, label = varName, value = "")
-            }), 
-            hr(),
             
             p(strong("Required unless providing g and g_var:")," Number of subjects in each group"),
             numericInput(inputId = "N_Total_add",  label = "Total N", value = NA),
@@ -260,6 +248,24 @@ server <- function(input, output) {
             numericInput(inputId = "g_var_add",  label = "variance of g", value =""),
             numericInput(inputId = "d_add",  label = "effect size (d)", value =""),
             numericInput(inputId = "d_var_add",  label = "variance of d", value =""),
+            
+            
+            
+            
+            hr(),
+            ## loop over the variable factor columns
+            lapply(Variable.Factor.Names, function(varName) {  
+              varName_add <- paste0(varName, "_add")
+              radioButtons(inputId = varName_add, label = p(varName), 
+                           choices = c(levels(df[,varName]), "Other (not listed)"), selected = "")
+            }),
+            
+            ### loop over the variable numeric selection columns
+            lapply(Variable.Numeric.Names, function(varName) {
+              varName_add <- paste0(varName, "_add")
+              numericInput(inputId = varName_add, label = varName, value = "")
+            }), 
+            hr(),
             
             actionButton(inputId = "add1study","Add this study", icon("sync"), style = "color: green; background-color: white"),
             
@@ -312,6 +318,12 @@ message("line 1")    ### *** debugging
     # Create the study label: Paper.and.Exp
     Paper.and.Exp <- paste0(Paper, " Exp. ", input$Experiment.Number_add)
     message("line 4")    ### *** debugging
+
+    # set the value of r for within-subjects designs:
+    r <- r_estimate
+    if (length(input$r_add) > 0) if(!is.na(input$r_add)) r <- as.numeric(input$r_add)
+    message("r is now...")  ## ** debugging
+    message(r)  ## ** debugging
     
     # Get the values for yi and vi:
     ### call the function and pass it arguments from the user input; assign yi and vi values
@@ -328,7 +340,7 @@ message("line 1")    ### *** debugging
                              N_Intervention = as.numeric(input$N_Intervention_add), 
                              N_Control = as.numeric(input$N_Control_add), 
                              Design = input$Design_add, 
-                             r = as.numeric(input$r_add),
+                             r = r,
                              reverseCode = input$reverseCode_add
                              )
     #
