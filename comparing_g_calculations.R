@@ -139,9 +139,12 @@ View(df2)
 # g10 = my app function, as if all were between designs
 # d2 = cohen's d, calculated by Martin's function
 
-
-ggplot(df2, aes(x = d2, y = d, color = Design)) + geom_line()
 ggplot(df2, aes(x = d, y = g, color = Design)) + geom_line()
+ggplot(df2, aes(x = d, y = g2, color = Design)) + geom_line()
+
+############ stop
+
+ggplot(df2, aes(x = d2, y = g, color = Design)) + geom_line()
 ggplot(df2, aes(x = g2, y = g, color = Design)) + geom_line()
 
 #ggplot(df2, aes(x = metafor_d_to_g, y = app_means_to_g, color = Design)) + geom_line() #only for between

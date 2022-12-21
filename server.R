@@ -188,35 +188,34 @@ server <- function(input, output) {
     else {max(df$ID) +1}
   })
  
+  
+  # Create part 1 of the rest of the tabPanel for adding studies (static content)
+  output$addStudies1 <- renderUI({
+    ## read in the reactive values to use in creating the UI tabPanel entries:
+    df <- myrvs$df.reactive
+    myrvs$ID_add <-  max(df$ID) +1
+    tagList(
+      p("ID = ", myrvs$ID_add),
+      p("Paper.Number = ", Paper.Number_add()),
+      numericInput(inputId = "Publication.Year_add",  label = "Publication Year", value =2023),
+      numericInput(inputId = "Experiment.Number_add",  label = "Experiment.Number (within paper)", value =1),
+      numericInput(inputId = "Effect.Size.Number_add",  label = "Effect.Size.Number (within experiment)", value =1),
+      radioButtons(inputId = "Design_add", label = p("Study design"), 
+                   choices = c("between", "within")
+      ),
+    )
+  })
+  
   #
   # Create the rest of the tabPanel for adding studies
-  output$addStudies1 <- renderUI({
-    
+  output$addStudies9 <- renderUI({
     ## read in the reactive values to use in creating the UI tabPanel entries:
     df <- myrvs$df.reactive
     Variable.Factor.Names <- myrvs$Variable.Factor.Names 
     Variable.Numeric.Names <- myrvs$Variable.Numeric.Names 
     na.warning <- myrvs$na.warning
-    
-    # preparing to put a <div> around the whole thing:
-  #  times <- myrvs$nfiles
-  #  message("times ****")
-  #  message(times)
-  #  message(letters[(times %% length(letters)) + 11])
-    
-    if (myrvs$recalculatedSinceUpload >= 0){      # force recalculation before adding a study  ###*** disabled for debugging; >= should be >.  But maybe don't need this "if" at all?
-      myrvs$ID_add <-  max(df$ID) +1
-   #   div(id=letters[(times %% length(letters)) + 11],     
           tagList(    
-            p("ID = ", myrvs$ID_add),
-            p("Paper.Number = ", Paper.Number_add()),
-            #
-            numericInput(inputId = "Publication.Year_add",  label = "Publication Year", value =2023),
-            numericInput(inputId = "Experiment.Number_add",  label = "Experiment.Number (within paper)", value =1),
-            numericInput(inputId = "Effect.Size.Number_add",  label = "Effect.Size.Number (within experiment)", value =1),
-            radioButtons(inputId = "Design_add", label = p("Study design"), 
-                         choices = c("between", "within")
-                         ),
+            
             numericInput(inputId = "r_add",  
                          label = paste('Within-study outcome correlation (for "within" designs).',  
                                        "If blank, the default estimate of 0.74 from Vasilev et al. (2017) will be used"), 
@@ -273,9 +272,7 @@ server <- function(input, output) {
             # with error checking for between/within and total N, and for 
             # whether all required info is provided
           )
-   #   ) 
-    }
-    else(p("Must (Re)Calculate before adding another study...."))  ###*** currently disabled
+
   })
   #################### End of add studies panel 
   

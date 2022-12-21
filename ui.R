@@ -121,7 +121,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                             choices = c("No","Yes"), selected = "No"),
                                ##########  The rest of the study selection panel is created in the server:
                                uiOutput("setNewPaper"),
-                               uiOutput("addStudies1")
+                               uiOutput("addStudies1"),
+                               uiOutput("addStudies9")
                                ##########
                       ),
                       
