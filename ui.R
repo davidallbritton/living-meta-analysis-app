@@ -2,8 +2,8 @@
 ################### A General Tool for BAYSEIAN META-ANALYSIS #######################
 #######################################################################################
 
-###################  Shiny App v.0.3 2022.12.15 UI ####################################
-# revised for Vasilev et al. data 2022  
+###################   Shiny App v.0.4 2022.12.21  UI ####################################
+# revised 2022 for Vasilev et al. data   
 
 # Load required packages and source helper functions #----
 library(metafor)
@@ -115,6 +115,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  "paper should be a separate entry.",
                                  'An alternative method for adding studies is to download the "Current data" as a .xlsx file,',
                                  "add new rows of data, then upload the new .xlsx file for analysis."),
+                               hr(),
                                # Determine whether the new data point goes with an existing paper:
                                radioButtons(inputId = "existingPaper", 
                                             label = 'Is the new effect size from a paper that exists in the "Current data"?', 
@@ -122,11 +123,11 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                ##########  The rest of the study selection panel is created in the server:
                                uiOutput("setNewPaper"),
                                uiOutput("addStudies1"),
-                               uiOutput("addStudies9")
+                               uiOutput("addStudies2"),
+                               uiOutput("addStudies3"),
                                ##########
                       ),
-                      
-                      
+
                       hr()
                     ))),
                   mainPanel(
@@ -175,7 +176,25 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                            "- all columns between these two columns will appear as numeric slider inputs in the",
                                            '"Study criteria" panel for selecting which studies to include.',
                                            ),
+                                   tags$li(tags$b("r"), "(optional) - within-study correlation of outcome measures for within-subjects designs."),
                                    tags$li("Any number of additional columns (that will be ignored)")
+                                 ),
+                                 br(),
+                                 h4("Calculation methods:"),
+                                 p("Meta-analysis calculations use the R", '"bayesmeta" package, along with',
+                                  "functions adapted from", paste0(first_shiny_meta_paper, "."),
+                                  " Input data for meta-analysis are Hedges' g and the variance of g (yi and vi).",
+                                  "When yi and vi are calculated from user input, the following are used:"),
+                                 tags$ul(
+                                   tags$li("g and g_var input by user: copied directly from user input"),
+                                   tags$li("g and g_var computed from d: using functions from", noise_meta_paper),
+                                   tags$li("g and g_var computed from means: using R metafor::escalc, measure = "),
+                                   tags$ul(
+                                     tags$li("SMD - using M1, M2, SD1 and SD2 from a between-subject design"),
+                                     tags$li("SMD1 - using M1, M2, and SD2 from a between-subject design"),
+                                     tags$li("SMCC - using M1, M2, SD1 and SD2 from a within-subject design"),
+                                     tags$li("SMCR - using M1, M2, and SD2 from a within-subject design")
+                                   )
                                  ),
                                  br(),
                                  h4("Paper:"),

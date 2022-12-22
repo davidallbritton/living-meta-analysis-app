@@ -1,6 +1,7 @@
 #######################################################################################
 ################### A General Tool for BAYSEIAN META-ANALYSIS #######################
 #######################################################################################
+#  Shiny App v.0.4 2022.12.21 
 
 ################### Helper functions #################################################
 #----
@@ -25,7 +26,10 @@ load(file = "df_Vasilev_et_al.Rda")             # loads a dataframe called "df"
 ################## Constants #######################################################
 printButton <- HTML('<p  style="text-align:right; font-size: 8px;"><button  onClick="window.print()">PRINT</button></p>')
 r_estimate <- 0.74326344959  # Vasilev et al.'s estimate of the correlation between outcomes in a single study (for "within" designs)
-
+first_shiny_meta_paper_full <- "Wolf, V., Kühnel, A., Teckentrup, V., Koenig, J., & Kroemer, N. B. (2021). Does transcutaneous auricular vagus nerve stimulation affect vagally mediated heart rate variability? A living and interactive Bayesian meta‐analysis. Psychophysiology, 58(11), e13933."
+first_shiny_meta_paper <- "Wolf, et al. (2021)"
+noise_meta_paper_full <- "Vasilev, M. R., Kirkby, J. A., & Angele, B. (2018). Auditory distraction during reading: A Bayesian meta-analysis of a continuing controversy. Perspectives on Psychological Science, 13(5), 567-597."
+noise_meta_paper <- "Vasilev, et al. (2018)"
 
 ##################  Functions   ####################################################
 
@@ -53,13 +57,13 @@ reformat.df <- function(df.input) {
   #
   ################# Create warnings for NAs in the variable numeric selection columns ####
   na.warning <- ""
-  na.warning <- sapply(c(Variable.Numeric.Names), function(nvname){
+  na.warning <- sapply(c(Variable.Numeric.Names, "N_Intervention"), function(nvname){
     if(nna <- sum(is.na(df[,nvname]))) {
       na.warning <- paste0(na.warning, "**WARNING!** ",'"', nvname,'"', " contained ", nna, " NAs (missing values), which have now been recoded as zeroes.")
     }
   })
   ################ Recode NAs in the variable numeric selection columns as zeroes #####
-  for (vName in Variable.Numeric.Names)  {
+  for (vName in c(Variable.Numeric.Names, "N_Intervention"))  {
     df[is.na(df[,vName]), vName]  <- 0
   }
   #
@@ -275,10 +279,17 @@ getEffectSize <- function(g=NA, g_var=NA, d=NA, d_var=NA, mean_E=NA, mean_C=NA,
                   var_E=NA, var_C=NA, var_type=NA, N_Total=NA, N_Intervention=NA, 
                   N_Control=NA, Design="between", r = r_estimate,
                   reverseCode="No") {
+  message("in getEffectSize function now...")  ##** for debugging
   if  (is.na(g)|is.na(g_var)  |  is.null(g)|is.null(g_var)) {
+    message("in getEffectSize function now.2..")  ##** for debugging
+    
     if (is.null(d)|is.null(d_var)   |   is.na(d)|is.na(d_var)) {
+      message("in getEffectSize function now.3..")  ##** for debugging
+      
       if (is.null(N_Control)|is.null(N_Intervention)  |  is.na(N_Control)|is.na(N_Intervention)) {
-        message("Add throwing an error here for Ns"); return(NA)} #throw an error: must specify Ns
+        message("in getEffectSize function now.4..")  ##** for debugging
+        
+      } #throw an error: must specify Ns
       if (is.null(mean_E)|is.null(mean_C)   |   is.na(mean_E)|is.na(mean_C)) {
         message("Add throwing an error here for means"); return(NA)}   #throw an error: must specify control group SD
       type <- "E-C"

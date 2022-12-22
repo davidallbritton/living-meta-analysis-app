@@ -2,7 +2,7 @@
 ################### A General Tool for BAYSEIAN META-ANALYSIS #################
 #######################################################################################
 
-################### Shiny App v.0.3 2022.11.21 SERVER ###################################
+################### Shiny App v.0.4 2022.12.21 SERVER ###################################
 #
 # Derived and adapted from https://vinzentwolf.shinyapps.io/taVNSHRVmeta/
 # as described in https://doi.org/10.1111/psyp.13933
@@ -81,12 +81,6 @@ server <- function(input, output) {
     Variable.Numeric.Names <- myrvs$Variable.Numeric.Names 
     na.warning <- myrvs$na.warning
     
-    # putting a <div> around the whole thing:
-#    times <- myrvs$nfiles
-#    message("times ****")
-#    message(times)
-#    message(letters[(times %% length(letters)) + 1])
-#    div(id=letters[(times %% length(letters)) + 1],     
     tagList(    
              br(), 
              radioButtons(inputId = "aggregation", label = p("Aggregate over", style="color:#333333",
@@ -121,6 +115,8 @@ server <- function(input, output) {
                        placement = "right", 
                        trigger = "click",
                        options = list(container = "body")),
+             sliderInput(inputId = "N_Intervention", label = p("N for Intervention Group",style="color:#333333"),
+                         min = min(df$N_Intervention), max = max(df$N_Intervention), value = c(min(df$N_Intervention), max(df$N_Intervention)), step = 1, sep = "", ticks = F),
              
              ## loop over the variable factor columns
                                             lapply(Variable.Factor.Names, function(varName) {                             
@@ -151,7 +147,6 @@ server <- function(input, output) {
                   trigger = "click",
                   options = list(container = "body"))
       )
-#    )
   })
   #################### End of study criteria panel 
   
@@ -203,76 +198,114 @@ server <- function(input, output) {
       radioButtons(inputId = "Design_add", label = p("Study design"), 
                    choices = c("between", "within")
       ),
+      hr(),
+      p(strong("Effect size information"),"to calculate Hedges' g.  You can enter g and g_var directly,",
+        "or let g be calculated from d or from group means and standard deviations.",
+        "If you choose", '"enter everything" then means will only be used if d is not provided,',
+        "and d will only be used if g is not provided."),
+      radioButtons(inputId = "useGorD", label = p("How would you like to enter the information for the new effect size you are adding?"),
+        choiceNames =   c("Just input g and g_var", 
+                    "Just input d, d_var, and N", 
+                    "Just input means, SDs, and N",
+                    "Let me enter everything I have"), 
+        choiceValues = c("g", "d", "means", "all"),
+        selected = "g"
+      ),
     )
   })
-  
   #
-  # Create the rest of the tabPanel for adding studies
-  output$addStudies9 <- renderUI({
+  # Create section 2 of the tabPanel for adding studies, conditional on having values for g
+  output$addStudies2 <- renderUI({
+    myrvs$df.reactive  # referencing df.reactive causes the form to be regenerated after each submission
+    gtags <-  ""
+    dtags <-  ""
+    ntags <-  ""
+    msdtags <-  ""
+    rtags <-  ""
+    req(input$useGorD) #need the "req" to prevent temporary error message for zero-length useGorD in the "if"
+    if  ((input$useGorD == "g") | (input$useGorD == "all")) {  # display g inputs
+      gtags <- tagList( hr(),
+        numericInput(inputId = "g_add",  label = "effect size (Hedges' g)", value =""),
+        numericInput(inputId = "g_var_add",  label = "variance of g (g_var)", value ="")
+      )
+    } 
+    if (input$useGorD != "g") {  # display N inputs
+      ntags <- tagList( hr(),
+        p("Number of subjects in each group:"),
+        numericInput(inputId = "N_Total_add",  label = "Total N", value = NA),
+        numericInput(inputId = "N_Intervention_add",  label = "Intervention N", value = NA),
+        numericInput(inputId = "N_Control_add",  label = "Control N", value = NA)
+      )
+    }
+    if ((input$useGorD == "d") | (input$useGorD == "all")) {  # display d inputs
+      # display the input boxes for d, d_var
+      dtags <- tagList( hr(),
+        p("Cohen's d and its variance:"),
+        numericInput(inputId = "d_add",  label = "effect size (Cohen's d)", value =""),
+        numericInput(inputId = "d_var_add",  label = "variance of d", value ="")
+      )
+    }
+    if ((input$useGorD == "means") | (input$useGorD == "all")) {  # display g inputs
+      req(input$Design) #need? the "req" to prevent temporary error message for zero-length useGorD in the "if"
+      msdtags <- tagList( hr(),
+        # get means and sds
+        p("Group means and variabilities:"),
+        numericInput(inputId = "mean_E_add",  label = "Intervention mean", value =NULL), ### ****
+        numericInput(inputId = "mean_C_add",  label = "Control mean", value =""),
+        radioButtons(inputId = "reverseCode_add", choiceNames = c("No. (More is better, e.g., % correct)", "Yes. (More is worse, e.g., % errors, RT)"),
+                     choiceValues = c("No", "Yes"),
+                     selected = "No", label = "Means require reverse coding?"),
+        numericInput(inputId = "var_E_add",  label = "Intervention variability (as SD, SE, or variance)", value =""),
+        numericInput(inputId = "var_C_add",  label = "Control variability (as SD, SE, or variance)", value =""),
+        radioButtons(inputId = "var_type_add", 
+                     choiceNames = c("Standard deviation (SD)", "Variance", "Standard error (SE)"), 
+                     choiceValues = c("Standard deviation", "Variance", "Standard error"), 
+                     selected = "Standard deviation", label = "Variance type")
+      )
+      # if within, get r
+      if (input$Design_add == "within"){
+        rtags <- tagList(
+          numericInput(inputId = "r_add",  
+                      label = paste('Within-study outcome correlation (for "within" designs).',  
+                                     "If blank, the default estimate of r=0.74 from Vasilev et al. (2018) will be used"), 
+                       value = NULL,  min = 0, max = 1, step = 0.01)
+        )
+      }
+    
+      
+    }
+    tagList(gtags,  dtags,  ntags, msdtags, rtags, hr(), )
+  })
+  #
+  #
+  # Create the rest of the tabPanel for adding studies: optional selection variables 
+  output$addStudies3 <- renderUI({
     ## read in the reactive values to use in creating the UI tabPanel entries:
     df <- myrvs$df.reactive
     Variable.Factor.Names <- myrvs$Variable.Factor.Names 
     Variable.Numeric.Names <- myrvs$Variable.Numeric.Names 
     na.warning <- myrvs$na.warning
-          tagList(    
-            
-            numericInput(inputId = "r_add",  
-                         label = paste('Within-study outcome correlation (for "within" designs).',  
-                                       "If blank, the default estimate of 0.74 from Vasilev et al. (2017) will be used"), 
-                         value = NULL,  min = 0, max = 1, step = 0.01),
-            
-            
-            
-            p(strong("Required unless providing g and g_var:")," Number of subjects in each group"),
-            numericInput(inputId = "N_Total_add",  label = "Total N", value = NA),
-            numericInput(inputId = "N_Intervention_add",  label = "Intervention N", value = NA),
-            numericInput(inputId = "N_Control_add",  label = "Control N", value = NA),
-            
+          tagList(   
             hr(),
-            p(strong("Required:"),"Either group means and variabilities, OR effect size information"),
-            p("Group means and variabilities:"),
-            numericInput(inputId = "mean_E_add",  label = "Intervention mean", value =NULL), ### ****
-            numericInput(inputId = "mean_C_add",  label = "Control mean", value =""),
-            radioButtons(inputId = "reverseCode_add", choiceNames = c("More is better (e.g., % correct)", "More is worse (e.g., % errors, RT)"),
-                         choiceValues = c("No", "Yes"),
-                         selected = "No", label = "Means require regular coding (more is better) or reverse coding (more is worse)?"),
-            numericInput(inputId = "var_E_add",  label = "Intervention variability (SD, SE, or variance)", value =""),
-            numericInput(inputId = "var_C_add",  label = "Control variability (SD, SE, or variance)", value =""),
-            radioButtons(inputId = "var_type_add", choices = c("Standard deviation", "Variance", "Standard error"), 
-                         selected = "Standard deviation", label = "Variance type (SD is preferred; variance is acceptable; SE is discouraged"),
+            p(strong("Optional variables"), '- for use in "Study criteria" panel selections'),
             hr(),
-            p("Effect size (either g or d) and variance:", 
-            ),
-            numericInput(inputId = "g_add",  label = "effect size (g)", value =""),
-            numericInput(inputId = "g_var_add",  label = "variance of g", value =""),
-            numericInput(inputId = "d_add",  label = "effect size (d)", value =""),
-            numericInput(inputId = "d_var_add",  label = "variance of d", value =""),
-            
-            
-            
-            
-            hr(),
+            #   
             ## loop over the variable factor columns
             lapply(Variable.Factor.Names, function(varName) {  
               varName_add <- paste0(varName, "_add")
               radioButtons(inputId = varName_add, label = p(varName), 
                            choices = c(levels(df[,varName]), "Other (not listed)"), selected = "")
             }),
-            
+            #
             ### loop over the variable numeric selection columns
             lapply(Variable.Numeric.Names, function(varName) {
               varName_add <- paste0(varName, "_add")
               numericInput(inputId = varName_add, label = varName, value = "")
             }), 
             hr(),
-            
+            #
             actionButton(inputId = "add1study","Add this study", icon("sync"), style = "color: green; background-color: white"),
-            
-            p()   ###  *** p() is for debugging only. need a submit button here, perhaps
-            # with error checking for between/within and total N, and for 
-            # whether all required info is provided
           )
-
   })
   #################### End of add studies panel 
   
@@ -366,10 +399,7 @@ message("line 1")    ### *** debugging
     newdatalist <- reformat.df(myrvs$df.updated)   
     myrvs$df.reactive <- newdatalist$df
           
-      ### Maybe add an output tab for displaying the data file.
-      ### ******* stopped here
-    #  Need to: select whether it is an existing paper or not, and create
-    # a paper number for user-input entries.  currently all newly input ones are "NA"
+
       
     ### temp stuff:
     message(inputfields)                 ### for debugging ***
@@ -394,7 +424,10 @@ message("line 1")    ### *** debugging
     Variable.Numeric.Names <- myrvs$Variable.Numeric.Names 
     ## Create subset based on chosen inclusion criteria
     df_sub <- df %>% filter(Design %in% input$Design,
-                            Publication.Year >= input$Publication.Year[1], Publication.Year <= input$Publication.Year[2],
+                            Publication.Year >= input$Publication.Year[1], 
+                            Publication.Year <= input$Publication.Year[2],
+                            N_Intervention >= input$N_Intervention[1],
+                            N_Intervention <= input$N_Intervention[2],
                             Paper.and.Exp %in% input$included)
     #
     ## Create subset based on the above plus input-file defined selection factors
