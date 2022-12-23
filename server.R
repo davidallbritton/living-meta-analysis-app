@@ -1,8 +1,8 @@
 #######################################################################################
-################### A General Tool for BAYSEIAN META-ANALYSIS #################
+################### A General Tool for BAYESIAN META-ANALYSIS #################
 #######################################################################################
 
-################### Shiny App v.0.4 2022.12.21 SERVER ###################################
+################### Shiny App v.0.5 2022.12.22 SERVER ###################################
 #
 # Derived and adapted from https://vinzentwolf.shinyapps.io/taVNSHRVmeta/
 # as described in https://doi.org/10.1111/psyp.13933
@@ -274,7 +274,7 @@ server <- function(input, output) {
     
       
     }
-    tagList(gtags,  dtags,  ntags, msdtags, rtags, hr(), )
+    tagList(gtags,  dtags,  ntags, msdtags, rtags, hr() )
   })
   #
   #
@@ -313,8 +313,7 @@ server <- function(input, output) {
   
   ########### Adding a study that was input by the user
   observeEvent(input$add1study, {     #when a study is input to add, do this:
-    # require a recalculation before showing the add study panel again:
-message("line 1")    ### *** debugging
+      message("line 1")    ### *** debugging
     myrvs$recalculatedSinceUpload <- 0
     ### check the user input for errors
     message("line 2")    ### *** debugging
@@ -329,6 +328,46 @@ message("line 1")    ### *** debugging
                          "var_E_add",   "var_C_add",   "var_type_add",
                          "g_add",  "g_var_add",  "d_add",  "d_var_add"
     )
+    # change it to just the fields that are being input, based on useGorD
+    #   #        choiceValues = c("g", "d", "means", "all"),
+    message("line 3.1")    ### *** debugging
+    if(isTruthy(input$useGorD)) {
+      message("line 4.1")    ### *** debugging
+      
+      if (input$useGorD == "g") {
+        message("line 5.1")    ### *** debugging
+        other.Names_add <- c("Publication.Year_add",  "Experiment.Number_add", 
+                             "Effect.Size.Number_add", "Design_add", 
+                             "g_add",  "g_var_add"
+        )
+      }
+      if (input$useGorD == "d") {
+        message("line 6.1")    ### *** debugging
+        other.Names_add <- c("Publication.Year_add",  "Experiment.Number_add", 
+                             "Effect.Size.Number_add", "Design_add", 
+                             "N_Total_add", "N_Intervention_add", "N_Control_add", 
+                             "d_add",  "d_var_add"
+        )
+      }
+      if (input$useGorD == "means") {
+        message("line 7.1")    ### *** debugging
+        other.Names_add <- c("Publication.Year_add",  "Experiment.Number_add", 
+                             "Effect.Size.Number_add", "Design_add", 
+                             "N_Total_add", "N_Intervention_add", "N_Control_add", 
+                             "mean_E_add",  "mean_C_add", 
+                             "reverseCode_add",
+                             "var_E_add",   "var_C_add",   "var_type_add"
+        )
+        message("line 7.1.2")    ### *** debugging
+        if (input$Design_add == "within") {
+          message("line 7.1.3")    ### *** debugging
+          message("line 8.1")    ### *** debugging
+          other.Names_add <- c(other.Names_add, "r_add")
+        }
+        message("line 7.1.4")    ### *** debugging
+      }
+    }
+    message("line 9.1")    ### *** debugging
     other.Names <- str_replace(other.Names_add, "_add", "")
     # The inputfields and calculatedfields will need to be added to the dataset
     calculatedfields <- c("Paper.and.Exp", "yi", "vi")
@@ -351,28 +390,71 @@ message("line 1")    ### *** debugging
 
     # set the value of r for within-subjects designs:
     r <- r_estimate
-    if (length(input$r_add) > 0) if(!is.na(input$r_add)) r <- as.numeric(input$r_add)
+    if (isTruthy(input$r_add)) r <- as.numeric(input$r_add)   ### *** check this?
     message("r is now...")  ## ** debugging
     message(r)  ## ** debugging
     
     # Get the values for yi and vi:
     ### call the function and pass it arguments from the user input; assign yi and vi values
-    gstats <- getEffectSize (g = as.numeric(input$g_add), 
-                             g_var = as.numeric(input$g_var_add), 
-                             d = as.numeric(input$d_add), 
-                             d_var = as.numeric(input$d_var_add), 
-                             mean_E = as.numeric(input$mean_E_add), 
-                             mean_C = as.numeric(input$mean_C_add),
-                             var_E = as.numeric(input$var_E_add), 
-                             var_C = as.numeric(input$var_C_add), 
-                             var_type = input$var_type_add, 
-                             N_Total = as.numeric(input$N_Total_add), 
-                             N_Intervention = as.numeric(input$N_Intervention_add), 
-                             N_Control = as.numeric(input$N_Control_add), 
-                             Design = input$Design_add, 
-                             r = r,
-                             reverseCode = input$reverseCode_add
-                             )
+    #
+    # # change it to just the fields that are being input, based on useGorD
+    #   #        choiceValues = c("g", "d", "means", "all"),
+    ############ req(input$useGorD)
+    message("useGorD")   ##### *** debugging
+    message(input$useGorD) ### *** debugging
+    if (input$useGorD == "all") {
+      message("line 4.01")    ### *** debugging
+      gstats <- getEffectSize (g = as.numeric(input$g_add), 
+                               g_var = as.numeric(input$g_var_add), 
+                               d = as.numeric(input$d_add), 
+                               d_var = as.numeric(input$d_var_add), 
+                               mean_E = as.numeric(input$mean_E_add), 
+                               mean_C = as.numeric(input$mean_C_add),
+                               var_E = as.numeric(input$var_E_add), 
+                               var_C = as.numeric(input$var_C_add), 
+                               var_type = input$var_type_add, 
+                               N_Total = as.numeric(input$N_Total_add), 
+                               N_Intervention = as.numeric(input$N_Intervention_add), 
+                               N_Control = as.numeric(input$N_Control_add), 
+                               Design = input$Design_add, 
+                               r = r,
+                               reverseCode = input$reverseCode_add
+      )
+    }
+    if (input$useGorD == "means") {
+      message("line 4.02")    ### *** debugging
+      if (input$Design_add == "between") {r = NA}
+      message("line 4.03")    ### *** debugging
+      gstats <- getEffectSize (mean_E = as.numeric(input$mean_E_add), 
+                               mean_C = as.numeric(input$mean_C_add),
+                               var_E = as.numeric(input$var_E_add), 
+                               var_C = as.numeric(input$var_C_add), 
+                               var_type = input$var_type_add, 
+                               N_Total = as.numeric(input$N_Total_add), 
+                               N_Intervention = as.numeric(input$N_Intervention_add), 
+                               N_Control = as.numeric(input$N_Control_add), 
+                               Design = input$Design_add, 
+                               r = r,
+                               reverseCode = input$reverseCode_add
+      )
+    }
+    if (input$useGorD == "d") {
+      message("line 4.04")    ### *** debugging
+      gstats <- getEffectSize (d = as.numeric(input$d_add), 
+                               d_var = as.numeric(input$d_var_add), 
+                               N_Total = as.numeric(input$N_Total_add), 
+                               N_Intervention = as.numeric(input$N_Intervention_add), 
+                               N_Control = as.numeric(input$N_Control_add), 
+                               Design = input$Design_add, 
+      )
+    }
+    if (input$useGorD == "g") {
+      message("line 4.05")    ### *** debugging
+      gstats <- getEffectSize (g = as.numeric(input$g_add), 
+                               g_var = as.numeric(input$g_var_add), 
+      )
+      message("line 4.06")    ### *** debugging
+    }
     #
     message("line 5")    ### *** debugging
     

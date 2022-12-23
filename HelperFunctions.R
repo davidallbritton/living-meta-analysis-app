@@ -1,7 +1,7 @@
 #######################################################################################
-################### A General Tool for BAYSEIAN META-ANALYSIS #######################
+################### A General Tool for BAYESIAN META-ANALYSIS #######################
 #######################################################################################
-#  Shiny App v.0.4 2022.12.21 
+#  Shiny App v.0.5 2022.12.22 
 
 ################### Helper functions #################################################
 #----
@@ -275,22 +275,30 @@ myUni<-function(rand){
 ########################### Functions for users adding a study ##########
 # calculate effect size from user input
 ##
+isok <- function(x){
+  # returns true if x exists and is truthy; false otherwise
+  # useful for validating input fields before using them
+  xname <- as.list(sys.call())[[2]]
+  if(exists(xname)){isTruthy(x)} else {FALSE}
+}
+#
+#
 getEffectSize <- function(g=NA, g_var=NA, d=NA, d_var=NA, mean_E=NA, mean_C=NA,
                   var_E=NA, var_C=NA, var_type=NA, N_Total=NA, N_Intervention=NA, 
                   N_Control=NA, Design="between", r = r_estimate,
                   reverseCode="No") {
   message("in getEffectSize function now...")  ##** for debugging
-  if  (is.na(g)|is.na(g_var)  |  is.null(g)|is.null(g_var)) {
+  if  (!isTruthy(g)  |  !isTruthy(g_var)) {
     message("in getEffectSize function now.2..")  ##** for debugging
     
-    if (is.null(d)|is.null(d_var)   |   is.na(d)|is.na(d_var)) {
+    if (!isTruthy(d) | !isTruthy(d_var) ) {  ### this causes the crash!!!!
       message("in getEffectSize function now.3..")  ##** for debugging
       
-      if (is.null(N_Control)|is.null(N_Intervention)  |  is.na(N_Control)|is.na(N_Intervention)) {
+      if (!isTruthy(N_Control) |  !isTruthy(N_Intervention)) {
         message("in getEffectSize function now.4..")  ##** for debugging
         
       } #throw an error: must specify Ns
-      if (is.null(mean_E)|is.null(mean_C)   |   is.na(mean_E)|is.na(mean_C)) {
+      if (!isTruthy(mean_E) |  !isTruthy(mean_C)) {
         message("Add throwing an error here for means"); return(NA)}   #throw an error: must specify control group SD
       type <- "E-C"
       if (reverseCode =="Yes") {
@@ -298,7 +306,7 @@ getEffectSize <- function(g=NA, g_var=NA, d=NA, d_var=NA, mean_E=NA, mean_C=NA,
         mean_E <- -mean_E
         mean_C <- -mean_C
       }
-      if (is.null(var_C)  |  is.na(var_C)) {
+      if (!isTruthy(var_C)) {
         message("Add throwing an error here; no control SD provided***"); return(NA)} #throw an error: must specify control group SD
       if (var_type == "Standard deviation"){
         sd2i <- var_C
@@ -313,7 +321,7 @@ getEffectSize <- function(g=NA, g_var=NA, d=NA, d_var=NA, mean_E=NA, mean_C=NA,
       #
       # calculate g for a between design from group means and SDs
       if (Design == "between"){
-        if (is.null(var_E)  |  is.na(var_E)) { # using control SD only; SDM1 for between groups design
+        if (!isTruthy(var_E)) { # using control SD only; SDM1 for between groups design
           gcalc <- metafor::escalc (measure = "SMD1", vtype = "LS2",
                            m1i = mean_E, m2i = mean_C,
                            sd2i = sd2i, n1i = N_Intervention, n2i = N_Control)
@@ -324,7 +332,7 @@ getEffectSize <- function(g=NA, g_var=NA, d=NA, d_var=NA, mean_E=NA, mean_C=NA,
         }
       }
       else { # for within designs (anything other than "between")
-        if (is.null(var_E)  |  is.na(var_E)) { # using control SD only; SMCR for within group design
+        if (!isTruthy(var_E)) { # using control SD only; SMCR for within group design
           gcalc <- metafor::escalc (measure = "SMCR", vtype = "LS2",
                            m1i = mean_E, m2i = mean_C,
                            sd1i = sd2i, ni = N_Total, ri = r)   # using SD of the control condition sd2i
@@ -348,4 +356,5 @@ getEffectSize <- function(g=NA, g_var=NA, d=NA, d_var=NA, mean_E=NA, mean_C=NA,
   list(yi = g, vi = g_var)
 }
 ###########  End of function for calculating g and g_var from user input #############
+
 

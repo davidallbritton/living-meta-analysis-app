@@ -1,8 +1,8 @@
 #######################################################################################
-################### A General Tool for BAYSEIAN META-ANALYSIS #######################
+################### A General Tool for BAYESIAN META-ANALYSIS #######################
 #######################################################################################
 
-###################   Shiny App v.0.4 2022.12.21  UI ####################################
+###################   Shiny App v.0.5 2022.12.22  UI ####################################
 # revised 2022 for Vasilev et al. data   
 
 # Load required packages and source helper functions #----
@@ -32,8 +32,8 @@ source("effect_sizes.R")
 
 # Define UI
 ui <- fluidPage(theme = shinytheme("cosmo"),
-                titlePanel(title = div("A General Tool for BAYSEIAN META-ANALYSIS"),
-                           windowTitle = "A General Tool for BAYSEIAN META-ANALYSIS"),
+                titlePanel(title = div("A General Tool for BAYESIAN META-ANALYSIS"),
+                           windowTitle = "A General Tool for BAYESIAN META-ANALYSIS"),
                 sidebarLayout(
                   sidebarPanel(fluidRow(
                     uiOutput("currentDataFile"),
