@@ -2,7 +2,7 @@
 ################### A General Tool for BAYESIAN META-ANALYSIS #################
 #######################################################################################
 
-################### Shiny App v.0.5 2022.12.22 SERVER ###################################
+################### Shiny App v.0.6 2022.12.23 SERVER ###################################
 #
 # Derived and adapted from https://vinzentwolf.shinyapps.io/taVNSHRVmeta/
 # as described in https://doi.org/10.1111/psyp.13933
@@ -10,7 +10,7 @@
 ###################################################################################
 
 # Define server logic
-server <- function(input, output) {
+server <- function(input, output, session) {
   
   ## Initialize with stored data, which will be replaced when a data file is uploaded
   ## by the user
@@ -27,6 +27,7 @@ server <- function(input, output) {
         myrvs$Variable.Numeric.Names <- newrvs$Variable.Numeric.Names
         myrvs$na.warning <- newrvs$na.warning
         myrvs$recalculatedSinceUpload <- 0
+        myrvs$dataErrorMessage <- ""
       })
     }
     tempnames <<- myrvs$Variable.Factor.Names
@@ -117,6 +118,7 @@ server <- function(input, output) {
                        options = list(container = "body")),
              sliderInput(inputId = "N_Intervention", label = p("N for Intervention Group",style="color:#333333"),
                          min = min(df$N_Intervention), max = max(df$N_Intervention), value = c(min(df$N_Intervention), max(df$N_Intervention)), step = 1, sep = "", ticks = F),
+             if(!is.na(na.warning["N_Intervention"])) p(na.warning["N_Intervention"]) else "",
              
              ## loop over the variable factor columns
                                             lapply(Variable.Factor.Names, function(varName) {                             
@@ -156,13 +158,24 @@ server <- function(input, output) {
   #################### 
   ##   tabPanel   addStudies   ## creating UI content for this tabPanel ##
   #
+  # Create the UI radio button for choosing whether to choose an existing paper or add a new one
+  output$studyAskType <- renderUI({
+    myrvs$df.reactive  # reactive trigger
+    # Determine whether the new data point goes with an existing paper:
+    radioButtons(inputId = "existingPaper", 
+                 label = 'Is the new effect size from a paper that exists in the "Current data"?', 
+                 choices = c("No","Yes"), selected = "No")
+  })
+  #
   # Choose an existing paper or add a new one
   output$setNewPaper <- renderUI({    #myrvs$ID_add
-    df <- myrvs$df.reactive   # if not requiring recalculation first, then use df.updated instead?? ***
+    df <- myrvs$df.reactive   
+    req(input$existingPaper)
     if(input$existingPaper == "Yes") {
       selectInput(inputId = "Paper_add", 
                   label = "Select the paper to enter an additional effect size for",
-                  choices = sort(df$Paper)
+                  choices = sort(df$Paper),
+                  selected = df$Paper[1]
                   )
     }
     else {
@@ -174,6 +187,7 @@ server <- function(input, output) {
     message("updating Paper.Number_add()")
     df <- myrvs$df.reactive
     #df <<- df  *** debugging
+    req(input$existingPaper)
     if (input$existingPaper == "Yes") {
       if (is.na(input$Paper_add)) max(df$ID) +1
       else if (input$Paper_add %in% df$Paper) { #this "if" prevents a temporary error message
@@ -192,7 +206,7 @@ server <- function(input, output) {
     tagList(
       p("ID = ", myrvs$ID_add),
       p("Paper.Number = ", Paper.Number_add()),
-      numericInput(inputId = "Publication.Year_add",  label = "Publication Year", value =2023),
+      numericInput(inputId = "Publication.Year_add",  label = "Publication Year", value = thisYear),
       numericInput(inputId = "Experiment.Number_add",  label = "Experiment.Number (within paper)", value =1),
       numericInput(inputId = "Effect.Size.Number_add",  label = "Effect.Size.Number (within experiment)", value =1),
       radioButtons(inputId = "Design_add", label = p("Study design"), 
@@ -305,10 +319,38 @@ server <- function(input, output) {
             hr(),
             #
             actionButton(inputId = "add1study","Add this study", icon("sync"), style = "color: green; background-color: white"),
+            p(myrvs$dataErrorMessage)
           )
   })
   #################### End of add studies panel 
   
+  #### reset the new study submit error message
+  resetErrorMessage <- observe({
+    myrvs$df.reactive      # remove the error message when new data is uploaded or input
+    isolate(myrvs$dataErrorMessage <- "")
+  })
+  #  I'm not sure why doing these both in one observer did not work before MA() exists...
+  resetErrorMessage2 <- observe({
+    MA()                   # remove the error message when the "recalculate" button is pressed
+    isolate(myrvs$dataErrorMessage <- "")
+  })
+  resetErrorMessage3 <- observe({ # remove error message if any of these change:
+    input$useGorD
+    input$g_add
+    input$g_var_add
+    input$d_add
+    input$d_var_add
+    input$var_C_add
+    input$mean_C_add
+    input$mean_E_add
+    input$N_Control_add
+    input$N_Intervention_add
+    input$N_Total_add
+    input$r_add
+    #
+    isolate(myrvs$dataErrorMessage <- "")
+  })
+  #### end of resetting the new study submit error message
   
   
   ########### Adding a study that was input by the user
@@ -378,6 +420,10 @@ server <- function(input, output) {
     # Change the paper name if it was entered as a "new" paper but duplicates the name of an existing paper
     #  (it would be better to catch it at input and prompt the user to fix it, but for now this will
     #   at least prevent errors when inputting more additional studies)
+    if (!isTruthy(input$Paper_add)) {
+      myrvs$dataErrorMessage <- "Error: Must choose a paper"
+      return("Error: Must choose a paper...")
+    }
     Paper <- input$Paper_add
     if ((df[df$Paper == input$Paper_add, "Paper"] %>% length() > 0) & (input$existingPaper == "No")) {
       message ("oops, duplicate name for a 'new' paper!!")
@@ -385,7 +431,7 @@ server <- function(input, output) {
     }
     #
     # Create the study label: Paper.and.Exp
-    Paper.and.Exp <- paste0(Paper, " Exp. ", input$Experiment.Number_add)
+    Paper.and.Exp <- paste0(Paper, " Exp. ", input$Experiment.Number_add, " ES ",input$Effect.Size.Number_add)
     message("line 4")    ### *** debugging
 
     # set the value of r for within-subjects designs:
@@ -394,16 +440,41 @@ server <- function(input, output) {
     message("r is now...")  ## ** debugging
     message(r)  ## ** debugging
     
-    # Get the values for yi and vi:
+    ######################### Get the values for yi and vi
+    #
+    # First check to make sure the right input exists
+    gInputsOK <- if (
+      isTruthy(input$g_add) & 
+      isTruthy(input$g_var_add) 
+    ) {TRUE} else {FALSE}
+    dInputsOK <- if (
+      isTruthy(input$d_add) & 
+      isTruthy(input$d_var_add) & 
+      isTruthy(input$N_Total_add) & 
+      isTruthy(input$N_Intervention_add) & 
+      isTruthy(input$N_Control_add) & 
+      isTruthy(input$Design_add) 
+    ) {TRUE} else {FALSE}
+    meansInputsOK <- if (
+      isTruthy(input$mean_E_add) & 
+      isTruthy(input$mean_C_add) & 
+      isTruthy(input$N_Total_add) & 
+      isTruthy(input$N_Intervention_add) & 
+      isTruthy(input$N_Control_add) & 
+      isTruthy(input$Design_add) & 
+      isTruthy(input$var_C_add)
+    ) {TRUE} else {FALSE}
+    #
     ### call the function and pass it arguments from the user input; assign yi and vi values
     #
-    # # change it to just the fields that are being input, based on useGorD
-    #   #        choiceValues = c("g", "d", "means", "all"),
-    ############ req(input$useGorD)
     message("useGorD")   ##### *** debugging
     message(input$useGorD) ### *** debugging
     if (input$useGorD == "all") {
       message("line 4.01")    ### *** debugging
+      if (!isTruthy(c(meansInputsOK, dInputsOK, gInputsOK))){  
+        myrvs$dataErrorMessage <- "Error: Some required inputs were missing"
+        return("Error: Some required inputs were missing")
+      }
       gstats <- getEffectSize (g = as.numeric(input$g_add), 
                                g_var = as.numeric(input$g_var_add), 
                                d = as.numeric(input$d_add), 
@@ -424,6 +495,10 @@ server <- function(input, output) {
     if (input$useGorD == "means") {
       message("line 4.02")    ### *** debugging
       if (input$Design_add == "between") {r = NA}
+      if (!meansInputsOK){
+        myrvs$dataErrorMessage <- "Error: Must input means, N's, and control-group variability (SD, SE, or variance)"
+        return("Error: Must input means, N's, and control-group variability (SD, SE, or variance)...")
+      }
       message("line 4.03")    ### *** debugging
       gstats <- getEffectSize (mean_E = as.numeric(input$mean_E_add), 
                                mean_C = as.numeric(input$mean_C_add),
@@ -440,6 +515,10 @@ server <- function(input, output) {
     }
     if (input$useGorD == "d") {
       message("line 4.04")    ### *** debugging
+      if (!dInputsOK) {
+        myrvs$dataErrorMessage <- "Error: Must input Design, N's, d, and d_var"
+        return("Error: Must input Ns, d, and d_var...")
+      }
       gstats <- getEffectSize (d = as.numeric(input$d_add), 
                                d_var = as.numeric(input$d_var_add), 
                                N_Total = as.numeric(input$N_Total_add), 
@@ -450,6 +529,10 @@ server <- function(input, output) {
     }
     if (input$useGorD == "g") {
       message("line 4.05")    ### *** debugging
+      if (!gInputsOK){
+        myrvs$dataErrorMessage <- "Error: Must input g and g_var"
+        return("Error: Must input g and g_var...")
+      }
       gstats <- getEffectSize (g = as.numeric(input$g_add), 
                                g_var = as.numeric(input$g_var_add), 
       )
@@ -466,24 +549,42 @@ server <- function(input, output) {
                            Paper = Paper,
                            Paper.and.Exp = Paper.and.Exp, 
                            Paper.Number = Paper.Number_add())
+    message("line 6.001")    ### *** debugging
+    
     # add all the values that were input by the user
     for (n in inputfields){
       nn <- paste0(n, "_add")
       newstudy[n] <- input[[nn]]
     }
+    message("line 6.002")    ### *** debugging
+    
     newstudy$FromUserInput <- "Yes"
+    message("line 6.003")    ### *** debugging
+    
     #
     # add the new row of data to the current data:
     myrvs$df.updated <- bind_rows(myrvs$df.updated, newstudy)
+    message("line 6.004")    ### *** debugging
+    
     tempnewstudy <<- newstudy  #### *** debugging
-    tempnewdf <<- myrvs$df.updated
-    #
-    newdatalist <- reformat.df(myrvs$df.updated)   
+    tempnewdf <<- myrvs$df.updated #### *** debugging
+    newdatalist <- reformat.df(myrvs$df.updated) 
+    req(newdatalist)  # make sure the new data was successfully processed before resetting the input fields
+    # Reset the study input fields in the UI
+ #   output$studyAskType <- renderUI("")
+ #   output$setNewPaper <- renderUI("")
+ #   output$addStudies1 <- renderUI("")
+ #   output$addStudies2 <- renderUI("")
+ #   output$addStudies3 <- renderUI("")
+    # update the active data file, which triggers lots of reactive stuff:
     myrvs$df.reactive <- newdatalist$df
-          
-
-      
-    ### temp stuff:
+    # update the warnings about NAs in the study selection panel
+    myrvs$na.warning <- newdatalist$na.warning
+    # change focus to the Study criteria tab after successful data input:
+    updateTabsetPanel(session, "dataSetupPanel", selected = "Study criteria")
+    
+    
+    ### temp stuff for debugging:
     message(inputfields)                 ### for debugging ***
     message(length(inputfields))       ### for debugging ***
     message(other.Names_add)       ### for debugging ***
