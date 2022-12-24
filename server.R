@@ -28,6 +28,10 @@ server <- function(input, output, session) {
         myrvs$na.warning <- newrvs$na.warning
         myrvs$recalculatedSinceUpload <- 0
         myrvs$dataErrorMessage <- ""
+<<<<<<< HEAD
+=======
+        
+>>>>>>> 00c31422eb99bb318d3de58da5f1dfac9317c688
       })
     }
     tempnames <<- myrvs$Variable.Factor.Names
@@ -578,8 +582,11 @@ server <- function(input, output, session) {
  #   output$addStudies3 <- renderUI("")
     # update the active data file, which triggers lots of reactive stuff:
     myrvs$df.reactive <- newdatalist$df
+<<<<<<< HEAD
     # update the warnings about NAs in the study selection panel
     myrvs$na.warning <- newdatalist$na.warning
+=======
+>>>>>>> 00c31422eb99bb318d3de58da5f1dfac9317c688
     # change focus to the Study criteria tab after successful data input:
     updateTabsetPanel(session, "dataSetupPanel", selected = "Study criteria")
     
