@@ -6,7 +6,6 @@
 # revised 2022 for Vasilev et al. data   
 
 # Load required packages and source helper functions #----
-#library(shinyjs)
 library(metafor)
 library(readxl)
 library(tools)
