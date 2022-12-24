@@ -2,10 +2,11 @@
 ################### A General Tool for BAYESIAN META-ANALYSIS #######################
 #######################################################################################
 
-###################   Shiny App v.0.5 2022.12.22  UI ####################################
+###################   Shiny App v.0.6 2022.12.23  UI ####################################
 # revised 2022 for Vasilev et al. data   
 
 # Load required packages and source helper functions #----
+#library(shinyjs)
 library(metafor)
 library(readxl)
 library(tools)
@@ -38,15 +39,16 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                   sidebarPanel(fluidRow(
                     uiOutput("currentDataFile"),
 
-                    tabsetPanel(
+                    tabsetPanel(id = "dataSetupPanel",
                       tabPanel("Study criteria",    
                                actionButton("recalculateButton","(Re)Calculate Meta-Analysis", icon("sync"), style = "color: yellow; background-color: green"),
                                fileInput("DataFileUp", label = "Upload your data file (.xls or .xlsx)", accept = c(".xls", ".xlsx")),
                                uiOutput("inputFileError"),
                                
                                ##########  The study selection panel is created in the server:
-                               uiOutput("studyCriteria")
+                               uiOutput("studyCriteria"),
                                ##########
+                               tags$a(href="#currentDataFile", class="btn btn-default", "Go to top")
                                ),
 
                       tabPanel("Prior specifications",
@@ -116,11 +118,9 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  'An alternative method for adding studies is to download the "Current data" as a .xlsx file,',
                                  "add new rows of data, then upload the new .xlsx file for analysis."),
                                hr(),
-                               # Determine whether the new data point goes with an existing paper:
-                               radioButtons(inputId = "existingPaper", 
-                                            label = 'Is the new effect size from a paper that exists in the "Current data"?', 
-                                            choices = c("No","Yes"), selected = "No"),
+                               
                                ##########  The rest of the study selection panel is created in the server:
+                               uiOutput("studyAskType"),
                                uiOutput("setNewPaper"),
                                uiOutput("addStudies1"),
                                uiOutput("addStudies2"),
