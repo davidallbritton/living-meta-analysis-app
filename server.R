@@ -2,7 +2,7 @@
 ################### A General Tool for BAYESIAN META-ANALYSIS #################
 #######################################################################################
 
-################### Shiny App v.0.6 2022.12.23 SERVER ###################################
+################### Shiny App v.0.7 2022.12.24 SERVER ###################################
 #
 # Derived and adapted from https://vinzentwolf.shinyapps.io/taVNSHRVmeta/
 # as described in https://doi.org/10.1111/psyp.13933
@@ -28,6 +28,7 @@ server <- function(input, output, session) {
         myrvs$na.warning <- newrvs$na.warning
         myrvs$recalculatedSinceUpload <- 0
         myrvs$dataErrorMessage <- ""
+        myrvs$defaultYear <- thisYear
       })
     }
     tempnames <<- myrvs$Variable.Factor.Names
@@ -174,12 +175,13 @@ server <- function(input, output, session) {
     if(input$existingPaper == "Yes") {
       selectInput(inputId = "Paper_add", 
                   label = "Select the paper to enter an additional effect size for",
-                  choices = sort(df$Paper),
-                  selected = df$Paper[1]
+                  choices = unique(sort(df$Paper)),    
+                  selected = df$Paper[length(df$Paper)]
                   )
     }
     else {
-      textInput(inputId = "Paper_add", label = "Paper to add (citation)", paste0(as.character(max(df$ID) +1), "_author (year)"))
+      textInput(inputId = "Paper_add", label = "Paper to add (citation)", 
+                paste0(as.character(max(df$ID) +1), "_author (year)"))
     }
   })
   #
@@ -196,17 +198,28 @@ server <- function(input, output, session) {
       }
     else {max(df$ID) +1}
   })
- 
-  
-  # Create part 1 of the rest of the tabPanel for adding studies (static content)
+  #
+  # set the default year for when the user enters a new data point:
+  observeEvent(input$Paper_add, {   # update myrvs$defaultYear whenever the Paper_add input field changes
+    myrvs$defaultYear <- thisYear   # reset to the default year, then change it if adding an e.s. for an existing paper
+    papernum <- Paper.Number_add()
+    if (input$existingPaper == "Yes") {
+      if (isTruthy(df[df$Paper.Number == papernum, "Publication.Year"][1])) {
+        myrvs$defaultYear <- df[df$Paper.Number == Paper.Number_add(), "Publication.Year"][1]
+      }
+    }
+  })
+  #
+  # Create part 1 of the rest of the tabPanel for adding studies (always presented)
   output$addStudies1 <- renderUI({
     ## read in the reactive values to use in creating the UI tabPanel entries:
     df <- myrvs$df.reactive
     myrvs$ID_add <-  max(df$ID) +1
+    #
     tagList(
       p("ID = ", myrvs$ID_add),
       p("Paper.Number = ", Paper.Number_add()),
-      numericInput(inputId = "Publication.Year_add",  label = "Publication Year", value = thisYear),
+      numericInput(inputId = "Publication.Year_add",  label = "Publication Year", value = myrvs$defaultYear),
       numericInput(inputId = "Experiment.Number_add",  label = "Experiment.Number (within paper)", value =1),
       numericInput(inputId = "Effect.Size.Number_add",  label = "Effect.Size.Number (within experiment)", value =1),
       radioButtons(inputId = "Design_add", label = p("Study design"), 
@@ -324,7 +337,7 @@ server <- function(input, output, session) {
   })
   #################### End of add studies panel 
   
-  #### reset the new study submit error message
+  #### reset the new-study submit error message
   resetErrorMessage <- observe({
     myrvs$df.reactive      # remove the error message when new data is uploaded or input
     isolate(myrvs$dataErrorMessage <- "")
