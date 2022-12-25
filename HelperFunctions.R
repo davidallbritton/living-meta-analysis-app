@@ -1,24 +1,11 @@
 #######################################################################################
 ################### A General Tool for BAYESIAN META-ANALYSIS #######################
 #######################################################################################
-#  Shiny App v.0.7 2022.12.24 
+#  Shiny App v.0.7.1 2022.12.24 
 
 ################### Helper functions #################################################
 #----
 # Load files
-
-#  Data file format  
-#
-#     The data file should have one effect size per row
-#     (So if a paper has 3 effect sizes there should be 3 rows for that paper;
-#      If there are 2 studies/experiments in the paper and 3 effect sizes 
-#     The data file must contain the following columns:
-#       [[insert some more stuff here]]
-#      from each experiment, then there should be 6 rows for that paper)
-#
-#     The data file must have columns called "yi" and "vi" for the effect size
-#     and effect size variance, assumed to be for Hedge's g 
-# 
 
 # default data file for initial display, before user uploads their own data file:
 load(file = "df_Vasilev_et_al.Rda")             # loads a dataframe called "df"
@@ -26,7 +13,7 @@ load(file = "df_Vasilev_et_al.Rda")             # loads a dataframe called "df"
 ################## Constants #######################################################
 printButton <- HTML('<p  style="text-align:right; font-size: 8px;"><button  onClick="window.print()">PRINT</button></p>')
 r_estimate <- 0.74326344959  # Vasilev et al.'s estimate of the correlation between outcomes in a single study (for "within" designs)
-thisYear <- 2024
+thisYear <- 2023    # default for entering new data points
 first_shiny_meta_paper_full <- "Wolf, V., Kühnel, A., Teckentrup, V., Koenig, J., & Kroemer, N. B. (2021). Does transcutaneous auricular vagus nerve stimulation affect vagally mediated heart rate variability? A living and interactive Bayesian meta‐analysis. Psychophysiology, 58(11), e13933."
 first_shiny_meta_paper <- "Wolf, et al. (2021)"
 noise_meta_paper_full <- "Vasilev, M. R., Kirkby, J. A., & Angele, B. (2018). Auditory distraction during reading: A Bayesian meta-analysis of a continuing controversy. Perspectives on Psychological Science, 13(5), 567-597."
@@ -72,8 +59,6 @@ reformat.df <- function(df.input) {
   #  for use in aggregating effects within each paper.
   #  The following lines are just in case an input file does not have those columns, perhaps
   #  because the papers each had only one experiment and one measurement.
-  ## ** so far these are not used, so they are optional unless the aggregation function
-  ## ** gets rewritten to use them.  
   #
   if(!("Experiment.Number" %in% colnames(df))) {df$"Experiment.Number" <- 1}    # experiment number within a paper
   if(!("Effect.Size.Number" %in% colnames(df))) {df$"Effect.Size.Number" <- 1}  # effect size number within an experiment
@@ -81,8 +66,6 @@ reformat.df <- function(df.input) {
   # copy the "Paper.and.Exp" column to a "study" column.  
   # the study column is used by the aggregation functions
   df$study <- df$Paper.and.Exp
-  #
-  ###
   #
   ###  The calculation functions expect yi and vi instead of g and g_var, so add those columns if needed:
   if(!("yi" %in% colnames(df))) {df$yi <- df$g}
@@ -273,6 +256,8 @@ myUni<-function(rand){
                 colnames = c("estimate","lower CI","upper CI"))
 }
 
+
+
 ########################### Functions for users adding a study ##########
 # calculate effect size from user input
 ##
@@ -283,21 +268,13 @@ isok <- function(x){
   if(exists(xname)){isTruthy(x)} else {FALSE}
 }
 #
-#
 getEffectSize <- function(g=NA, g_var=NA, d=NA, d_var=NA, mean_E=NA, mean_C=NA,
                   var_E=NA, var_C=NA, var_type=NA, N_Total=NA, N_Intervention=NA, 
                   N_Control=NA, Design="between", r = r_estimate,
                   reverseCode="No") {
-  message("in getEffectSize function now...")  ##** for debugging
   if  (!isTruthy(g)  |  !isTruthy(g_var)) {
-    message("in getEffectSize function now.2..")  ##** for debugging
-    
-    if (!isTruthy(d) | !isTruthy(d_var) ) {  ### this causes the crash!!!!
-      message("in getEffectSize function now.3..")  ##** for debugging
-      
+    if (!isTruthy(d) | !isTruthy(d_var) ) {  
       if (!isTruthy(N_Control) |  !isTruthy(N_Intervention)) {
-        message("in getEffectSize function now.4..")  ##** for debugging
-        
       } #throw an error: must specify Ns
       if (!isTruthy(mean_E) |  !isTruthy(mean_C)) {
         message("Add throwing an error here for means"); return(NA)}   #throw an error: must specify control group SD
@@ -349,7 +326,6 @@ getEffectSize <- function(g=NA, g_var=NA, d=NA, d_var=NA, mean_E=NA, mean_C=NA,
       # calculate g from d, using the functions from Vasilev et al., 2022 
       g <- Hedges_g(d = d, design = Design, N_C = N_Control, N_E = N_Intervention, N = N_Total)
       g_var <- Hedges_g_var(d_var = d_var, design = Design, N_C = N_Control, N_E = N_Intervention, N = N_Total)
-
     }
   } # should have g and g_var at this point to return in a list
   req(g)
