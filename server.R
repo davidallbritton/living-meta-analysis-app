@@ -65,7 +65,7 @@ server <- function(input, output, session) {
             span(style = "white-space: nowrap", myrvs$currentInputFile)
           )
         } else {
-          p("The currently displayed results are from Vasilev et al., 2018 (the default data file)")
+          p("The currently displayed results are from Vasilev et al., 2018 plus updates as of 2023")
         }
       })
     })
