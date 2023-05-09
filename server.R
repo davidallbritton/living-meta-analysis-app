@@ -757,7 +757,7 @@ server <- function(input, output, session) {
       "bayesmeta_call.xlsx" 
     },
     content = function (file) {
-      if (is.null(myrvs$currentInputFile)) {Source <- "Vasilev et al., 2018"} else Source <- myrvs$currentInputFile
+      if (is.null(myrvs$currentInputFile)) {Source <- "Vasilev et al., 2018 plus 2023 updates"} else Source <- myrvs$currentInputFile
       Source <- req(as.data.frame(Source))
       Bayesmeta.Summary <- req(as.data.frame(bma()$summary))
       Bayesmeta.Summary$statistic <-   row.names(Bayesmeta.Summary) 
