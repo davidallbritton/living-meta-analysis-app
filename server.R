@@ -793,12 +793,17 @@ server <- function(input, output, session) {
       skipnames2 <- c( "studies_cells_selected" ,  "studies_rows_all"    ,     "studies_rows_selected"  , 
                        "studies_state"     ,       "studies_search"       ,    "studies_cell_clicked"  ,  
                        "studies_columns_selected", "studies_rows_current")
-      skipnames <- c(skipnames1, skipnames2)
+      skipnames3 <- c("currentData.display_state", "currentData.display_cell_clicked",
+                     "currentData.display_cells_selected" ,  "currentData.display_rows_selected",
+                      "currentData.display_rows_all"    ,     "currentData.display_search"   ,       
+                       "currentData.display_rows_current"  ,   "currentData.display_columns_selected", "dataSetupPanel")
+      skipnames <- c(skipnames1, skipnames2, skipnames3)
       namestolist <- ns[! ns %in% skipnames]
       orderednames <- c("mupriormean", "mupriorsd", "tauprior", "scaletau", "robust", "DataFileUp", "aggregation", "Design", "Publication.Year","included" )
       extranames <- namestolist[! namestolist %in% orderednames]
       allnames <- c(orderednames, extranames)
       ilist <- inputslist[allnames]
+      ilist <- purrr::discard(ilist, is.list) # just in case any elements are lists and would crash the next line of code
       ilist2 <- lapply(ilist, function(x) as.data.frame(x))
       writexl::write_xlsx(ilist2, col_names = F, file)
     }
