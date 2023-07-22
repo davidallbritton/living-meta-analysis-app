@@ -809,5 +809,17 @@ server <- function(input, output, session) {
     }
   )
 
+  ##### This section added for frequentist analyses, for large datasets ####
+  #
+  # Create model for frequentist meta-analysis
+  fma <- reactive(rma(MA()$yi, MA()$vi, slab=MA()$study))
+  
+  # Forest plot panel height
+  freq_forest_height <- reactive(length(fma()$yi) * 12 + 200)
+  #
+  output$freq_forest <- renderPlot({
+    metafor::forest.rma(x = fma(), showweights = T, addfit = T,
+                        order = "obs",  xlab = "Hedges' g", efac = 0)
+  }, height = freq_forest_height)
   
 }

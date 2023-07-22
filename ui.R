@@ -302,9 +302,20 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                           h4("Download Data and Results"),
                           p("From the currently loaded data file and most recent calculations"), br(),
                           uiOutput("downloadButtons")
-                        ) #end of Downloads tab
+                        ), #end of Downloads tab
+                        # insert frequentist tabs here
+                        tabPanel("Frequentist Forest plot", 
+                                 printButton, 
+                                 h4("Frequentist Forest plot with study weights and 95% confidence intervals:"),
+                                 plotOutput("freq_forest") %>% withSpinner(type = 6, color = "#3498DB")
+                        )
                         
-                          )
+
+                        
+                        
+                        
+                        
+                          ) #end of main tabs panel
                         )
                       )
                     )
