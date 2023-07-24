@@ -183,6 +183,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  h4("Calculation methods:"),
                                  p("Meta-analysis calculations use the R", '"bayesmeta" package, along with',
                                   "functions adapted from", paste0(first_shiny_meta_paper, "."),
+                                  " Bayesian calculations can be computationally intensive, so for large datasets",
+                                  " you may want to experiment with the Frequentist Forest and Frequentist Funnel plots first, which are much faster.",
                                   " Input data for meta-analysis are Hedges' g and the variance of g (yi and vi).",
                                   "When yi and vi are calculated from user input, the following are used:"),
                                  tags$ul(
@@ -308,13 +310,13 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  printButton, 
                                  h4("Frequentist Forest plot with study weights and 95% confidence intervals:"),
                                  plotOutput("freq_forest") %>% withSpinner(type = 6, color = "#3498DB")
+                        ),
+                        tabPanel("Frequentist Funnel plot",
+                                 printButton,
+                                 h4("Frequentist Funnel plot"),
+                                 plotOutput("freq_funnel") %>% withSpinner(type = 6, color = "#3498DB")
                         )
-                        
-
-                        
-                        
-                        
-                        
+                        #    
                           ) #end of main tabs panel
                         )
                       )

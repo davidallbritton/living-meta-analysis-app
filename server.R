@@ -118,12 +118,6 @@ server <- function(input, output, session) {
                          min = min(df$N_Intervention), max = max(df$N_Intervention), value = c(min(df$N_Intervention), max(df$N_Intervention)), step = 1, sep = "", ticks = F),
              if(!is.na(na.warning["N_Intervention"])) p(na.warning["N_Intervention"]) else "",
              
-             ## loop over the variable factor columns
-                                            lapply(Variable.Factor.Names, function(varName) {                             
-                                              checkboxGroupInput(inputId = varName, label = p(varName,style="color:#333333"), 
-                                                                 choices = levels(df[,varName]), selected = levels(df[,varName]))
-                                            }),
-             
              ### loop over the variable numeric selection columns
                                            lapply(Variable.Numeric.Names, function(varName) {
                                              pp <- if(!is.na(na.warning[varName])) p(na.warning[varName]) else ""
@@ -131,7 +125,13 @@ server <- function(input, output, session) {
                                                          min = min(df[,varName], na.rm = T), max = max(df[,varName], na.rm = T), value = c(min(df[,varName], na.rm = T), max(df[,varName], na.rm = T)), ticks = F)
                                              list(ss, pp)
                                            }), 
-          
+             
+             ## loop over the variable factor columns
+             lapply(Variable.Factor.Names, function(varName) {                             
+               checkboxGroupInput(inputId = varName, label = p(varName,style="color:#333333"), 
+                                  choices = levels(df[,varName]), selected = levels(df[,varName]))
+             }),
+             
         checkboxGroupInput(
           inputId = "included", label = p("Include/exclude specific studies",style="color:#333333",
                                            tags$style(type = "text/css", "#q9 {vertical-align: top;}"),
@@ -743,10 +743,10 @@ server <- function(input, output, session) {
     content = function (file) {
       if (is.null(myrvs$currentInputFile)) {Source <- "Vasilev et al., 2018"} else Source <- myrvs$currentInputFile
       Source <- req(as.data.frame(Source))
-      sheetList <- list(original_Data = myrvs$df.original, 
-                        current_Data = myrvs$df.updated,
+      sheetList <- list(current_Data = myrvs$df.updated,
                         current_df = myrvs$df.reactive, 
                         selected_data = req(as.data.frame(MA())), 
+                        original_Data = myrvs$df.original, 
                         Source = Source )
       writexl::write_xlsx(sheetList, file)
     }
@@ -819,7 +819,17 @@ server <- function(input, output, session) {
   #
   output$freq_forest <- renderPlot({
     metafor::forest.rma(x = fma(), showweights = T, addfit = T,
-                        order = "obs",  xlab = "Hedges' g", efac = 0)
-  }, height = freq_forest_height)
+                        order = "obs",  xlab = "Hedges' g", 
+                        addpred=T, 
+                        efac = 0,
+                        col = "red",
+                        border = "red"
+                        )
+  }, height = freq_forest_height
+  )
   
+  # Funnel plot (frequentist)
+  output$freq_funnel <- renderPlot({
+    funnel(fma(), xlab = "Observed outcome")
+  })
 }
