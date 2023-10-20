@@ -4,6 +4,7 @@
 
 ###################   Shiny App v.0.9.1 2023.05.09  UI ####################################
 # revised 2022 for Vasilev et al. data   
+#  further revisions begun 10/2023 for revised paper...
 
 # Load required packages and source helper functions #----
 library(purrr)
