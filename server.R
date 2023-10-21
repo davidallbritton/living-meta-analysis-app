@@ -778,6 +778,15 @@ server <- function(input, output, session) {
                         MA.selected.data = req(as.data.frame(MA())), 
                         Source = Source 
                         )
+      ## for debugging; temporary.  copying bma to global environment
+      bma1 <<- bma()
+      MA1 <<- MA()
+      ###   store every MA and bma whenever bma is updated; 
+      ###   whenever MA is updated, check to see if it matches any of the stored MAs
+      ###   if it does, then copy the corresponding stored bma to bma and
+      ###   somehow prevent it from recalculating bma...  not sure how to do this last bit
+      ####
+      
       writexl::write_xlsx(sheetList, file)
     }
   )
