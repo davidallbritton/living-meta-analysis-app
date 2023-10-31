@@ -33,6 +33,10 @@ server <- function(input, output, session) {
     }
   })
   
+  ### debugging or temporary stuff:
+  # Create a separate list of reactive values containing the MA dataframes
+  myrv_MA <- reactiveValues()
+  
   ## When the user uploads a data file, replace the existing data and update the UI
   observeEvent(input$DataFileUp, {
     # Read the data from the excel file the user uploaded:
@@ -586,6 +590,9 @@ server <- function(input, output, session) {
     MA <- merge(x = aggES, y = df_sub, by.x = "id", by.y = "ID") 
     MA <- unique(setDT(MA) [sort.list(id)], by = "id")
     MA <- with(MA, MA[order(MA$es)])
+    ### debugging or temporary stuff:
+    ###  store the new MA in a reactive values list, and save it to disk
+    
   })
   
 
@@ -678,10 +685,7 @@ server <- function(input, output, session) {
  
   # Additional plots panel
   output$evupdate <- renderPlot({
-    bma()  #trigger recalculation
-    isolate({
-      priorposteriorlikelihood.ggplot(bma(), lowerbound = 0 - (input$mupriormean + 1) * 1.5, upperbound = 0 + (input$mupriormean + 1) * 1.5)
-    })
+    priorposteriorlikelihood.ggplot(bma(), lowerbound = 0 - (input$mupriormean + 1) * 1.5, upperbound = 0 + (input$mupriormean + 1) * 1.5)
   }, width = 800)
   output$joint <- renderPlot({
     plot.bayesmeta(bma(), which=2, main = "")
@@ -698,11 +702,18 @@ server <- function(input, output, session) {
     isolate({
       if (input$robust == "Yes" &
           input$tauprior == "Half cauchy") {
+        ## for debugging; temporary. 
+        robustggplot <-
         robustness(MA(),SD = input$mupriorsd, tauprior = function(t) dhalfcauchy(t, scale = input$scaletau))
       } else if (input$robust == "Yes" &
                  input$tauprior == "Half student t") {
+        ## for debugging; temporary. 
+        robustggplot <-
         robustness(MA(),SD = input$mupriorsd, tauprior = function(t) dhalfnormal(t, scale = input$scaletau))
-      } 
+      }
+      ## for debugging; temporary. 
+      saveRDS(robustggplot, file = "robustplot1.RDS")
+      robustggplot 
     })
   }, width = 800)
   
@@ -780,7 +791,9 @@ server <- function(input, output, session) {
                         )
       ## for debugging; temporary.  copying bma to global environment
       bma1 <<- bma()
+      saveRDS(bma(), file = "bma1.RDS")
       MA1 <<- MA()
+      saveRDS(MA(), file = "MA1.RDS")
       ###   store every MA and bma whenever bma is updated; 
       ###   whenever MA is updated, check to see if it matches any of the stored MAs
       ###   if it does, then copy the corresponding stored bma to bma and
