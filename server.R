@@ -575,6 +575,11 @@ server <- function(input, output, session) {
       df_sub <- df_sub[df_sub[,varName] >= input[[varName]][1], ]
       df_sub <- df_sub[df_sub[,varName] <= input[[varName]][2], ]
     }
+    ### need to check to make sure nstudies is not zero; throw error message
+    validate(
+      need(nrow(df_sub) > 0, "That returns zero studies. Please change your selection criteria and Recalculate.")
+    )
+    #
     # replace ID with Paper.Number if aggregating over papers:
     if (input$aggregation == "Papers") {
       df_sub$ID <- df_sub$Paper.Number
@@ -843,7 +848,10 @@ server <- function(input, output, session) {
   ##### This section added for frequentist analyses, for large datasets ####
   #
   # Create model for frequentist meta-analysis
-  fma <- reactive(rma(MA()$es, MA()$var, slab=MA()$study))
+  fma <- reactive({
+    MA()  # must reference MA() first so its check for (nrows > 0) happens
+    #
+    rma(MA()$es, MA()$var, slab=MA()$study)})
   
   # Forest plot panel height
   freq_forest_height <- reactive(length(fma()$yi) * 12 + 200)
