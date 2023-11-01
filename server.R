@@ -16,6 +16,9 @@ server <- function(input, output, session) {
   ## by the user
   myrvs <- reactiveValues(currentInputFile = NULL)   
   myrvs$nfiles <- 0
+  ### debugging or temporary stuff:
+  # Create a separate list of reactive values containing the MA dataframes
+  myrv_MA <- reactiveValues()
   observe({
     if(is.null(input$DataFileUp)){   #this trigger works because input$DataFileUp gets initialized to null when the app first loads, which triggers the observer
       isolate({                   #isolate so that changes in myrvs do not trigger the observer
@@ -29,13 +32,12 @@ server <- function(input, output, session) {
         myrvs$recalculatedSinceUpload <- 0
         myrvs$dataErrorMessage <- ""
         myrvs$defaultYear <- thisYear
+        myrvs$ma_num <- 1
+  ###      myrv_MA[[1]] <- readRDS("MA_2023_updated_allStudies_defaultPriors.RDS")   ### debugging
       })
     }
   })
   
-  ### debugging or temporary stuff:
-  # Create a separate list of reactive values containing the MA dataframes
-  myrv_MA <- reactiveValues()
   
   ## When the user uploads a data file, replace the existing data and update the UI
   observeEvent(input$DataFileUp, {
@@ -592,7 +594,10 @@ server <- function(input, output, session) {
     MA <- with(MA, MA[order(MA$es)])
     ### debugging or temporary stuff:
     ###  store the new MA in a reactive values list, and save it to disk
-    
+    saveRDS(MA, file = paste0("MA", myrvs$ma_num, ".RDS"))
+###    myrv_MA[myrvs$ma_num] <- MA   ### debugging
+    myrvs$ma_num <- myrvs$ma_num + 1
+    MA
   })
   
 
@@ -794,6 +799,10 @@ server <- function(input, output, session) {
       saveRDS(bma(), file = "bma1.RDS")
       MA1 <<- MA()
       saveRDS(MA(), file = "MA1.RDS")
+      bc1 <<- Bayesmeta.Call
+      saveRDS(Bayesmeta.Call, file = "bc1.RDS")
+      ### that did not help.  would need a shinymeta expansion of Bayesmeta.Call ### debugging
+      
       ###   store every MA and bma whenever bma is updated; 
       ###   whenever MA is updated, check to see if it matches any of the stored MAs
       ###   if it does, then copy the corresponding stored bma to bma and
