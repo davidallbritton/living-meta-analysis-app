@@ -28,6 +28,7 @@ library(shinythemes)
 library(stringr)
 library(tidyr)
 library(xtable)
+library(shinymeta)
 source("HelperFunctions.R")
 source("effect_sizes.R")
 #----

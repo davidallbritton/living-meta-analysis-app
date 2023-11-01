@@ -600,7 +600,7 @@ server <- function(input, output, session) {
     ### debugging or temporary stuff:
     ###  store the new MA in a reactive values list, and save it to disk
     saveRDS(MA, file = paste0("MA", myrvs$ma_num, ".RDS"))
-###    myrv_MA[myrvs$ma_num] <- MA   ### debugging
+###    myrv_MA[myrvs$ma_num] <- MA   ### debugging   
     myrvs$ma_num <- myrvs$ma_num + 1
     MA
   })
