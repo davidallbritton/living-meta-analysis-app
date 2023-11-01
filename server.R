@@ -818,10 +818,7 @@ server <- function(input, output, session) {
   #
   # Create model for frequentist meta-analysis
   fma <- reactive({
-    ### need to check to make sure nstudies is not zero; throw error message
-    validate(
-      need(nrow(MA()) > 0, "That returns zero studies. Please change your selection criteria and Recalculate.")
-    )
+    MA()  # must reference MA() first so its check for (nrows > 0) happens
     #
     rma(MA()$es, MA()$var, slab=MA()$study)})
   
