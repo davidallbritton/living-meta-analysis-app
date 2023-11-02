@@ -608,7 +608,7 @@ server <- function(input, output, session) {
 
   # Create bma reactive needed for all outputs
   bma <- metaReactive({
-    MA()    #trigger to update bma
+    req(MA())    #trigger to update bma ### commented for debugging
     ## Generate bayesmeta-object "bma" depending on tau prior chosen
    isolate({
     if (..(input$tauprior) == "Half cauchy") {
@@ -627,21 +627,55 @@ server <- function(input, output, session) {
    })
   })
   
-  ### for debugging
+  ### Record the data, bayesmeta parameters, and bayesmeta model each time 
+  ### the user updates the analysis.  In other words, 
+  ### record    MA(),      printed_bma,      and bma()
+  ### record them in a reactiveValues list called "previousbmas" 
+  #
+  # create a shinymeta expansion of the reactive bma()
   printed_bma <- reactive(
     expandChain(bma())
   )
-  
+  #
   ### for debugging
-  tempobserve <- observe({
-#    isolate({
+  ##  maybe this should be a function, and it should be called in the bma() section
+  ##  instead of being a separate observe() of the recalculate button.
+  # function: get_previous_bma (MA, printed_bma)
+  #   check whether any old ones are identical to both. if so, return old bma()
+  #   if not, return FALSE
+  # in the bma() section, do this:
+  #   isNewOne <- get_previous_bma(MA(), printed_bma())
+  #   if (isNewOne) bma <- isNewOne
+  #   else {the rest of the usual stuff to assign a value to bma}
+  #   bma
+  #
+  
+  ### make sure you dont change the priors in between pressing recalculate and clicking on
+  ### a bayesian analysis tab.  Then the printed_bma() will not match because 
+  ### bma() only gets calculated when you click the bayesian analysis window
+  ### and it will use the currently selected priors, not the ones you recorded
+  ### in printed_bma() when you clicked recalculate!  
+  
+  observe({
+    input$recalculateButton     # triggered on each recalculation
+    isolate({
+      # get the data and bayesmeta parameters
+      MA <- MA()
+      printed_bma <- printed_bma()
+      # check to see if they are identical to any of the previously recorded ones
+      
+      # if they are, copy bma() from the stored one that goes with them and don't 
+      # calculate bma() again.
+      
+      # if they are not identical, then calculate bma() as usual
+      # and add the three things to the "previousbmas" list
+      
       if(!exists("tempx")) tempx <- 0
       tempx <- tempx+1
       print(tempx)
-      print(printed_bma())
-      # print(expandChain(bma()))
-      #   print(withMetaMode(bma()))
-#    })
+      print(input$recalculateButton)
+      print(printed_bma)
+    })
   })
   
   # Study overview panel  
