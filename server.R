@@ -607,26 +607,42 @@ server <- function(input, output, session) {
   
 
   # Create bma reactive needed for all outputs
-  bma <- reactive({
+  bma <- metaReactive({
     MA()    #trigger to update bma
     ## Generate bayesmeta-object "bma" depending on tau prior chosen
    isolate({
-    if (input$tauprior == "Half cauchy") {
+    if (..(input$tauprior) == "Half cauchy") {
       bma <- bayesmeta(y = MA()$es,sigma = sqrt(MA()$var), labels = MA()$study, 
-                       tau.prior = function(t) dhalfcauchy(t, scale = input$scaletau), 
-                       mu.prior = c("mean" = input$mupriormean, "sd" = input$mupriorsd))
-    } else if (input$tauprior == "Half student t") {
+                       tau.prior = function(t) dhalfcauchy(t, scale = ..(input$scaletau)), 
+                       mu.prior = c("mean" = ..(input$mupriormean), "sd" = ..(input$mupriorsd)))
+    } else if (..(input$tauprior) == "Half student t") {
       bma <- bayesmeta(y = MA()$es,sigma = sqrt(MA()$var), labels = MA()$study, 
-                       tau.prior = function(t) dhalfnormal(t, scale = input$scaletau), 
-                       mu.prior = c("mean" = input$mupriormean, "sd" = input$mupriorsd))
+                       tau.prior = function(t) dhalfnormal(t, scale = ..(input$scaletau)), 
+                       mu.prior = c("mean" = ..(input$mupriormean), "sd" = ..(input$mupriorsd)))
     } else {
       bma <- bayesmeta(y = MA()$es,sigma = sqrt(MA()$var), labels = MA()$study, 
-                       tau.prior = input$tauprior, 
-                       mu.prior = c("mean" = input$mupriormean, "sd" = input$mupriorsd))
+                       tau.prior = ..(input$tauprior), 
+                       mu.prior = c("mean" = ..(input$mupriormean), "sd" = ..(input$mupriorsd)))
     }
    })
   })
   
+  ### for debugging
+  printed_bma <- reactive(
+    expandChain(bma())
+  )
+  
+  ### for debugging
+  tempobserve <- observe({
+#    isolate({
+      if(!exists("tempx")) tempx <- 0
+      tempx <- tempx+1
+      print(tempx)
+      print(printed_bma())
+      # print(expandChain(bma()))
+      #   print(withMetaMode(bma()))
+#    })
+  })
   
   # Study overview panel  
   output$studies <- DT::renderDataTable({
