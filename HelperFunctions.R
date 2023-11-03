@@ -307,4 +307,15 @@ getEffectSize <- function(g=NA, g_var=NA, d=NA, d_var=NA, mean_E=NA, mean_C=NA,
 }
 ###########  End of function for calculating g and g_var from user input #############
 
-
+########## Function for checking for previously calculated bma models ###########
+checkOldModels <- function(listPrevious, MAcurrent, printed_bma_current) {
+  return_bma <- FALSE
+  if(length(listPrevious)) {
+    for (i in 1:length(listPrevious)) {
+      if(identical(listPrevious[[i]]$MA, MAcurrent)) if(identical(listPrevious[[i]]$printed_bma, printed_bma_current)) {
+        return_bma <- listPrevious[[i]]$bma
+      }
+    }
+  }
+  if(isTruthy(return_bma)) return_bma else FALSE
+}

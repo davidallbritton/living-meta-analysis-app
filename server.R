@@ -16,10 +16,7 @@ server <- function(input, output, session) {
   ## by the user
   myrvs <- reactiveValues(currentInputFile = NULL)   
   myrvs$nfiles <- 0
-  ### debugging or temporary stuff:
-  # Create a separate list of reactive values containing the MA dataframes
-  myrv_MA <- reactiveValues()
-  observe({
+    observe({
     if(is.null(input$DataFileUp)){   #this trigger works because input$DataFileUp gets initialized to null when the app first loads, which triggers the observer
       isolate({                   #isolate so that changes in myrvs do not trigger the observer
         newrvs <- reformat.df(df)
@@ -33,12 +30,16 @@ server <- function(input, output, session) {
         myrvs$dataErrorMessage <- ""
         myrvs$defaultYear <- thisYear
         myrvs$ma_num <- 1
-  ###      myrv_MA[[1]] <- readRDS("MA_2023_updated_allStudies_defaultPriors.RDS")   ### debugging
+        # add a list for storing the previous models.  Each index of this list
+        # should contain a list of 3 things: MA, printed_bma, bma
+        myrvs$previousModels <- list()
+        ###  add something here to initialize $previousModels if a file exists ***
+        
       })
     }
   })
   
-  
+   
   ## When the user uploads a data file, replace the existing data and update the UI
   observeEvent(input$DataFileUp, {
     # Read the data from the excel file the user uploaded:
@@ -597,10 +598,10 @@ server <- function(input, output, session) {
     MA <- merge(x = aggES, y = df_sub, by.x = "id", by.y = "ID") 
     MA <- unique(setDT(MA) [sort.list(id)], by = "id")
     MA <- with(MA, MA[order(MA$es)])
-    ### debugging or temporary stuff:
-    ###  store the new MA in a reactive values list, and save it to disk
-    saveRDS(MA, file = paste0("MA", myrvs$ma_num, ".RDS"))
-###    myrv_MA[myrvs$ma_num] <- MA   ### debugging   
+#     ### debugging or temporary stuff:
+#     ###  store the new MA in a reactive values list, and save it to disk
+#     saveRDS(MA, file = paste0("MA", myrvs$ma_num, ".RDS"))
+# ###    myrv_MA[myrvs$ma_num] <- MA   ### debugging   
     myrvs$ma_num <- myrvs$ma_num + 1
     MA
   })
@@ -608,47 +609,61 @@ server <- function(input, output, session) {
 
   # Create bma reactive needed for all outputs
   bma <- metaReactive({
-    req(MA())    #trigger to update bma ### commented for debugging
+    req(MA())    #trigger to update bma 
+    req(printed_bma())  # to make sure this is up to date
+    printed_bma <- as.character(printed_bma())
     ## Generate bayesmeta-object "bma" depending on tau prior chosen
-   isolate({
-    if (..(input$tauprior) == "Half cauchy") {
-      bma <- bayesmeta(y = MA()$es,sigma = sqrt(MA()$var), labels = MA()$study, 
-                       tau.prior = function(t) dhalfcauchy(t, scale = ..(input$scaletau)), 
-                       mu.prior = c("mean" = ..(input$mupriormean), "sd" = ..(input$mupriorsd)))
-    } else if (..(input$tauprior) == "Half student t") {
-      bma <- bayesmeta(y = MA()$es,sigma = sqrt(MA()$var), labels = MA()$study, 
-                       tau.prior = function(t) dhalfnormal(t, scale = ..(input$scaletau)), 
-                       mu.prior = c("mean" = ..(input$mupriormean), "sd" = ..(input$mupriorsd)))
-    } else {
-      bma <- bayesmeta(y = MA()$es,sigma = sqrt(MA()$var), labels = MA()$study, 
-                       tau.prior = ..(input$tauprior), 
-                       mu.prior = c("mean" = ..(input$mupriormean), "sd" = ..(input$mupriorsd)))
-    }
-   })
-  })
+    isolate({
+      old_bma <- FALSE
+      old_bma <- checkOldModels(myrvs$previousModels, MA(), printed_bma)
+      if(isTruthy(old_bma)) bma <- old_bma  # retrieve previously calculated bma model
+      else { ####
+        if (..(input$tauprior) == "Half cauchy") {
+          bma <- bayesmeta(y = MA()$es,sigma = sqrt(MA()$var), labels = MA()$study, 
+                           tau.prior = function(t) dhalfcauchy(t, scale = ..(input$scaletau)), 
+                           mu.prior = c("mean" = ..(input$mupriormean), "sd" = ..(input$mupriorsd)))
+        } else if (..(input$tauprior) == "Half student t") {
+          bma <- bayesmeta(y = MA()$es,sigma = sqrt(MA()$var), labels = MA()$study, 
+                           tau.prior = function(t) dhalfnormal(t, scale = ..(input$scaletau)), 
+                           mu.prior = c("mean" = ..(input$mupriormean), "sd" = ..(input$mupriorsd)))
+        } else {
+          bma <- bayesmeta(y = MA()$es,sigma = sqrt(MA()$var), labels = MA()$study, 
+                           tau.prior = ..(input$tauprior), 
+                           mu.prior = c("mean" = ..(input$mupriormean), "sd" = ..(input$mupriorsd)))
+        }
+        ## store the new model 
+         print("this here")  # debugging
+         newrow <- list(MA = MA(), printed_bma = printed_bma, bma = bma) # debugging
+         print("that worked")  # debugging
+         lastModel <- length(myrvs$previousModels)
+         newrownum <- lastModel + 1
+         myrvs$previousModels[newrownum] <- list(newrow)
+         
+         
+         print("length of myrvs$previousModels")  # debugging
+         print(length(myrvs$previousModels))  # debugging
+         
+         tempprevmods <- myrvs$previousModels   # debugging
+         saveRDS(tempprevmods, file = "tempprevmods.RDS")   # debugging
+         tempMA <- MA()        # debugging
+         saveRDS(tempMA, file = "tempMA.RDS")   # debugging
+         tempprinted_bma <- printed_bma        # debugging
+         saveRDS(tempprinted_bma, file = "tempprinted_bma.RDS")   # debugging
+         saveRDS(old_bma, file = "old_bma.RDS")   # debugging
+         
+        bma
+      }  ####
+    })  # end of isolate()
+  })   # end of bma() definition
   
-  ### Record the data, bayesmeta parameters, and bayesmeta model each time 
-  ### the user updates the analysis.  In other words, 
-  ### record    MA(),      printed_bma,      and bma()
-  ### record them in a reactiveValues list called "previousbmas" 
-  #
+
+
   # create a shinymeta expansion of the reactive bma()
   printed_bma <- reactive(
     expandChain(bma())
   )
   #
-  ### for debugging
-  ##  maybe this should be a function, and it should be called in the bma() section
-  ##  instead of being a separate observe() of the recalculate button.
-  # function: get_previous_bma (MA, printed_bma)
-  #   check whether any old ones are identical to both. if so, return old bma()
-  #   if not, return FALSE
-  # in the bma() section, do this:
-  #   isNewOne <- get_previous_bma(MA(), printed_bma())
-  #   if (isNewOne) bma <- isNewOne
-  #   else {the rest of the usual stuff to assign a value to bma}
-  #   bma
-  #
+  
   
   ### make sure you dont change the priors in between pressing recalculate and clicking on
   ### a bayesian analysis tab.  Then the printed_bma() will not match because 
@@ -656,27 +671,8 @@ server <- function(input, output, session) {
   ### and it will use the currently selected priors, not the ones you recorded
   ### in printed_bma() when you clicked recalculate!  
   
-  observe({
-    input$recalculateButton     # triggered on each recalculation
-    isolate({
-      # get the data and bayesmeta parameters
-      MA <- MA()
-      printed_bma <- printed_bma()
-      # check to see if they are identical to any of the previously recorded ones
-      
-      # if they are, copy bma() from the stored one that goes with them and don't 
-      # calculate bma() again.
-      
-      # if they are not identical, then calculate bma() as usual
-      # and add the three things to the "previousbmas" list
-      
-      if(!exists("tempx")) tempx <- 0
-      tempx <- tempx+1
-      print(tempx)
-      print(input$recalculateButton)
-      print(printed_bma)
-    })
-  })
+  
+  
   
   # Study overview panel  
   output$studies <- DT::renderDataTable({
