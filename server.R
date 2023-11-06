@@ -605,53 +605,49 @@ server <- function(input, output, session) {
 
   # Create bma reactive needed for all outputs
   bma <- metaReactive({
-    req(MA())    #trigger to update bma 
-    req(printed_bma())  # to make sure this is up to date
+    req(MA())           # trigger to update bma 
+    req(printed_bma())  # to make sure the meta-expansion text is up to date
     printed_bma <- as.character(printed_bma())
     ## Generate bayesmeta-object "bma" depending on tau prior chosen
     isolate({
       old_bma <- FALSE
       old_bma <- checkOldModels(myrvs$previousModels, MA(), printed_bma)
       if(isTruthy(old_bma)) bma <- old_bma  # retrieve previously calculated bma model
-      else { ####
+      else { #### if there is no prevously calculated bma model to retrieve, calculate a new one
+        MA <- MA()
         if (..(input$tauprior) == "Half cauchy") {
-          bma <- bayesmeta(y = MA()$es,sigma = sqrt(MA()$var), labels = MA()$study, 
+          bma <- bayesmeta(y = MA$es,sigma = sqrt(MA$var), labels = MA$study, 
                            tau.prior = function(t) dhalfcauchy(t, scale = ..(input$scaletau)), 
                            mu.prior = c("mean" = ..(input$mupriormean), "sd" = ..(input$mupriorsd)))
         } else if (..(input$tauprior) == "Half student t") {
-          bma <- bayesmeta(y = MA()$es,sigma = sqrt(MA()$var), labels = MA()$study, 
+          bma <- bayesmeta(y = MA$es,sigma = sqrt(MA$var), labels = MA$study, 
                            tau.prior = function(t) dhalfnormal(t, scale = ..(input$scaletau)), 
                            mu.prior = c("mean" = ..(input$mupriormean), "sd" = ..(input$mupriorsd)))
         } else {
-          bma <- bayesmeta(y = MA()$es,sigma = sqrt(MA()$var), labels = MA()$study, 
+          bma <- bayesmeta(y = MA$es,sigma = sqrt(MA$var), labels = MA$study, 
                            tau.prior = ..(input$tauprior), 
                            mu.prior = c("mean" = ..(input$mupriormean), "sd" = ..(input$mupriorsd)))
         }
         ## store the new model 
-         print("this here")  # debugging
-         newrow <- list(MA = MA(), printed_bma = printed_bma, bma = bma) # debugging
-         print("that worked")  # debugging
-         lastModel <- length(myrvs$previousModels)
-         newrownum <- lastModel + 1
-         myrvs$previousModels[newrownum] <- list(newrow)
-         
-         
-         print("length of myrvs$previousModels")  # debugging
-         print(length(myrvs$previousModels))  # debugging
-         
-         tempprevmods <- myrvs$previousModels   # debugging
-         saveRDS(tempprevmods, file = "tempprevmods.RDS")   # debugging
-         tempMA <- MA()        # debugging
-         saveRDS(tempMA, file = "tempMA.RDS")   # debugging
-         tempprinted_bma <- printed_bma        # debugging
-         saveRDS(tempprinted_bma, file = "tempprinted_bma.RDS")   # debugging
-         saveRDS(old_bma, file = "old_bma.RDS")   # debugging
-         
+        updateModels(MA = MA, printed_bma = printed_bma, bma = bma)
         bma
       }  ####
     })  # end of isolate()
   })   # end of bma() definition
   
+  
+  # function to update the list of previous models when bma() changes; for use in the bma() block only
+  # used for its side effect of updating myrvs only; returned value not used.
+  updateModels <- function(MA, printed_bma, bma) {
+    newrow <- list(MA = MA, printed_bma = printed_bma, bma = bma) 
+    myrvs$previousModels[length(myrvs$previousModels) + 1] <- list(newrow)
+    # debugging prints; delete later:
+    print("length of myrvs$previousModels")  # debugging
+    print(length(myrvs$previousModels))  # debugging
+    tempprevmods <- myrvs$previousModels   # debugging???
+    saveRDS(tempprevmods, file = "tempprevmods.RDS")   # debugging???
+    length(myrvs$previousModels)  # unused return value
+  }
 
 
   # create a shinymeta expansion of the reactive bma()
@@ -659,6 +655,13 @@ server <- function(input, output, session) {
     expandChain(bma())
   )
   #
+  
+  # # save the previously run models to disk  ***** faster to just do it in bma()
+  # observeEvent(input$recalculateButton, {
+  #   tempprevmods <- myrvs$previousModels   # debugging
+  #   saveRDS(tempprevmods, file = "previousModels.RDS")   # debugging
+  # })
+ 
   
   
   ### make sure you dont change the priors in between pressing recalculate and clicking on
