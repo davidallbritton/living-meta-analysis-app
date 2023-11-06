@@ -606,10 +606,10 @@ server <- function(input, output, session) {
   # Create bma reactive needed for all outputs
   bma <- metaReactive({
     req(MA())           # trigger to update bma 
-    req(printed_bma())  # to make sure the meta-expansion text is up to date
-    printed_bma <- as.character(printed_bma())
-    ## Generate bayesmeta-object "bma" depending on tau prior chosen
-    isolate({
+    isolate({           # so that changes in prior do not trigger bma() update before "recalculate" button is pressed
+      req(printed_bma())  # to make sure the meta-expansion text is up to date
+      printed_bma <- as.character(printed_bma())
+      ## Generate bayesmeta-object "bma" depending on tau prior chosen
       old_bma <- FALSE
       old_bma <- checkOldModels(myrvs$previousModels, MA(), printed_bma)
       if(isTruthy(old_bma)) bma <- old_bma  # retrieve previously calculated bma model
@@ -656,21 +656,12 @@ server <- function(input, output, session) {
   )
   #
   
-  # # save the previously run models to disk  ***** faster to just do it in bma()
-  # observeEvent(input$recalculateButton, {
-  #   tempprevmods <- myrvs$previousModels   # debugging
-  #   saveRDS(tempprevmods, file = "previousModels.RDS")   # debugging
-  # })
- 
-  
-  
+
   ### make sure you dont change the priors in between pressing recalculate and clicking on
   ### a bayesian analysis tab.  Then the printed_bma() will not match because 
   ### bma() only gets calculated when you click the bayesian analysis window
   ### and it will use the currently selected priors, not the ones you recorded
   ### in printed_bma() when you clicked recalculate!  
-  
-  
   
   
   # Study overview panel  
