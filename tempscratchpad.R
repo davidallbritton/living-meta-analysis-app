@@ -3,6 +3,10 @@
 
 tempstuff <- readRDS("tempprevmods33.RDS")
 tempstuff <- readRDS("tempprevmods.RDS")
+tempstuff <- readRDS("defaultPrecalculatedModels.RDS")
+
+
+# defaultPrecalculatedModels.RDS
 
 identical (tempstuff[[1]][["MA"]], tempstuff[[2]][["MA"]])
 identical (tempstuff[[1]]["MA"], tempstuff[[2]]["MA"])

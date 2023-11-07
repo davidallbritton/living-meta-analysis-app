@@ -613,21 +613,14 @@ server <- function(input, output, session) {
   # Create bma reactive needed for all outputs
   bma <- metaReactive({
     req(MA())           # trigger to update bma; MA() gets updated only when "recalculate" button is pressed
-    #print(paste("1n prev models", length(myrvs$previousModels)))  # debugging
-    
     isolate({           # so that changes in priors do not trigger bma() update before "recalculate" button is pressed
       req(printed_bma())  # to make sure the meta-expansion text is up to date
       printed_bma <- as.character(printed_bma())
       ## Generate bayesmeta-object "bma" depending on tau prior chosen
       old_bma <- FALSE
-      print(paste("2n prev models", length(myrvs$previousModels)))  # debugging
-      
       old_bma <- checkOldModels(myrvs$previousModels, MA(), printed_bma)
-      print(paste("3n prev models", length(myrvs$previousModels)))  # debugging
       if(isTruthy(old_bma)) bma <- old_bma  # retrieve previously calculated bma model
       else { #### if there is no prevously calculated bma model to retrieve, calculate a new one
-        print(paste("4n prev models", length(myrvs$previousModels)))  # debugging
-        
         MA <- MA()
         if (..(input$tauprior) == "Half cauchy") {
           bma <- bayesmeta(y = MA$es,sigma = sqrt(MA$var), labels = MA$study, 
@@ -778,6 +771,8 @@ server <- function(input, output, session) {
     if (myrvs$recalculatedSinceUpload > 0){
       tagList(
         p(),
+        downloadButton("rds_file.bma", "R object (RDS file) containing bayesmeta models along with the data and code used to generate them"),
+        p(),
         downloadButton("originalData", "Data as originally uploaded"),
         p(),
         downloadButton("currentData.down", "Data as currently in use (primarily for debugging)"),
@@ -791,6 +786,15 @@ server <- function(input, output, session) {
   })
   #
   ##### create things for the UI to download here....
+  output$rds_file.bma <- downloadHandler(   
+    filename = function() {
+      "bayesmeta_models.RDS" 
+    },
+    content = function (file) {
+      saveRDS(myrvs$previousModels, file)
+    }
+  )
+  #
   output$originalData <- downloadHandler(   
     filename = function() {
       "originalData.xlsx" 
