@@ -765,11 +765,40 @@ server <- function(input, output, session) {
   }, width = 800)
   
   
-  # #### observer to clear the Saved Models when the button is pressed
+  #### observer to clear the Saved Models when the button is pressed
   observeEvent(input$ClearModels, {
     print("clearing models...")
     myrvs$previousModels <- list()
   })
+  
+  
+  #### section for uploading saved models from a file
+  
+  
+  #### for reading .RDS file containing previously calculated bayesmeta models
+  observeEvent(input$SavedModelsUp, {
+    # Read the data from the RDS file the user uploaded:
+    fileExtension <- tools::file_ext(input$SavedModelsUp$datapath)
+    output$inputFileErrorBup <- renderUI({  # create error message in case file not uploaded successfully
+      if (!is.null(input$SavedModelsUp)) p(style = "color:red", "***File was not read***")
+    })
+    validate(need(fileExtension == "RDS" | fileExtension == "rds" | fileExtension == "Rds" , "Please upload an RDS file"))
+    newrows_bma <- readRDS(input$SavedModelsUp$datapath)
+    oldrows_bma <- myrvs$previousModels
+    allrows_bma <- c(newrows_bma, oldrows_bma)
+    tempnew <<- newrows_bma  # debugging
+    tempold <<- oldrows_bma  # debugging
+    tempall <<- allrows_bma  # debugging
+    
+    myrvs$previousModels <- allrows_bma
+    output$inputFileErrorBup <- renderUI(NULL) # remove error message if file uploaded successfully
+  })
+  
+  
+  
+  
+  
+  
   
   ########### Downloads panel
   #

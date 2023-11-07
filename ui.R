@@ -165,9 +165,11 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  "session, you can upload them again to save calculation time.",
                                  "They will be appended to the current list of saved models, ",
                                  "so if you want to replace the current list you can first",
-                                 "Clear Saved Models before uploading."
+                                 "Clear Saved Models before uploading.",
+                               
+                               fileInput("SavedModelsUp", label = "Upload .RDS", accept = c(".rds", ".RDS", ".Rds"))
+                               # uiOutput("inputFileErrorBup"),
                                ),
-                               downloadButton("rds_file.bma2", "Download"),
                                hr()
                                
                       ),
