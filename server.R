@@ -12,6 +12,9 @@
 # Define server logic
 server <- function(input, output, session) {
   
+  # increase the allowable file size for uploads:
+  options(shiny.maxRequestSize = 10 * 1024^2)
+  
   ## Initialize with stored data, which will be replaced when a data file is uploaded
   ## by the user
   myrvs <- reactiveValues(currentInputFile = NULL)   
