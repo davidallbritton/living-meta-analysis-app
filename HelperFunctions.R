@@ -311,6 +311,7 @@ getEffectSize <- function(g=NA, g_var=NA, d=NA, d_var=NA, mean_E=NA, mean_C=NA,
 checkOldModels <- function(listPrevious, MAcurrent, printed_bma_current) {
   return_bma <- FALSE
   if(length(listPrevious)) {
+    print("Checking old models....")   # debugging
     for (i in 1:length(listPrevious)) {
       print("XXX"); print(identical(listPrevious[[i]]$MA, MAcurrent)); print(identical(listPrevious[[i]]$printed_bma, printed_bma_current)) # debugging
       print("XXX"); print(identical(as.data.frame(listPrevious[[i]]$MA), as.data.frame(MAcurrent))); print(identical(listPrevious[[i]]$printed_bma, printed_bma_current)) # debugging

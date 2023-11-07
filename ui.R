@@ -129,6 +129,64 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                uiOutput("addStudies3"),
                                ##########
                       ),
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      ############ "Saved Bayesian Models" panel
+                      tabPanel("Saved Bayesian Models",   
+                               p("The models created by bayesmeta can take a long time to compute.",
+                                 "To save time",
+                                 'each bayesmeta model computed during the current session is automatically',
+                                 "saved for reuse during the session.  You can also choose to download",
+                                 "the saved models, upload a previously downloaded set of saved models,",
+                                 "or clear the current list of saved models."
+                               ),
+                               hr(),
+                               #
+                               p(tags$strong("Clear Saved Models."),
+                                 "Some precalculated bayesmeta models for the default dataset may be loaded automatically when the app starts.",
+                                 "You can delete them here if they are not relevant for your meta-analysis."
+                               ),
+                                actionButton("ClearModels", "Delete Models"),
+                               hr(),
+                               #
+                               p(tags$strong("Download Saved Models."),
+                                 "Download an R object (RDS file) containing bayesmeta models along with the data and code used to generate them.",
+                                 tags$i("(Also available on the Downloads tab)")),
+                               downloadButton("rds_file.bma", "Download"),
+                               hr(),
+                               p(tags$strong("Upload Precalculated Models."),
+                                 "If you downloaded bayesmeta models during a previous",
+                                 "session, you can upload them again to save calculation time.",
+                                 "They will be appended to the current list of saved models, ",
+                                 "so if you want to replace the current list you can first",
+                                 "Clear Saved Models before uploading."
+                               ),
+                               downloadButton("rds_file.bma2", "Download"),
+                               hr()
+                               
+                      ),
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
 
                       hr()
                     ))),
@@ -143,6 +201,21 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  h4("Updating Results:"),
                                  p('Except for the "Current data" tab, all results tabs are only updated when the "Re-calculate Meta-Analysis" button is pressed.', 
                                    "It is not necessary to re-calculate for each tab, however.  All tabs are updated after each recalculation."), 
+                                 
+                                 h4("Recommended use:"),
+                                 p('Because the calculations for Bayesian models can take', 
+                                   "a long time for large datasets, you may want to first use the frequentist",
+                                   "panels before deciding which Bayesian models to run.",
+                                   "For the default dataset some Bayesian models have been",
+                                   "computed and stored ahead of time to speed things up.",
+                                   "The Bayes Facor Robustness Check panel requires multiple",
+                                   "recomputations of the Bayesian model and is VERY slow as a result.",
+                                   "You may only want to run it once, on your final selected model."
+                                 ), 
+                                 
+                                 
+                                 
+                                 
                                  h4("Adding new studies:"),
                                  p("You can add new effect sizes one at a time using the",
                                    '"Add a Study" tab. You can save the updated data file',

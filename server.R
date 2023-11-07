@@ -765,6 +765,12 @@ server <- function(input, output, session) {
   }, width = 800)
   
   
+  # #### observer to clear the Saved Models when the button is pressed
+  observeEvent(input$ClearModels, {
+    print("clearing models...")
+    myrvs$previousModels <- list()
+  })
+  
   ########### Downloads panel
   #
   ##### create download buttons to display in UI
