@@ -312,7 +312,9 @@ checkOldModels <- function(listPrevious, MAcurrent, printed_bma_current) {
   return_bma <- FALSE
   if(length(listPrevious)) {
     for (i in 1:length(listPrevious)) {
-      if(identical(listPrevious[[i]]$MA, MAcurrent)) if(identical(listPrevious[[i]]$printed_bma, printed_bma_current)) {
+      print("XXX"); print(identical(listPrevious[[i]]$MA, MAcurrent)); print(identical(listPrevious[[i]]$printed_bma, printed_bma_current)) # debugging
+      print("XXX"); print(identical(as.data.frame(listPrevious[[i]]$MA), as.data.frame(MAcurrent))); print(identical(listPrevious[[i]]$printed_bma, printed_bma_current)) # debugging
+      if(identical(as.data.frame(listPrevious[[i]]$MA), as.data.frame(MAcurrent))) if(identical(listPrevious[[i]]$printed_bma, printed_bma_current)) {
         return_bma <- listPrevious[[i]]$bma
       }
     }

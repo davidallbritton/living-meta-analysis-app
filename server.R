@@ -15,6 +15,16 @@ server <- function(input, output, session) {
   ## Initialize with stored data, which will be replaced when a data file is uploaded
   ## by the user
   myrvs <- reactiveValues(currentInputFile = NULL)   
+  
+  ###  initialize $previousModels if the file exists on the server
+  myrvs$previousModels <- list()
+  if (file.exists("defaultPrecalculatedModels.RDS")) {
+    myrvs$previousModels <- readRDS("defaultPrecalculatedModels.RDS")
+  }
+  print("prev models initialized from disk") #debugging
+  print("length(myrvs$previousModels")  #debugging
+  observe(print(length(myrvs$previousModels)))  #debugging
+  
   myrvs$nfiles <- 0
     observe({
     if(is.null(input$DataFileUp)){   #this trigger works because input$DataFileUp gets initialized to null when the app first loads, which triggers the observer
@@ -32,9 +42,6 @@ server <- function(input, output, session) {
         myrvs$ma_num <- 1
         # add a list for storing the previous models.  Each index of this list
         # should contain a list of 3 things: MA, printed_bma, bma
-        myrvs$previousModels <- list()
-        ###  add something here to initialize $previousModels if a file exists ***
-        
       })
     }
   })
@@ -606,14 +613,21 @@ server <- function(input, output, session) {
   # Create bma reactive needed for all outputs
   bma <- metaReactive({
     req(MA())           # trigger to update bma; MA() gets updated only when "recalculate" button is pressed
+    #print(paste("1n prev models", length(myrvs$previousModels)))  # debugging
+    
     isolate({           # so that changes in priors do not trigger bma() update before "recalculate" button is pressed
       req(printed_bma())  # to make sure the meta-expansion text is up to date
       printed_bma <- as.character(printed_bma())
       ## Generate bayesmeta-object "bma" depending on tau prior chosen
       old_bma <- FALSE
+      print(paste("2n prev models", length(myrvs$previousModels)))  # debugging
+      
       old_bma <- checkOldModels(myrvs$previousModels, MA(), printed_bma)
+      print(paste("3n prev models", length(myrvs$previousModels)))  # debugging
       if(isTruthy(old_bma)) bma <- old_bma  # retrieve previously calculated bma model
       else { #### if there is no prevously calculated bma model to retrieve, calculate a new one
+        print(paste("4n prev models", length(myrvs$previousModels)))  # debugging
+        
         MA <- MA()
         if (..(input$tauprior) == "Half cauchy") {
           bma <- bayesmeta(y = MA$es,sigma = sqrt(MA$var), labels = MA$study, 
