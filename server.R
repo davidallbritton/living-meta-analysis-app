@@ -619,16 +619,17 @@ server <- function(input, output, session) {
       ## Generate bayesmeta-object "bma" depending on tau prior chosen
       old_bma <- FALSE
       old_bma <- checkOldModels(myrvs$previousModels, MA(), printed_bma)
+      scaletau <- ..(input$scaletau)
       if(isTruthy(old_bma)) bma <- old_bma  # retrieve previously calculated bma model
       else { #### if there is no prevously calculated bma model to retrieve, calculate a new one
         MA <- MA()
         if (..(input$tauprior) == "Half cauchy") {
           bma <- bayesmeta(y = MA$es,sigma = sqrt(MA$var), labels = MA$study, 
-                           tau.prior = function(t) dhalfcauchy(t, scale = ..(input$scaletau)), 
+                           tau.prior = function(t) dhalfcauchy(t, scale = scaletau), 
                            mu.prior = c("mean" = ..(input$mupriormean), "sd" = ..(input$mupriorsd)))
         } else if (..(input$tauprior) == "Half student t") {
           bma <- bayesmeta(y = MA$es,sigma = sqrt(MA$var), labels = MA$study, 
-                           tau.prior = function(t) dhalfnormal(t, scale = ..(input$scaletau)), 
+                           tau.prior = function(t) dhalfnormal(t, scale = scaletau), 
                            mu.prior = c("mean" = ..(input$mupriormean), "sd" = ..(input$mupriorsd)))
         } else {
           bma <- bayesmeta(y = MA$es,sigma = sqrt(MA$var), labels = MA$study, 
