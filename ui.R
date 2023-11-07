@@ -40,7 +40,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                 sidebarLayout(
                   sidebarPanel(fluidRow(
                     uiOutput("currentDataFile"),
-
+                    
                     tabsetPanel(id = "dataSetupPanel",
                       tabPanel("Study criteria",    
                                actionButton("recalculateButton","(Re)Calculate Meta-Analysis", icon("sync"), style = "color: yellow; background-color: green"),
@@ -54,53 +54,59 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                ),
 
                       tabPanel("Prior specifications",
-                               br(), numericInput(inputId = "mupriormean", label = p("µ prior mean",style="color:#333333",
-                                                                               tags$style(type = "text/css", "#q16 {vertical-align: top;}"),
-                                                                               bsButton("q16", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")),   
+                               br(), 
+                               numericInput(inputId = "mupriormean", 
+                                            label = p("µ prior mean",style="color:#333333",
+                                                      tags$style(type = "text/css", "#q16 {vertical-align: top;}"),
+                                                      bsButton("q16", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")),   
                                             value = 0, step = 0.1),
-                                        bsPopover(id="q16", title = "µ prior mean.",
-                                            content = paste0("<p>Set the mean of your µ prior (effect).",
-                                                             "<p>Note that the results and their interpretability are drastically influenced by prior choices.",
-                                                             "<p>Default: 0"),
-                                            placement = "right", 
-                                            trigger = "click",
-                                            options = list(container = "body")),
-                               numericInput(inputId = "mupriorsd", label = p("µ prior standard deviation", style="color:#333333",
-                                                                             tags$style(type = "text/css", "#q17 {vertical-align: top;}"),
-                                                                             bsButton("q17", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")),    
+                               bsPopover(id="q16", title = "µ prior mean.",
+                                         content = paste0("<p>Set the mean of your µ prior (effect).",
+                                                          "<p>Note that the results and their interpretability are drastically influenced by prior choices.",
+                                                          "<p>Default: 0"),
+                                         placement = "right", 
+                                         trigger = "click",
+                                         options = list(container = "body")),
+                               numericInput(inputId = "mupriorsd", 
+                                            label = p("µ prior standard deviation", style="color:#333333",
+                                                      tags$style(type = "text/css", "#q17 {vertical-align: top;}"),
+                                                      bsButton("q17", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")),    
                                             value = 1.5, step = 0.1, min = 0),
-                                        bsPopover(id="q17", title = "µ prior standard deviation.",
+                               bsPopover(id="q17", title = "µ prior standard deviation.",
                                             content = paste0("<p>Set the standard deviation of your µ prior (effect).",
                                                              "<p>Note that the results and their interpretability are drastically influenced by prior choices.",
                                                              "<p>Default: 1.5"),
                                             placement = "right", 
                                             trigger = "click",
                                             options = list(container = "body")),
-                               radioButtons(inputId = "robust", label = p("µ Bayes Factor robustness check", style="color:#333333",
-                                                                          tags$style(type = "text/css", "#q18 {vertical-align: top;}"),
-                                                                          bsButton("q18", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")),    
+                               radioButtons(inputId = "robust", 
+                                            label = p("µ Bayes Factor robustness check", style="color:#333333",
+                                                      tags$style(type = "text/css", "#q18 {vertical-align: top;}"),
+                                                      bsButton("q18", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")),    
                                             choices = c(No = "No", Yes = "Yes")),
-                                        bsPopover(id="q18", title = "µ Bayes Factor robustness check.",
+                               bsPopover(id="q18", title = "µ Bayes Factor robustness check.",
                                             content = paste0("<p>Bayes Factors over a variety of prior standard deviations will be plotted.",
                                                              "<p>Note that selecting Yes will lead to an increase in computation time and that the plot will only be computed if priors for τ and μ are proper.",
                                                              "<p>Default: No."),
                                             placement = "right", 
                                             trigger = "click",
                                             options = list(container = "body")),
-                               radioButtons(inputId = "tauprior", label = p("τ prior", style="color:#333333",
-                                                                            tags$style(type = "text/css", "#q19 {vertical-align: top;}"),
-                                                                            bsButton("q19", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")),    
+                               radioButtons(inputId = "tauprior", 
+                                            label = p("τ prior", style="color:#333333",
+                                                      tags$style(type = "text/css", "#q19 {vertical-align: top;}"),
+                                                      bsButton("q19", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")),    
                                             choices = c("Half cauchy", "Half student t","uniform", "sqrt", "Jeffreys", "BergerDeely", "conventional", "DuMouchel", "shrinkage", "I2")),
-                                        bsPopover(id="q19", title = "τ prior.",
-                                            content = paste0("<p>Choose your τ prior.",
-                                                             "<p>Note that the results and their interpretability are drastically influenced by prior choices.",
-                                                             "<p>Default: Half cauchy."),
-                                            placement = "right", 
-                                            trigger = "click",
-                                            options = list(container = "body")),
-                               numericInput(inputId="scaletau", label = p("τ prior scale (for half cauchy or half student t)",style="color:#333333",
-                                                                          tags$style(type = "text/css", "#q20 {vertical-align: top;}"),
-                                                                          bsButton("q20", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")),    
+                               bsPopover(id="q19", title = "τ prior.",
+                                         content = paste0("<p>Choose your τ prior.",
+                                                          "<p>Note that the results and their interpretability are drastically influenced by prior choices.",
+                                                          "<p>Default: Half cauchy."),
+                                         placement = "right", 
+                                         trigger = "click",
+                                         options = list(container = "body")),
+                               numericInput(inputId="scaletau", 
+                                            label = p("τ prior scale (for half cauchy or half student t)",style="color:#333333",
+                                                      tags$style(type = "text/css", "#q20 {vertical-align: top;}"),
+                                                      bsButton("q20", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")),    
                                             value=0.5, step=0.05),
                                bsPopover(id="q20", title = "τ prior scale.",
                                          content = paste0("<p>Set the scale of your τ prior (if a half cauchy or a half student t prior is selected).",
@@ -169,27 +175,10 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                
                                fileInput("SavedModelsUp", label = "Upload .RDS", accept = c(".rds", ".RDS", ".Rds"))
                                # uiOutput("inputFileErrorBup"),
-                               ),
-                               hr()
+                               )
                                
                       ),
-                      
-                      
-                      
-                      
-                      
-                      
-                      
-                      
-                      
-                      
-                      
-                      
-                      
-                      
-                      
-                      
-
+  
                       hr()
                     ))),
                   mainPanel(
@@ -321,16 +310,28 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  printButton, 
                                  h4("Boxplot graph:"), 
                                  plotOutput("boxplot") %>% withSpinner(type = 6, color = "#3498DB")),
+                        # insert frequentist tabs here
                         tabPanel("Forest plot", 
+                                 printButton, 
+                                 h4("Frequentist Forest plot with study weights and 95% confidence intervals:"),
+                                 plotOutput("freq_forest") %>% withSpinner(type = 6, color = "#3498DB")
+                        ),
+                        tabPanel("Funnel plot",
+                                 printButton,
+                                 h4("Frequentist Funnel plot"),
+                                 plotOutput("freq_funnel") %>% withSpinner(type = 6, color = "#3498DB")
+                        ),
+                        
+                        tabPanel("Bayesian Forest plot", 
                                  printButton, 
                                  h4("Forest plot with 95% credible intervals:"),
                                  plotOutput("forest") %>% withSpinner(type = 6, color = "#3498DB")
                                  ),
-                        tabPanel("Funnel plot", printButton,
+                        tabPanel("Bayesian Funnel plot", printButton,
                                  h4("Funnel plot to assess publication bias:"),
                                  plotOutput("funnel")  %>% withSpinner(type = 6, color = "#3498DB")
                                  ),
-                        tabPanel("Statistics", printButton,
+                        tabPanel("Bayesian Statistics", printButton,
                                  h4("Parameters:"),
                                  p("τ (tau): posterior distribution of heterogeneity."),
                                  p("μ (mu): posterior distribution of effect."),
@@ -345,7 +346,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  h4("Maximum-likelihood:"), verbatimTextOutput("ML") %>% withSpinner(type = 6, color = "#3498DB"), br(),
                                  h4("Joint maximum-a-posteriori:"), verbatimTextOutput("MAP") %>% withSpinner(type = 6, color = "#3498DB")
                                  ),
-                        tabPanel("Additional plots", printButton,
+                        tabPanel("Bayesian Additional plots", printButton,
                                  h4("Joint posterior density of heterogeneity τ and effect μ:"), plotOutput("joint") %>%  withSpinner(type = 6, color = "#3498DB"),
                                  p("Darker shading corresponds to higher probability density."),
                                  p("Red lines indicate (approximate) 2-dimensional credible regions,"),
@@ -358,7 +359,11 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  ),
                         tabPanel("Bayes factor robustness check", printButton,
                                  h4("Bayes Factors over a variety of prior standard deviations:"),
-                                 p("Will only be computed if 'Yes' is selected for 'µ Bayes Factor robustness check' and the priors for τ and μ are proper."),br(),
+                                 p("Will only be computed if 'Yes' is selected for 'µ Bayes Factor robustness check' and the priors for τ and μ are proper.",),br(),
+                                 p("NOTE: The robustness check requires computing multiple bayesmeta models",
+                                   "and therefore takes a long time for all but the smallest datasets.",
+                                   "You may want to delay this step until after you have decided on your final",
+                                   "selections for inputs and priors."),
                                  conditionalPanel(condition = "input.tauprior == 'uniform' | 
                                                                input.tauprior == 'sqrt' |
                                                                input.tauprior == 'Jeffreys' |
@@ -382,18 +387,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                           p("From the currently loaded data file and most recent calculations"), br(),
                           uiOutput("downloadButtons")
                         ), #end of Downloads tab
-                        # insert frequentist tabs here
-                        tabPanel("Frequentist Forest plot", 
-                                 printButton, 
-                                 h4("Frequentist Forest plot with study weights and 95% confidence intervals:"),
-                                 plotOutput("freq_forest") %>% withSpinner(type = 6, color = "#3498DB")
-                        ),
-                        tabPanel("Frequentist Funnel plot",
-                                 printButton,
-                                 h4("Frequentist Funnel plot"),
-                                 plotOutput("freq_funnel") %>% withSpinner(type = 6, color = "#3498DB")
-                        )
-                        #    
+                         #    
+                        hr()
                           ) #end of main tabs panel
                         )
                       )
