@@ -2,7 +2,7 @@
 ################### A General Tool for BAYESIAN META-ANALYSIS #################
 #######################################################################################
 
-################### Shiny App v.0.9.1 2023.05.09 SERVER ###################################
+################### Shiny App v.0.9.2 2023.11.07 SERVER ###################################
 #
 # Derived and adapted from https://vinzentwolf.shinyapps.io/taVNSHRVmeta/
 # as described in https://doi.org/10.1111/psyp.13933
@@ -13,7 +13,7 @@
 server <- function(input, output, session) {
   
   # increase the allowable file size for uploads:
-  options(shiny.maxRequestSize = 10 * 1024^2)
+  options(shiny.maxRequestSize = 20 * 1024^2)
   
   ## Initialize with stored data, which will be replaced when a data file is uploaded
   ## by the user
