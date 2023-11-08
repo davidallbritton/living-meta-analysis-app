@@ -163,7 +163,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                #
                                p(tags$strong("Download Saved Models."),
                                  "Download an R object (RDS file) containing bayesmeta models along with the data and code used to generate them.",
-                                 tags$i("(Also available on the Downloads tab)")),
+                                 ),
                                downloadButton("rds_file.bma", "Download"),
                                hr(),
                                p(tags$strong("Upload Precalculated Models."),

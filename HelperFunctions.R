@@ -308,15 +308,23 @@ getEffectSize <- function(g=NA, g_var=NA, d=NA, d_var=NA, mean_E=NA, mean_C=NA,
 ###########  End of function for calculating g and g_var from user input #############
 
 ########## Function for checking for previously calculated bma models ###########
-checkOldModels <- function(listPrevious, MAcurrent, printed_bma_current) {
+checkOldModels <- function(listPrevious, MAcurrent, printed_bma_current, prevMAsNoFactors) {
   return_bma <- FALSE
   if(length(listPrevious)) {
-    print("Checking old models....")   # debugging
+#    print("Checking old models....")   # debugging
+    ma_current <- as.data.frame(MAcurrent) 
+#    print("one more line 316") # debugging
+    ma_current <-  ma_current %>% mutate_if(is.factor, as.character)
+#    print("one more line 318") # debugging
     for (i in 1:length(listPrevious)) {
-      print(paste("row number", i)) #debugging
-      print("Xxxx"); print(identical(as.data.frame(listPrevious[[i]]$MA), as.data.frame(MAcurrent))); print(identical(listPrevious[[i]]$printed_bma, printed_bma_current)) # debugging
-      if(identical(as.data.frame(listPrevious[[i]]$MA), as.data.frame(MAcurrent))) if(identical(listPrevious[[i]]$printed_bma, printed_bma_current)) {
+ #     print("... in the loop now")  # debugging
+ #     ##    str(prevMAsNoFactors)  # debugging
+      ma_previous <- as.data.frame(prevMAsNoFactors[[i]]) 
+#      print(paste("row number", i)) #debugging
+#      print("Xxxx"); print(identical(as.data.frame(listPrevious[[i]]$MA), as.data.frame(MAcurrent))); print(identical(listPrevious[[i]]$printed_bma, printed_bma_current)) # debugging
+      if(identical(listPrevious[[i]]$printed_bma, printed_bma_current)) if(identical(ma_previous, ma_current))  {
         return_bma <- listPrevious[[i]]$bma
+        break
       }
     }
   }

@@ -24,9 +24,30 @@ server <- function(input, output, session) {
   if (file.exists("defaultPrecalculatedModels.RDS")) {
     myrvs$previousModels <- readRDS("defaultPrecalculatedModels.RDS")
   }
-  print("prev models initialized from disk") #debugging
-  print("length(myrvs$previousModels")  #debugging
-  observe(print(length(myrvs$previousModels)))  #debugging
+#  print("prev models initialized from disk") #debugging
+#  print("length(myrvs$previousModels")  #debugging
+#  observe(print(length(myrvs$previousModels)))  #debugging
+  
+  ### a reactive value that gets updated whenever myrvs$previousModels changes:
+  previousMAsNoFactors <- reactiveValues(MAs = list())
+  #
+  observe ({
+    prevModels <- myrvs$previousModels
+    isolate ({
+      #### previousMAsNoFactors <- reactiveValues(MAs = list())
+      if(length(myrvs$previousModels)) {
+        for (i in 1:length(prevModels)) {
+          nofactors <- prevModels[[i]]$MA
+ #         print(paste("prevmodels loop", i))   # debugging
+          nofactors <- nofactors %>% mutate_if(is.factor, as.character)
+          previousMAsNoFactors$MAs[[i]] <- nofactors
+        }
+ #       tempprev <<- previousMAsNoFactors$MAs  # debugging
+      }
+    })
+  })
+    
+
   
   myrvs$nfiles <- 0
     observe({
@@ -621,7 +642,7 @@ server <- function(input, output, session) {
       printed_bma <- as.character(printed_bma())
       ## Generate bayesmeta-object "bma" depending on tau prior chosen
       old_bma <- FALSE
-      old_bma <- checkOldModels(myrvs$previousModels, MA(), printed_bma)
+      old_bma <- checkOldModels(myrvs$previousModels, MA(), printed_bma, prevMAsNoFactors = previousMAsNoFactors$MAs)
       scaletau <- ..(input$scaletau)
       if(isTruthy(old_bma)) bma <- old_bma  # retrieve previously calculated bma model
       else { #### if there is no prevously calculated bma model to retrieve, calculate a new one
@@ -652,11 +673,11 @@ server <- function(input, output, session) {
   updateModels <- function(MA, printed_bma, bma) {
     newrow <- list(MA = MA, printed_bma = printed_bma, bma = bma) 
     myrvs$previousModels[length(myrvs$previousModels) + 1] <- list(newrow)
-    # debugging prints; delete later:
-    print("length of myrvs$previousModels")  # debugging
-    print(length(myrvs$previousModels))  # debugging
-    tempprevmods <- myrvs$previousModels   # debugging???
-    saveRDS(tempprevmods, file = "tempprevmods.RDS")   # debugging???
+#    # debugging prints; delete later:
+#    print("length of myrvs$previousModels")  # debugging
+#    print(length(myrvs$previousModels))  # debugging
+#    tempprevmods <- myrvs$previousModels   # debugging???
+#    saveRDS(tempprevmods, file = "tempprevmods.RDS")   # debugging???
     length(myrvs$previousModels)  # unused return value
   }
 
@@ -752,17 +773,14 @@ server <- function(input, output, session) {
     isolate({
       if (input$robust == "Yes" &
           input$tauprior == "Half cauchy") {
-        ## for debugging; temporary. 
         robustggplot <-
         robustness(MA(),SD = input$mupriorsd, tauprior = function(t) dhalfcauchy(t, scale = input$scaletau))
       } else if (input$robust == "Yes" &
                  input$tauprior == "Half student t") {
-        ## for debugging; temporary. 
         robustggplot <-
         robustness(MA(),SD = input$mupriorsd, tauprior = function(t) dhalfnormal(t, scale = input$scaletau))
       }
-      ## for debugging; temporary. 
-      saveRDS(robustggplot, file = "robustplot1.RDS")
+      saveRDS(robustggplot, file = "robustplot1.RDS")  # for debugging
       robustggplot 
     })
   }, width = 800)
@@ -770,7 +788,7 @@ server <- function(input, output, session) {
   
   #### observer to clear the Saved Models when the button is pressed
   observeEvent(input$ClearModels, {
-    print("clearing models...")
+#    print("clearing models...")    # debugging
     myrvs$previousModels <- list()
   })
   
@@ -789,9 +807,9 @@ server <- function(input, output, session) {
     newrows_bma <- readRDS(input$SavedModelsUp$datapath)
     oldrows_bma <- myrvs$previousModels
     allrows_bma <- c(newrows_bma, oldrows_bma)
-    tempnew <<- newrows_bma  # debugging
-    tempold <<- oldrows_bma  # debugging
-    tempall <<- allrows_bma  # debugging
+#    tempnew <<- newrows_bma  # debugging
+#    tempold <<- oldrows_bma  # debugging
+#    tempall <<- allrows_bma  # debugging
     
     myrvs$previousModels <- allrows_bma
     output$inputFileErrorBup <- renderUI(NULL) # remove error message if file uploaded successfully
@@ -809,8 +827,6 @@ server <- function(input, output, session) {
   output$downloadButtons <- renderUI({
     if (myrvs$recalculatedSinceUpload > 0){
       tagList(
-        p(),
-        downloadButton("rds_file.bma", "R object (RDS file) containing bayesmeta models along with the data and code used to generate them"),
         p(),
         downloadButton("originalData", "Data as originally uploaded"),
         p(),
