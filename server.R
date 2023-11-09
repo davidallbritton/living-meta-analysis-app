@@ -29,12 +29,16 @@ server <- function(input, output, session) {
 #  observe(print(length(myrvs$previousModels)))  #debugging
   
   ### a reactive value that gets updated whenever myrvs$previousModels changes:
+  #   This version of MA() without factor variables is necessary because
+  #   factor levels are recorded differently on different platforms, making
+  #   it impossible to use precalculated bma()s from one computer on another computer
+  #   This is needed to be make the pre-loaded bma() models work on the shinyapps.io server.
   previousMAsNoFactors <- reactiveValues(MAs = list())
   #
   observe ({
     prevModels <- myrvs$previousModels
     isolate ({
-      #### previousMAsNoFactors <- reactiveValues(MAs = list())
+      #### previousMAsNoFactors <- reactiveValues(MAs = list())   # debugging
       if(length(myrvs$previousModels)) {
         for (i in 1:length(prevModels)) {
           nofactors <- prevModels[[i]]$MA

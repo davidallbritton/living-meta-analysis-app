@@ -363,7 +363,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  p("NOTE: The robustness check requires computing multiple bayesmeta models",
                                    "and therefore takes a long time for all but the smallest datasets.",
                                    "You may want to delay this step until after you have decided on your final",
-                                   "selections for inputs and priors."),
+                                   "selections for study criteria and priors."),
                                  conditionalPanel(condition = "input.tauprior == 'uniform' | 
                                                                input.tauprior == 'sqrt' |
                                                                input.tauprior == 'Jeffreys' |
