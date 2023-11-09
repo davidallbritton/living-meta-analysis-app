@@ -784,10 +784,16 @@ server <- function(input, output, session) {
         robustggplot <-
         robustness(MA(),SD = input$mupriorsd, tauprior = function(t) dhalfnormal(t, scale = input$scaletau))
       }
-      saveRDS(robustggplot, file = "robustplot1.RDS")  # for debugging
+   #   saveRDS(robustggplot, file = "robustplot1.RDS")  # for debugging
       robustggplot 
     })
-  }, width = 800)
+  }, width = 800) %>% bindCache(
+    MA(),
+    input$robust,
+    input$tauprior,
+    input$mupriorsd,
+    input$scaletau
+  )
   
   
   #### observer to clear the Saved Models when the button is pressed
