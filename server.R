@@ -12,6 +12,12 @@
 # Define server logic
 server <- function(input, output, session) {
   
+  ### Turn async on or off for future() functions
+  # plan(multicore) # This sets up the future plan to use multiple processes on non-windows servers
+  plan(multisession) # This sets up the future plan to use multiple sessions on all servers
+  # plan(sequential) # This sets up the future plan to not use async at all, like on the free shinyapps.io plan
+  
+  
   # increase the allowable file size for uploads:
   options(shiny.maxRequestSize = 20 * 1024^2)
   shinyOptions(cache = cachem::cache_disk("./myapp-cache"))
@@ -757,8 +763,7 @@ server <- function(input, output, session) {
     bma()$MAP[1,]
   })
   
-  # Full texts screened panel  #deleted this###
- 
+
   # # Additional plots panel
   # output$evupdate <- renderPlot({
   #   priorposteriorlikelihood.ggplot(bma(), lowerbound = 0 - (input$mupriormean + 1) * 1.5, upperbound = 0 + (input$mupriormean + 1) * 1.5)
@@ -806,11 +811,11 @@ server <- function(input, output, session) {
   
   
   
-  
-  library(promises)
-  library(future)
-  
-  plan(multicore) # This sets up the future plan to use multiple sessions
+  # library(drop2)
+  # library(future)
+  # library(promises)
+  # plan(multicore) # This sets up the future plan to use multiple sessions
+  # 
   
   # Bayes factor robustness plot panel
   output$warning2 <- renderPrint({
