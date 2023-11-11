@@ -759,42 +759,104 @@ server <- function(input, output, session) {
   
   # Full texts screened panel  #deleted this###
  
-  # Additional plots panel
-  output$evupdate <- renderPlot({
-    priorposteriorlikelihood.ggplot(bma(), lowerbound = 0 - (input$mupriormean + 1) * 1.5, upperbound = 0 + (input$mupriormean + 1) * 1.5)
-  }, width = 800)
-  output$joint <- renderPlot({
-    plot.bayesmeta(bma(), which=2, main = "")
-  }, width = 800)
-  output$taupriorplot <- renderPlot({
-    tauprior.ggplot(bma())
-  }, width = 800)
+  # # Additional plots panel
+  # output$evupdate <- renderPlot({
+  #   priorposteriorlikelihood.ggplot(bma(), lowerbound = 0 - (input$mupriormean + 1) * 1.5, upperbound = 0 + (input$mupriormean + 1) * 1.5)
+  # }, width = 800)
+  # output$joint <- renderPlot({
+  #   plot.bayesmeta(bma(), which=2, main = "")
+  # }, width = 800)
+  # output$taupriorplot <- renderPlot({
+  #   tauprior.ggplot(bma())
+  # }, width = 800)
+  # 
+  # # Bayes factor robustness plot panel
+  # output$warning2 <- renderPrint({
+  #   print("WARNING: Plot will not be computed, because an improper τ prior was chosen. Proper τ priors are 'Half student t' and 'Half cauchy'.")})
+  # output$robustplot <- renderPlot({
+  #   MA()  #trigger recalculation
+  #   isolate({
+  #     if (input$robust == "Yes" &
+  #         input$tauprior == "Half cauchy") {
+  #       robustggplot <-
+  #       robustness(MA(),SD = input$mupriorsd, tauprior = function(t) dhalfcauchy(t, scale = input$scaletau))
+  #     } else if (input$robust == "Yes" &
+  #                input$tauprior == "Half student t") {
+  #       robustggplot <-
+  #       robustness(MA(),SD = input$mupriorsd, tauprior = function(t) dhalfnormal(t, scale = input$scaletau))
+  #     }
+  #  #   saveRDS(robustggplot, file = "robustplot1.RDS")  # for debugging
+  #     robustggplot 
+  #   })
+  # }, width = 800) %>% bindCache(
+  #   MA(),
+  #   input$robust,
+  #   input$tauprior,
+  #   input$mupriorsd,
+  #   input$scaletau
+  # )
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  library(promises)
+  library(future)
+  
+  plan(multicore) # This sets up the future plan to use multiple sessions
   
   # Bayes factor robustness plot panel
   output$warning2 <- renderPrint({
-    print("WARNING: Plot will not be computed, because an improper τ prior was chosen. Proper τ priors are 'Half student t' and 'Half cauchy'.")})
-  output$robustplot <- renderPlot({
-    MA()  #trigger recalculation
-    isolate({
-      if (input$robust == "Yes" &
-          input$tauprior == "Half cauchy") {
-        robustggplot <-
-        robustness(MA(),SD = input$mupriorsd, tauprior = function(t) dhalfcauchy(t, scale = input$scaletau))
-      } else if (input$robust == "Yes" &
-                 input$tauprior == "Half student t") {
-        robustggplot <-
-        robustness(MA(),SD = input$mupriorsd, tauprior = function(t) dhalfnormal(t, scale = input$scaletau))
-      }
-   #   saveRDS(robustggplot, file = "robustplot1.RDS")  # for debugging
-      robustggplot 
+    future_promise({
+      print("WARNING: Plot will not be computed, because an improper τ prior was chosen. Proper τ priors are 'Half student t' and 'Half cauchy'.")
     })
-  }, width = 800) %>% bindCache(
-    MA(),
-    input$robust,
-    input$tauprior,
-    input$mupriorsd,
-    input$scaletau
-  )
+  })
+  
+  output$robustplot <- renderPlot({
+      MA <- MA()  #trigger recalculation
+      robust <- input$robust
+      tauprior <- input$tauprior
+      mupriorsd <- input$mupriorsd
+      scaletau <- input$scaletau
+    future_promise({
+      if (robust == "Yes" & tauprior == "Half cauchy") {
+        robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfcauchy(t, scale = scaletau))
+      } else if (robust == "Yes" & tauprior == "Half student t") {
+        robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfnormal(t, scale = scaletau))
+      }
+      # Return the plot object to be resolved by the promise
+      robustggplot
+    }) %...>% {  # Use %...>% to chain the promise
+      . # This dot stands for the resolved value of the promise, i.e., robustggplot
+    }
+   }, width = 800) # %>% bindCache(
+  #   MA(),
+  #   input$robust,
+  #   input$tauprior,
+  #   input$mupriorsd,
+  #   input$scaletau
+  # )
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   
   
   #### observer to clear the Saved Models when the button is pressed
