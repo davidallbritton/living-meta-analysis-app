@@ -775,43 +775,7 @@ server <- function(input, output, session) {
     tauprior.ggplot(bma())
   }, width = 800)
 
-  # # Bayes factor robustness plot panel
-  # output$warning2 <- renderPrint({
-  #   print("WARNING: Plot will not be computed, because an improper τ prior was chosen. Proper τ priors are 'Half student t' and 'Half cauchy'.")})
-  # output$robustplot <- renderPlot({
-  #   MA()  #trigger recalculation
-  #   isolate({
-  #     if (input$robust == "Yes" &
-  #         input$tauprior == "Half cauchy") {
-  #       robustggplot <-
-  #       robustness(MA(),SD = input$mupriorsd, tauprior = function(t) dhalfcauchy(t, scale = input$scaletau))
-  #     } else if (input$robust == "Yes" &
-  #                input$tauprior == "Half student t") {
-  #       robustggplot <-
-  #       robustness(MA(),SD = input$mupriorsd, tauprior = function(t) dhalfnormal(t, scale = input$scaletau))
-  #     }
-  #  #   saveRDS(robustggplot, file = "robustplot1.RDS")  # for debugging
-  #     robustggplot 
-  #   })
-  # }, width = 800) %>% bindCache(
-  #   MA(),
-  #   input$robust,
-  #   input$tauprior,
-  #   input$mupriorsd,
-  #   input$scaletau
-  # )
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-
+ 
   
   # Bayes factor robustness plot panel
   output$warning2 <- renderPrint({
