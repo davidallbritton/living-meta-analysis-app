@@ -764,17 +764,17 @@ server <- function(input, output, session) {
   })
   
 
-  # # Additional plots panel
-  # output$evupdate <- renderPlot({
-  #   priorposteriorlikelihood.ggplot(bma(), lowerbound = 0 - (input$mupriormean + 1) * 1.5, upperbound = 0 + (input$mupriormean + 1) * 1.5)
-  # }, width = 800)
-  # output$joint <- renderPlot({
-  #   plot.bayesmeta(bma(), which=2, main = "")
-  # }, width = 800)
-  # output$taupriorplot <- renderPlot({
-  #   tauprior.ggplot(bma())
-  # }, width = 800)
-  # 
+  # Additional plots panel
+  output$evupdate <- renderPlot({
+    priorposteriorlikelihood.ggplot(bma(), lowerbound = 0 - (input$mupriormean + 1) * 1.5, upperbound = 0 + (input$mupriormean + 1) * 1.5)
+  }, width = 800)
+  output$joint <- renderPlot({
+    plot.bayesmeta(bma(), which=2, main = "")
+  }, width = 800)
+  output$taupriorplot <- renderPlot({
+    tauprior.ggplot(bma())
+  }, width = 800)
+
   # # Bayes factor robustness plot panel
   # output$warning2 <- renderPrint({
   #   print("WARNING: Plot will not be computed, because an improper τ prior was chosen. Proper τ priors are 'Half student t' and 'Half cauchy'.")})
@@ -811,17 +811,13 @@ server <- function(input, output, session) {
   
   
   
-  # library(drop2)
-  # library(future)
-  # library(promises)
-  # plan(multicore) # This sets up the future plan to use multiple sessions
-  # 
+
   
   # Bayes factor robustness plot panel
   output$warning2 <- renderPrint({
-    future_promise({
+  #  future_promise({
       print("WARNING: Plot will not be computed, because an improper τ prior was chosen. Proper τ priors are 'Half student t' and 'Half cauchy'.")
-    })
+  #  })
   })
   
   output$robustplot <- renderPlot({
@@ -841,13 +837,13 @@ server <- function(input, output, session) {
     }) %...>% {  # Use %...>% to chain the promise
       . # This dot stands for the resolved value of the promise, i.e., robustggplot
     }
-   }, width = 800) # %>% bindCache(
-  #   MA(),
-  #   input$robust,
-  #   input$tauprior,
-  #   input$mupriorsd,
-  #   input$scaletau
-  # )
+   }, width = 800)  %>% bindCache(
+    MA(),
+    input$robust,
+    input$tauprior,
+    input$mupriorsd,
+    input$scaletau
+  )
   
   
   

@@ -30,7 +30,6 @@ library(stringr)
 library(tidyr)
 library(xtable)
 library(shinymeta)
-# library(drop2)   for dropbox.  not on cran anymore?
 library(future)
 library(promises)
 library(cachem)
