@@ -646,33 +646,38 @@ server <- function(input, output, session) {
   
 
   # Create bma reactive needed for all outputs
-  bma <- metaReactive({
+  bma <- reactive({
     req(MA())           # trigger to update bma; MA() gets updated only when "recalculate" button is pressed
     isolate({           # so that changes in priors do not trigger bma() update before "recalculate" button is pressed
-      req(printed_bma())  # to make sure the meta-expansion text is up to date
-      printed_bma <- as.character(printed_bma())
+      # delete #           req(printed_bma())  # to make sure the meta-expansion text is up to date
+ # delete #     printed_bma <- as.character(printed_bma())
       ## Generate bayesmeta-object "bma" depending on tau prior chosen
       old_bma <- FALSE
-      old_bma <- checkOldModels(myrvs$previousModels, MA(), printed_bma, prevMAsNoFactors = previousMAsNoFactors$MAs)
-      scaletau <- ..(input$scaletau)
+      # copy reactive values for use in this block.  Use as arguments to functions.
+      MA          <-  MA()
+      tauprior    <-  input$tauprior
+      mupriorsd   <-  input$mupriorsd
+      scaletau    <-  input$scaletau
+      mupriormean <-  input$mupriormean
+      # end of reactive values that are copied.
+      old_bma <- checkOldModels(myrvs$previousModels, MA=MA, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, mupriormean=mupriormean, prevMAsNoFactors = previousMAsNoFactors$MAs)
       if(isTruthy(old_bma)) bma <- old_bma  # retrieve previously calculated bma model
       else { #### if there is no prevously calculated bma model to retrieve, calculate a new one
-        MA <- MA()
-        if (..(input$tauprior) == "Half cauchy") {
+        if (tauprior == "Half cauchy") {
           bma <- bayesmeta(y = MA$es,sigma = sqrt(MA$var), labels = MA$study, 
                            tau.prior = function(t) dhalfcauchy(t, scale = scaletau), 
-                           mu.prior = c("mean" = ..(input$mupriormean), "sd" = ..(input$mupriorsd)))
-        } else if (..(input$tauprior) == "Half student t") {
+                           mu.prior = c("mean" = mupriormean, "sd" = mupriorsd))
+        } else if (tauprior == "Half student t") {
           bma <- bayesmeta(y = MA$es,sigma = sqrt(MA$var), labels = MA$study, 
                            tau.prior = function(t) dhalfnormal(t, scale = scaletau), 
-                           mu.prior = c("mean" = ..(input$mupriormean), "sd" = ..(input$mupriorsd)))
+                           mu.prior = c("mean" = mupriormean, "sd" = mupriorsd))
         } else {
           bma <- bayesmeta(y = MA$es,sigma = sqrt(MA$var), labels = MA$study, 
-                           tau.prior = ..(input$tauprior), 
-                           mu.prior = c("mean" = ..(input$mupriormean), "sd" = ..(input$mupriorsd)))
+                           tau.prior = tauprior, 
+                           mu.prior = c("mean" = mupriormean, "sd" = mupriorsd))
         }
         ## store the new model 
-        updateModels(MA = MA, printed_bma = printed_bma, bma = bma)
+        updateModels(MA=MA, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, mupriormean=mupriormean, bma=bma)
         bma
       }  ####
     })  # end of isolate()
@@ -681,24 +686,17 @@ server <- function(input, output, session) {
   
   # function to update the list of previous models when bma() changes; for use in the bma() block only
   # used for its side effect of updating myrvs only; returned value not used.
-  updateModels <- function(MA, printed_bma, bma) {
-    newrow <- list(MA = MA, printed_bma = printed_bma, bma = bma) 
+  updateModels <- function(MA, tauprior, mupriorsd, scaletau, mupriormean, bma) {
+    newrow <- list(MA=MA, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, mupriormean=mupriormean, bma=bma) 
     myrvs$previousModels[length(myrvs$previousModels) + 1] <- list(newrow)
-#    # debugging prints; delete later:
-#    print("length of myrvs$previousModels")  # debugging
-#    print(length(myrvs$previousModels))  # debugging
-#    tempprevmods <- myrvs$previousModels   # debugging???
-#    saveRDS(tempprevmods, file = "tempprevmods.RDS")   # debugging???
+    #    # debugging prints; delete later:
+        print("length of myrvs$previousModels")  # debugging
+        print(length(myrvs$previousModels))  # debugging
+        tempprevmods <- myrvs$previousModels   # debugging???
+        saveRDS(tempprevmods, file = "tempprevmods.RDS")   # debugging???
     length(myrvs$previousModels)  # unused return value
   }
 
-
-  # create a shinymeta expansion of the reactive bma()
-  printed_bma <- reactive(
-    expandChain(bma())
-  )
-  #
-  
   
   # Study overview panel  
   output$studies <- DT::renderDataTable({
