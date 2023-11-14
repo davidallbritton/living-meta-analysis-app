@@ -26,6 +26,12 @@ server <- function(input, output, session) {
   ## by the user
   myrvs <- reactiveValues(currentInputFile = NULL)   
   
+  ###  initialize $previousPlots if the file exists on the server
+  myrvs$previousPlots <- list()
+  if (file.exists("defaultPrecalculatedPlots.RDS")) {
+    myrvs$previousPlots <- readRDS("defaultPrecalculatedPlots.RDS")
+  }
+  
   ###  initialize $previousModels if the file exists on the server
   myrvs$previousModels <- list()
   if (file.exists("defaultPrecalculatedModels.RDS")) {
@@ -34,7 +40,7 @@ server <- function(input, output, session) {
 #  print("prev models initialized from disk") #debugging
 #  print("length(myrvs$previousModels")  #debugging
 #  observe(print(length(myrvs$previousModels)))  #debugging
-  
+  #
   ### a reactive value that gets updated whenever myrvs$previousModels changes:
   #   This version of MA() without factor variables is necessary because
   #   factor levels are recorded differently on different platforms, making
@@ -58,7 +64,6 @@ server <- function(input, output, session) {
     })
   })
     
-
   
   myrvs$nfiles <- 0
     observe({
@@ -696,6 +701,19 @@ server <- function(input, output, session) {
         saveRDS(tempprevmods, file = "tempprevmods.RDS")   # debugging???
     length(myrvs$previousModels)  # unused return value
   }
+  
+  # function to update the list of previous plots; for use in the robustggplot block only
+  # used for its side effect of updating myrvs only; returned value not used.
+  updatePlots <- function(MA, tauprior, mupriorsd, scaletau, robust, robustggplot) {
+    newrow <- list(MA=MA, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, robust=robust, robustggplot=robustggplot) 
+    myrvs$previousPlots[length(myrvs$previousPlots) + 1] <- list(newrow)
+    #    # debugging prints; delete later:
+    print("length of myrvs$previousPlots")  # debugging
+    print(length(myrvs$previousPlots))  # debugging
+    tempprevplots <- myrvs$previousPlots   # debugging???
+    saveRDS(tempprevplots, file = "tempprevplots.RDS")   # debugging???
+    length(myrvs$previousPlots)  # unused return value
+  }
 
   
   # Study overview panel  
@@ -782,31 +800,62 @@ server <- function(input, output, session) {
   #  })
   })
   
+  # output$robustplot <- renderPlot({
+  #     MA <- MA()  #trigger recalculation
+  #     robust <- input$robust
+  #     tauprior <- input$tauprior
+  #     mupriorsd <- input$mupriorsd
+  #     scaletau <- input$scaletau
+  #   future_promise({
+  #     if (robust == "Yes" & tauprior == "Half cauchy") {
+  #       robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfcauchy(t, scale = scaletau))
+  #     } else if (robust == "Yes" & tauprior == "Half student t") {
+  #       robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfnormal(t, scale = scaletau))
+  #     }
+  #     # Return the plot object to be resolved by the promise
+  #     robustggplot
+  #   }) %...>% {  # Use %...>% to chain the promise
+  #     . # This dot stands for the resolved value of the promise, i.e., robustggplot
+  #   }
+  #  }, width = 800)  %>% bindCache(
+  #   MA(),
+  #   input$robust,
+  #   input$tauprior,
+  #   input$mupriorsd,
+  #   input$scaletau
+  # )
+  # 
+  # 
   output$robustplot <- renderPlot({
-      MA <- MA()  #trigger recalculation
-      robust <- input$robust
-      tauprior <- input$tauprior
-      mupriorsd <- input$mupriorsd
-      scaletau <- input$scaletau
-    future_promise({
-      if (robust == "Yes" & tauprior == "Half cauchy") {
-        robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfcauchy(t, scale = scaletau))
-      } else if (robust == "Yes" & tauprior == "Half student t") {
-        robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfnormal(t, scale = scaletau))
+    MA <- MA()  #trigger recalculation
+    MA_nofactors <- as.data.frame(MA) 
+    MA_nofactors <-  MA_nofactors %>% mutate_if(is.factor, as.character)
+    robust <- input$robust
+    tauprior <- input$tauprior
+    mupriorsd <- input$mupriorsd
+    scaletau <- input$scaletau
+    old_plot <- checkOldPlots(myrvs$previousPlots, MA=MA_nofactors, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, robust=robust)
+    if(isTruthy(old_plot)) robustggplot <- old_plot  # retrieve previously calculated bma model
+    else {
+ #     future_promise({
+        if (robust == "Yes" & tauprior == "Half cauchy") {
+          robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfcauchy(t, scale = scaletau))
+        } else if (robust == "Yes" & tauprior == "Half student t") {
+          robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfnormal(t, scale = scaletau))
+        }
+        # Return the plot object to be resolved by the promise   # debugging
+#        temprobustggplot <<- robustggplot  # debugging
+#        robustggplot
+#      }) %...>% {  # Use %...>% to chain the promise
+#        rbplot <- . # This dot stands for the resolved value of the promise, i.e., robustggplot
+        ## store the new plot in the list of old plots
+ #### this makes it not work########       updated <- updatePlots(MA=MA_nofactors, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, robust=robust, robustggplot=robustggplot)
+#        temp_rbplot <<- rbplot
+#        rbplot
+        robustggplot
       }
-      # Return the plot object to be resolved by the promise
-      robustggplot
-    }) %...>% {  # Use %...>% to chain the promise
-      . # This dot stands for the resolved value of the promise, i.e., robustggplot
-    }
-   }, width = 800)  %>% bindCache(
-    MA(),
-    input$robust,
-    input$tauprior,
-    input$mupriorsd,
-    input$scaletau
-  )
-  
+#    }
+  }, width = 800)
   
   
   
