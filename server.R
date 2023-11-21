@@ -795,9 +795,7 @@ server <- function(input, output, session) {
   
   # Bayes factor robustness plot panel
   output$warning2 <- renderPrint({
-  #  future_promise({
       print("WARNING: Plot will not be computed, because an improper τ prior was chosen. Proper τ priors are 'Half student t' and 'Half cauchy'.")
-  #  })
   })
   
   # output$robustplot <- renderPlot({
@@ -835,26 +833,18 @@ server <- function(input, output, session) {
     mupriorsd <- input$mupriorsd
     scaletau <- input$scaletau
     old_plot <- checkOldPlots(myrvs$previousPlots, MA=MA_nofactors, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, robust=robust)
+    tempoldplot <<- old_plot  # debugging
     if(isTruthy(old_plot)) robustggplot <- old_plot  # retrieve previously calculated bma model
     else {
- #     future_promise({
-        if (robust == "Yes" & tauprior == "Half cauchy") {
-          robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfcauchy(t, scale = scaletau))
-        } else if (robust == "Yes" & tauprior == "Half student t") {
-          robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfnormal(t, scale = scaletau))
-        }
-        # Return the plot object to be resolved by the promise   # debugging
-#        temprobustggplot <<- robustggplot  # debugging
-#        robustggplot
-#      }) %...>% {  # Use %...>% to chain the promise
-#        rbplot <- . # This dot stands for the resolved value of the promise, i.e., robustggplot
-        ## store the new plot in the list of old plots
- #### this makes it not work########       updated <- updatePlots(MA=MA_nofactors, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, robust=robust, robustggplot=robustggplot)
-#        temp_rbplot <<- rbplot
-#        rbplot
-        robustggplot
+      if (robust == "Yes" & tauprior == "Half cauchy") {
+        robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfcauchy(t, scale = scaletau))
+      } else if (robust == "Yes" & tauprior == "Half student t") {
+        robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfnormal(t, scale = scaletau))
       }
-#    }
+      ## store the new plot in the list of old plots; this function only has a side effect, no return value
+      updated <- updatePlots(MA=MA_nofactors, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, robust=robust, robustggplot=robustggplot)
+    }
+    robustggplot
   }, width = 800)
   
   
@@ -869,18 +859,14 @@ server <- function(input, output, session) {
   
   
   
-  
-  
+  ###### Managing "cached" bayesmeta models:
+  #
   #### observer to clear the Saved Models when the button is pressed
   observeEvent(input$ClearModels, {
-#    print("clearing models...")    # debugging
     myrvs$previousModels <- list()
   })
-  
-  
+  #
   #### section for uploading saved models from a file
-  
-  
   #### for reading .RDS file containing previously calculated bayesmeta models
   observeEvent(input$SavedModelsUp, {
     # Read the data from the RDS file the user uploaded:
@@ -895,12 +881,60 @@ server <- function(input, output, session) {
 #    tempnew <<- newrows_bma  # debugging
 #    tempold <<- oldrows_bma  # debugging
 #    tempall <<- allrows_bma  # debugging
-    
     myrvs$previousModels <- allrows_bma
     output$inputFileErrorBup <- renderUI(NULL) # remove error message if file uploaded successfully
   })
+  #
+  #### For downloading saved bayesmeta models (can be uploaded in this format)
+  output$rds_file.bma <- downloadHandler(   
+    filename = function() {
+      "bayesmeta_models.RDS" 
+    },
+    content = function (file) {
+      saveRDS(myrvs$previousModels, file)
+    }
+  )
+  #
   
   
+  
+  ###### Managing "cached" BF robustness plots:
+  #
+  #### observer to clear the Saved plots when the button is pressed
+  observeEvent(input$ClearPlots, {
+    myrvs$previousPlots <- list()
+  })
+  #
+  #### section for uploading saved Plots from a file
+  #### for reading .RDS file containing previously created BF robustness plots 
+  observeEvent(input$SavedPlotsUp, {
+    # Read the data from the RDS file the user uploaded:
+    fileExtension <- tools::file_ext(input$SavedPlotsUp$datapath)
+    output$inputFileErrorBup <- renderUI({  # create error message in case file not uploaded successfully
+      if (!is.null(input$SavedPlotsUp)) p(style = "color:red", "***File was not read***")
+    })
+    validate(need(fileExtension == "RDS" | fileExtension == "rds" | fileExtension == "Rds" , "Please upload an RDS file"))
+    newrows_bma <- readRDS(input$SavedPlotsUp$datapath)
+    oldrows_bma <- myrvs$previousPlots
+    allrows_bma <- c(newrows_bma, oldrows_bma)
+    #    tempnew <<- newrows_bma  # debugging
+    #    tempold <<- oldrows_bma  # debugging
+    #    tempall <<- allrows_bma  # debugging
+    myrvs$previousPlots <- allrows_bma
+    output$inputFileErrorBup <- renderUI(NULL) # remove error message if file uploaded successfully
+  })
+  #
+  #### For downloading saved BF robustness plots (can be uploaded in this format)
+  output$rds_file.bma <- downloadHandler(   
+    filename = function() {
+      "BF_robustness_plots.RDS" 
+    },
+    content = function (file) {
+      saveRDS(myrvs$previousPlots, file)
+    }
+  )
+  #
+  # ********** working on this then delete this line
   
   
   
@@ -926,15 +960,6 @@ server <- function(input, output, session) {
   })
   #
   ##### create things for the UI to download here....
-  output$rds_file.bma <- downloadHandler(   
-    filename = function() {
-      "bayesmeta_models.RDS" 
-    },
-    content = function (file) {
-      saveRDS(myrvs$previousModels, file)
-    }
-  )
-  #
   output$originalData <- downloadHandler(   
     filename = function() {
       "originalData.xlsx" 
