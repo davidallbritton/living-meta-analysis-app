@@ -149,24 +149,34 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                       
                       
                       ############ "Saved Bayesian Models" panel
-                       tabPanel("Saved Plots and Models",   
-                                p("The models created by bayesmeta can take a long time to compute.",
-                                  "To save time",
-                                  "you can download models and plots from the current session",
-                                  "and then upload them in a future session."
-                                ),
-                                hr(),
-                      #          #
-                      #          p(tags$strong("Bayesmeta models")
-                      #           ),
-                      #           actionButton("ClearModels", "Delete Saved Models"),
-                      #          #
-                      #          downloadButton("rds_file.bma", "Download Saved Models"),
-                      #          fileInput("SavedModelsUp", label = "Upload Saved Models", accept = c(".rds", ".RDS", ".Rds"))
-                      #          # uiOutput("inputFileErrorBup"),
-                      #          )
-                      #          
-                       ),
+                      tabPanel("Saved Plots and Models",   
+                               p("The models created by bayesmeta can take a long time to compute.",
+                                 "To save time",
+                                 "you can download models and plots from the current session",
+                                 "and then upload them in a future session."
+                               ),
+                               hr(),
+                               #
+                               p(tags$strong("Bayesmeta models")),
+                               
+                               #
+                               downloadButton("rds_file.bma", "Download Saved Models"),
+                               fileInput("SavedModelsUp", label = "Upload Saved Models", accept = c(".rds", ".RDS", ".Rds")),
+                               #
+                               actionButton("ClearModels", "Delete Saved Models"),
+                               #
+                               #
+                               hr(),
+                               #
+                               p(tags$strong("Bayes Factor Robustness Plots")),
+                               
+                               #
+                               downloadButton("rds_file.robustnessPlots", "Download Saved Plots"),
+                               fileInput("SavedPlotsUp", label = "Upload Saved Plots", accept = c(".rds", ".RDS", ".Rds")),
+                               #
+                               actionButton("ClearPlots", "Delete Saved Plots"),
+                               
+                      ),
                       # 
                       hr()
                     ))),

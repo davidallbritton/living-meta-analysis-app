@@ -925,7 +925,7 @@ server <- function(input, output, session) {
   })
   #
   #### For downloading saved BF robustness plots (can be uploaded in this format)
-  output$rds_file.bma <- downloadHandler(   
+  output$rds_file.robustnessPlots <- downloadHandler(   
     filename = function() {
       "BF_robustness_plots.RDS" 
     },
