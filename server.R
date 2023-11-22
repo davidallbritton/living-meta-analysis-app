@@ -19,8 +19,8 @@ server <- function(input, output, session) {
   
   
   # increase the allowable file size for uploads:
-  options(shiny.maxRequestSize = 20 * 1024^2)
-  shinyOptions(cache = cachem::cache_disk("./myapp-cache"))
+  options(shiny.maxRequestSize = 40 * 1024^2)
+  # shinyOptions(cache = cachem::cache_disk("./myapp-cache"))
   
   ## Initialize with stored data, which will be replaced when a data file is uploaded
   ## by the user
