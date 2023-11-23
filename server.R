@@ -836,13 +836,16 @@ server <- function(input, output, session) {
     tempoldplot <<- old_plot  # debugging
     if(isTruthy(old_plot)) robustggplot <- old_plot  # retrieve previously calculated bma model
     else {
+      robustggplot <- NULL
       if (robust == "Yes" & tauprior == "Half cauchy") {
         robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfcauchy(t, scale = scaletau))
       } else if (robust == "Yes" & tauprior == "Half student t") {
         robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfnormal(t, scale = scaletau))
       }
       ## store the new plot in the list of old plots; this function only has a side effect, no return value
-      updated <- updatePlots(MA=MA_nofactors, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, robust=robust, robustggplot=robustggplot)
+      if (isTruthy(robustggplot)) {
+        updated <- updatePlots(MA=MA_nofactors, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, robust=robust, robustggplot=robustggplot)
+      }
     }
     robustggplot
   }, width = 800)

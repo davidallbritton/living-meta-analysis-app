@@ -322,10 +322,11 @@ checkOldModels <- function(listPrevious, MA, tauprior, mupriorsd, scaletau, mupr
             print(paste("row number", i)) #debugging
             print("Xxxx  101") # debugging
       if (identical(ma_previous, MA) && 
-          listPrevious[[i]]$tauprior == tauprior && 
-          listPrevious[[i]]$mupriorsd == mupriorsd && 
-          listPrevious[[i]]$scaletau == scaletau && 
-          listPrevious[[i]]$mupriormean == mupriormean)  {
+          identical(listPrevious[[i]]$tauprior, tauprior) && 
+          identical(listPrevious[[i]]$mupriorsd, mupriorsd) && 
+          identical(listPrevious[[i]]$scaletau, scaletau) && 
+          identical(listPrevious[[i]]$mupriormean, mupriormean)
+          )  {
         print("Xxxx  102") # debugging
         
         return_bma <- listPrevious[[i]]$bma
@@ -345,10 +346,10 @@ checkOldPlots <- function(listPrevious, MA, tauprior, mupriorsd, scaletau, robus
     for (i in seq_along(listPrevious)) {
       ma_previous <- listPrevious[[i]]$MA 
       if (identical(ma_previous, MA) && 
-          listPrevious[[i]]$tauprior == tauprior && 
-          listPrevious[[i]]$mupriorsd == mupriorsd && 
-          listPrevious[[i]]$scaletau == scaletau && 
-          listPrevious[[i]]$robust == robust)  {
+          identical(listPrevious[[i]]$mupriorsd , mupriorsd) && 
+          identical(listPrevious[[i]]$scaletau , scaletau) && 
+          identical(listPrevious[[i]]$robust , robust)
+          )  {
         return_robustggplot <- listPrevious[[i]]$robustggplot
         break
       }
