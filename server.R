@@ -14,7 +14,7 @@ server <- function(input, output, session) {
   
   ### Turn async on or off for future() functions
   # plan(multicore) # This sets up the future plan to use multiple processes on non-windows servers
-  plan(multisession) # This sets up the future plan to use multiple sessions on all servers
+  ###  plan(multisession) # This sets up the future plan to use multiple sessions on all servers
   # plan(sequential) # This sets up the future plan to not use async at all, like on the free shinyapps.io plan
   
   
@@ -121,6 +121,11 @@ server <- function(input, output, session) {
         } else {
           p("The currently displayed results are from Vasilev et al., 2018 plus updates as of 2023")
         }
+        ### debugging:
+        object_sizes <- sapply(ls(), function(x) object.size(get(x)))
+        object_sizes_sorted <- sort(object_sizes, decreasing = TRUE)
+        print(object_sizes_sorted)
+        ### debugging above here:
       })
     })
   })
