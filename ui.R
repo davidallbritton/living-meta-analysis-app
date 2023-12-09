@@ -196,12 +196,19 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  p('Because the calculations for Bayesian models can take', 
                                    "a long time for large datasets, you may want to first use the frequentist",
                                    "panels before deciding which Bayesian models to run.",
-                                   "For the default dataset some Bayesian models have been",
-                                   "computed and stored ahead of time to speed things up.",
-                                   "The Bayes Facor Robustness Check panel requires multiple",
+                                   "The Bayes Factor Robustness Check panel requires multiple",
                                    "recomputations of the Bayesian model and is VERY slow as a result.",
-                                   "You may only want to run it once, on your final selected model."
-                                 ), 
+                                   "You may only want to run it once, on your final selected model.",
+                                   " For demonstration purposes, however, the following are precomputed for the default dataset and cached to load quickly for Bayesian models and robustness plots:
+",
+                                 tags$ul(
+                                   tags$li("All studies (default settings), with mu prior mean 0 and SD 1.5 (default priors)"),
+                                   tags$li("All studies (default settings), with mu prior mean and SD empty (resulting in uniform priors) [no robustness plot]"),
+                                   tags$li("Original Vasilev et al. 2018 studies only, with mu prior mean 0 and SD 1.5 (default priors)"),
+                                   tags$li("Original Vasilev et al. 2018 studies only, with mu prior mean and SD empty (uniform priors; similar to the analysis in Vasilev et al. 2018) [no robustness plot]"),
+                                   tags$li("All studies, aggregated over papers, with mu prior mean 0 and SD 1.5 (default priors)")
+                                 )
+                                   ), 
                                  
                                  
                                  
