@@ -122,9 +122,9 @@ server <- function(input, output, session) {
           p("The currently displayed results are from Vasilev et al., 2018 plus updates as of 2023")
         }
         ### debugging:
-        object_sizes <- sapply(ls(), function(x) object.size(get(x)))
-        object_sizes_sorted <- sort(object_sizes, decreasing = TRUE)
-        print(object_sizes_sorted)
+        #object_sizes <- sapply(ls(), function(x) object.size(get(x)))
+        #object_sizes_sorted <- sort(object_sizes, decreasing = TRUE)
+        #print(object_sizes_sorted)
         ### debugging above here:
       })
     })
