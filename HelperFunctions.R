@@ -1,7 +1,7 @@
 #######################################################################################
 ################### A General Tool for BAYESIAN META-ANALYSIS #######################
 #######################################################################################
-#  Shiny App v.0.9.2 2023.11.07 
+#  Shiny App v.0.9.3 2023.12.11 
 
 ################### Helper functions #################################################
 #----
@@ -311,24 +311,16 @@ getEffectSize <- function(g=NA, g_var=NA, d=NA, d_var=NA, mean_E=NA, mean_C=NA,
 checkOldModels <- function(listPrevious, MA, tauprior, mupriorsd, scaletau, mupriormean, prevMAsNoFactors) {
   return_bma <- FALSE
   if(length(listPrevious)) {
-        print("Checking old models....")   # debugging
     MA <- as.data.frame(MA) 
     MA <-  MA %>% mutate_if(is.factor, as.character)
-        print("one more line 338") # debugging
-        for (i in seq_along(listPrevious)) {
-           print("... in the loop now")  # debugging
-      #     ##    str(prevMAsNoFactors)  # debugging
+    for (i in seq_along(listPrevious)) {
       ma_previous <- as.data.frame(prevMAsNoFactors[[i]]) 
-            print(paste("row number", i)) #debugging
-            print("Xxxx  101") # debugging
       if (identical(ma_previous, MA) && 
           identical(listPrevious[[i]]$tauprior, tauprior) && 
           identical(listPrevious[[i]]$mupriorsd, mupriorsd) && 
           identical(listPrevious[[i]]$scaletau, scaletau) && 
           identical(listPrevious[[i]]$mupriormean, mupriormean)
-          )  {
-        print("Xxxx  102") # debugging
-        
+      )  {
         return_bma <- listPrevious[[i]]$bma
         break
       }

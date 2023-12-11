@@ -2,7 +2,7 @@
 ################### A General Tool for BAYESIAN META-ANALYSIS #################
 #######################################################################################
 
-################### Shiny App v.0.9.2 2023.11.07 SERVER ###################################
+################### Shiny App v.0.9.3 2023.12.11 SERVER ###################################
 #
 # Derived and adapted from https://vinzentwolf.shinyapps.io/taVNSHRVmeta/
 # as described in https://doi.org/10.1111/psyp.13933
@@ -11,17 +11,10 @@
 
 # Define server logic
 server <- function(input, output, session) {
-  
-  ### Turn async on or off for future() functions
-  # plan(multicore) # This sets up the future plan to use multiple processes on non-windows servers
-  ###  plan(multisession) # This sets up the future plan to use multiple sessions on all servers
-  # plan(sequential) # This sets up the future plan to not use async at all, like on the free shinyapps.io plan
-  
-  
+ 
   # increase the allowable file size for uploads:
   options(shiny.maxRequestSize = 100 * 1024^2)
-  # shinyOptions(cache = cachem::cache_disk("./myapp-cache"))
-  
+
   ## Initialize with stored data, which will be replaced when a data file is uploaded
   ## by the user
   myrvs <- reactiveValues(currentInputFile = NULL)   
@@ -37,10 +30,7 @@ server <- function(input, output, session) {
   if (file.exists("defaultPrecalculatedModels.RDS")) {
     myrvs$previousModels <- readRDS("defaultPrecalculatedModels.RDS")
   }
-#  print("prev models initialized from disk") #debugging
-#  print("length(myrvs$previousModels")  #debugging
-#  observe(print(length(myrvs$previousModels)))  #debugging
-  #
+
   ### a reactive value that gets updated whenever myrvs$previousModels changes:
   #   This version of MA() without factor variables is necessary because
   #   factor levels are recorded differently on different platforms, making
@@ -51,15 +41,12 @@ server <- function(input, output, session) {
   observe ({
     prevModels <- myrvs$previousModels
     isolate ({
-      #### previousMAsNoFactors <- reactiveValues(MAs = list())   # debugging
       if(length(myrvs$previousModels)) {
         for (i in 1:length(prevModels)) {
           nofactors <- prevModels[[i]]$MA
- #         print(paste("prevmodels loop", i))   # debugging
           nofactors <- nofactors %>% mutate_if(is.factor, as.character)
           previousMAsNoFactors$MAs[[i]] <- nofactors
         }
- #       tempprev <<- previousMAsNoFactors$MAs  # debugging
       }
     })
   })
@@ -80,8 +67,6 @@ server <- function(input, output, session) {
         myrvs$dataErrorMessage <- ""
         myrvs$defaultYear <- thisYear
         myrvs$ma_num <- 1
-        # add a list for storing the previous models.  Each index of this list
-        # should contain a list of 3 things: MA, printed_bma, bma
       })
     }
   })
@@ -121,11 +106,6 @@ server <- function(input, output, session) {
         } else {
           p("The currently displayed results are from Vasilev et al., 2018 plus updates as of 2023")
         }
-        ### debugging:
-        #object_sizes <- sapply(ls(), function(x) object.size(get(x)))
-        #object_sizes_sorted <- sort(object_sizes, decreasing = TRUE)
-        #print(object_sizes_sorted)
-        ### debugging above here:
       })
     })
   })
@@ -659,8 +639,6 @@ server <- function(input, output, session) {
   bma <- reactive({
     req(MA())           # trigger to update bma; MA() gets updated only when "recalculate" button is pressed
     isolate({           # so that changes in priors do not trigger bma() update before "recalculate" button is pressed
-      # delete #           req(printed_bma())  # to make sure the meta-expansion text is up to date
- # delete #     printed_bma <- as.character(printed_bma())
       ## Generate bayesmeta-object "bma" depending on tau prior chosen
       old_bma <- FALSE
       # copy reactive values for use in this block.  Use as arguments to functions.
@@ -699,11 +677,6 @@ server <- function(input, output, session) {
   updateModels <- function(MA, tauprior, mupriorsd, scaletau, mupriormean, bma) {
     newrow <- list(MA=MA, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, mupriormean=mupriormean, bma=bma) 
     myrvs$previousModels[length(myrvs$previousModels) + 1] <- list(newrow)
-    #    # debugging prints; delete later:
-        print("length of myrvs$previousModels")  # debugging
-        print(length(myrvs$previousModels))  # debugging
-        tempprevmods <- myrvs$previousModels   # debugging???
-        saveRDS(tempprevmods, file = "tempprevmods.RDS")   # debugging???
     length(myrvs$previousModels)  # unused return value
   }
   
@@ -712,11 +685,6 @@ server <- function(input, output, session) {
   updatePlots <- function(MA, tauprior, mupriorsd, scaletau, robust, robustggplot) {
     newrow <- list(MA=MA, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, robust=robust, robustggplot=robustggplot) 
     myrvs$previousPlots[length(myrvs$previousPlots) + 1] <- list(newrow)
-    #    # debugging prints; delete later:
-    print("length of myrvs$previousPlots")  # debugging
-    print(length(myrvs$previousPlots))  # debugging
-    tempprevplots <- myrvs$previousPlots   # debugging???
-    saveRDS(tempprevplots, file = "tempprevplots.RDS")   # debugging???
     length(myrvs$previousPlots)  # unused return value
   }
 
@@ -802,33 +770,7 @@ server <- function(input, output, session) {
   output$warning2 <- renderPrint({
       print("WARNING: Plot will not be computed, because an improper τ prior was chosen. Proper τ priors are 'Half student t' and 'Half cauchy'.")
   })
-  
-  # output$robustplot <- renderPlot({
-  #     MA <- MA()  #trigger recalculation
-  #     robust <- input$robust
-  #     tauprior <- input$tauprior
-  #     mupriorsd <- input$mupriorsd
-  #     scaletau <- input$scaletau
-  #   future_promise({
-  #     if (robust == "Yes" & tauprior == "Half cauchy") {
-  #       robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfcauchy(t, scale = scaletau))
-  #     } else if (robust == "Yes" & tauprior == "Half student t") {
-  #       robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfnormal(t, scale = scaletau))
-  #     }
-  #     # Return the plot object to be resolved by the promise
-  #     robustggplot
-  #   }) %...>% {  # Use %...>% to chain the promise
-  #     . # This dot stands for the resolved value of the promise, i.e., robustggplot
-  #   }
-  #  }, width = 800)  %>% bindCache(
-  #   MA(),
-  #   input$robust,
-  #   input$tauprior,
-  #   input$mupriorsd,
-  #   input$scaletau
-  # )
-  # 
-  # 
+  #
   output$robustplot <- renderPlot({
     MA <- MA()  #trigger recalculation
     MA_nofactors <- as.data.frame(MA) 
@@ -838,7 +780,6 @@ server <- function(input, output, session) {
     mupriorsd <- input$mupriorsd
     scaletau <- input$scaletau
     old_plot <- checkOldPlots(myrvs$previousPlots, MA=MA_nofactors, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, robust=robust)
-    tempoldplot <<- old_plot  # debugging
     if(isTruthy(old_plot)) robustggplot <- old_plot  # retrieve previously calculated bma model
     else {
       robustggplot <- NULL
@@ -854,16 +795,6 @@ server <- function(input, output, session) {
     }
     robustggplot
   }, width = 800)
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
   
   
   
@@ -886,9 +817,6 @@ server <- function(input, output, session) {
     newrows_bma <- readRDS(input$SavedModelsUp$datapath)
     oldrows_bma <- myrvs$previousModels
     allrows_bma <- c(newrows_bma, oldrows_bma)
-#    tempnew <<- newrows_bma  # debugging
-#    tempold <<- oldrows_bma  # debugging
-#    tempall <<- allrows_bma  # debugging
     myrvs$previousModels <- allrows_bma
     output$inputFileErrorBup <- renderUI(NULL) # remove error message if file uploaded successfully
   })
@@ -925,9 +853,6 @@ server <- function(input, output, session) {
     newrows_bma <- readRDS(input$SavedPlotsUp$datapath)
     oldrows_bma <- myrvs$previousPlots
     allrows_bma <- c(newrows_bma, oldrows_bma)
-    #    tempnew <<- newrows_bma  # debugging
-    #    tempold <<- oldrows_bma  # debugging
-    #    tempall <<- allrows_bma  # debugging
     myrvs$previousPlots <- allrows_bma
     output$inputFileErrorBup <- renderUI(NULL) # remove error message if file uploaded successfully
   })
@@ -941,12 +866,7 @@ server <- function(input, output, session) {
       saveRDS(myrvs$previousPlots, file)
     }
   )
-  #
-  # ********** working on this then delete this line
-  
-  
-  
-  
+
   
   ########### Downloads panel
   #
