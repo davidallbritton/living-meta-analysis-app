@@ -2,9 +2,8 @@
 ################### A General Tool for BAYESIAN META-ANALYSIS #######################
 #######################################################################################
 
-###################   Shiny App v.0.9.2 2023.11.07  UI ####################################
-# revised 2022 for Vasilev et al. data   
-#  further revisions begun 10/2023 for revised paper...
+###################   Shiny App v.0.9.3 2023.12.11  UI ####################################
+
 
 # Load required packages and source helper functions #----
 library(purrr)
@@ -29,10 +28,7 @@ library(shinythemes)
 library(stringr)
 library(tidyr)
 library(xtable)
-#library(shinymeta)
-#library(future)
-#library(promises)
-#library(cachem)
+
 
 source("HelperFunctions.R")
 source("effect_sizes.R")
