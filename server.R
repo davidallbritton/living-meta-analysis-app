@@ -980,17 +980,30 @@ server <- function(input, output, session) {
   
   # Forest plot panel height
   freq_forest_height <- reactive(length(fma()$yi) * 12 + 200)
-  #
+  
+  ### Frequentist Forest Plot
   output$freq_forest <- renderPlot({
-    metafor::forest.rma(x = fma(), showweights = T, addfit = T,
-                        order = "obs",  xlab = "Hedges' g", 
-                        addpred=T, 
-                        efac = 0,
-                        col = "red",
-                        border = "red"
-                        )
-  }, height = freq_forest_height
-  )
+    model <- fma()  
+    # Increase bottom margin to make space for the text
+    par(mar = c(5, 4, 4, 2) + 0.1)  # Adjust the bottom margin (the first value)
+    # Generate the forest plot
+    plot <- metafor::forest.rma(x = model, showweights = TRUE, addfit = TRUE,
+                                order = "obs", xlab = "Hedges' g", 
+                                addpred = TRUE, 
+                                efac = 0,
+                                col = "red",
+                                border = "red")
+    # Add Cochran's Q, its p-value, and I² statistic as text
+    # Position the text below the plot
+    mtext(side = 1, line = 4, 
+          text = paste0("Cochran's Q = ", round(model$QE, 2), 
+                       " (p = ",  format(round(model$QEp, 4), nsmall = 4), ")\n",
+                       "I² = ", round(model$I2, 2), "%"),
+          adj = 0, cex = 0.8)
+    # Return the plot
+    plot
+  }, height = freq_forest_height)
+  
   
   # Funnel plot (frequentist)
   output$freq_funnel <- renderPlot({
