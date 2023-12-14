@@ -91,10 +91,9 @@ server <- function(input, output, session) {
       if (file_extension %in% c("xlsx", "xls")) {
         df <- readxl::read_excel(file_path) %>% as.data.frame()
       } else if (file_extension == "csv") {
-        print("ok so far about to read the csv file")  #debugging
+        # The .csv should use UTF-8 encoding if there are non-ASCII characters
+        # otherwise they can cause the app to crash.
         df <- readr::read_csv(file_path, show_col_types = FALSE)  %>% as.data.frame()
-        print("ok so far about just read the csv file")  #debugging
-        
       }
       #
       newrvs <- reformat.df(df)
@@ -107,8 +106,6 @@ server <- function(input, output, session) {
       myrvs$nfiles <- myrvs$nfiles + 1
       myrvs$recalculatedSinceUpload <- 0
       myrvs$currentInputFile <- input$DataFileUp$name
-      print("ok so far; finished assigning values")  #debugging
-      
       output$inputFileError <- renderUI(NULL) # remove error message if file uploaded successfully
     })
   
