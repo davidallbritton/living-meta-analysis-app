@@ -45,7 +45,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                     tabsetPanel(id = "dataSetupPanel",
                       tabPanel("Study criteria",    
                                actionButton("recalculateButton","(Re)Calculate Meta-Analysis", icon("sync"), style = "color: yellow; background-color: green"),
-                               fileInput("DataFileUp", label = "Upload your data file (.xls or .xlsx)", accept = c(".xls", ".xlsx")),
+                               fileInput("DataFileUp", label = "Upload your data file (.csv .xls or .xlsx)", accept = c(".xls", ".xlsx", ".csv")),
                                uiOutput("inputFileError"),
                                
                                ##########  The study selection panel is created in the server:

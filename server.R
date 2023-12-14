@@ -72,27 +72,45 @@ server <- function(input, output, session) {
   })
   
    
-  ## When the user uploads a data file, replace the existing data and update the UI
-  observeEvent(input$DataFileUp, {
-    # Read the data from the excel file the user uploaded:
-    fileExtension <- tools::file_ext(input$DataFileUp$datapath)
-    output$inputFileError <- renderUI({  # create error message in case file not uploaded successfully
-      if (!is.null(input$DataFileUp)) p(style = "color:red", "***File was not read.  Must be .xls or .xlsx***")
+    ## When the user uploads a data file, replace the existing data and update the UI
+    observeEvent(input$DataFileUp, {
+      # Read the data from the uploaded file:
+      file_path <- input$DataFileUp$datapath
+      file_extension <- tools::file_ext(file_path)
+      #
+      output$inputFileError <- renderUI({  
+        if (!is.null(input$DataFileUp)) {
+          if (!(file_extension %in% c("xlsx", "xls", "csv"))) {
+            p(style = "color:red", "***File format not supported. Must be .xlsx, .xls, or .csv.***")
+          }
+        }
+      })
+      #
+      validate(need(file_extension %in% c("xlsx", "xls", "csv"), "Please upload an Excel (.xlsx/.xls) or CSV (.csv) file"))
+      #
+      if (file_extension %in% c("xlsx", "xls")) {
+        df <- readxl::read_excel(file_path) %>% as.data.frame()
+      } else if (file_extension == "csv") {
+        print("ok so far about to read the csv file")  #debugging
+        df <- readr::read_csv(file_path, show_col_types = FALSE)  %>% as.data.frame()
+        print("ok so far about just read the csv file")  #debugging
+        
+      }
+      #
+      newrvs <- reformat.df(df)
+      myrvs$df.reactive <- newrvs$df
+      myrvs$df.original <- newrvs$df.original
+      myrvs$df.updated <- myrvs$df.original 
+      myrvs$Variable.Factor.Names <- newrvs$Variable.Factor.Names
+      myrvs$Variable.Numeric.Names <- newrvs$Variable.Numeric.Names
+      myrvs$na.warning <- newrvs$na.warning
+      myrvs$nfiles <- myrvs$nfiles + 1
+      myrvs$recalculatedSinceUpload <- 0
+      myrvs$currentInputFile <- input$DataFileUp$name
+      print("ok so far; finished assigning values")  #debugging
+      
+      output$inputFileError <- renderUI(NULL) # remove error message if file uploaded successfully
     })
-    validate(need(fileExtension == "xlsx" | fileExtension == "xls" , "Please upload an Excel file"))
-    df <- readxl::read_excel(input$DataFileUp$datapath) %>% as.data.frame()
-    newrvs <- reformat.df(df)
-    myrvs$df.reactive <- newrvs$df
-    myrvs$df.original <- newrvs$df.original
-    myrvs$df.updated <- myrvs$df.original 
-    myrvs$Variable.Factor.Names <- newrvs$Variable.Factor.Names
-    myrvs$Variable.Numeric.Names <- newrvs$Variable.Numeric.Names
-    myrvs$na.warning <- newrvs$na.warning
-    myrvs$nfiles <- myrvs$nfiles + 1
-    myrvs$recalculatedSinceUpload <- 0
-    myrvs$currentInputFile <- input$DataFileUp$name
-    output$inputFileError <- renderUI(NULL) # remove error message if file uploaded successfully
-  })
   
   observeEvent(input$recalculateButton, {
     output$currentDataFile <- renderUI({
