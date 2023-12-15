@@ -67,6 +67,7 @@ server <- function(input, output, session) {
         myrvs$dataErrorMessage <- ""
         myrvs$defaultYear <- thisYear
         myrvs$ma_num <- 1
+        myrvs$triggerBma <- FALSE
       })
     }
   })
@@ -600,6 +601,7 @@ server <- function(input, output, session) {
 
   # Create MA reactive for all outputs
   MA <- eventReactive(input$recalculateButton, {
+    myrvs$triggerBma <- FALSE  ## debugging   does this work here?  
     # import the reactive version of the data and the relevant column names
     df <- myrvs$df.reactive
     Variable.Factor.Names <- myrvs$Variable.Factor.Names 
@@ -649,12 +651,33 @@ server <- function(input, output, session) {
     MA
   })
   
+  
+  ## modal to warn when Bayesian model update is requested
+  observe({
+    # Reactively depend on MA()
+    MA()
+    #
+    # Display the shinyalert
+    shinyalert(
+      title = "Are you sure you want to continue?",
+      type = "warning",
+      showCancelButton = TRUE,
+      confirmButtonText = "Yes, continue!",
+      cancelButtonText = "No, cancel",
+      callbackR = function(value) {
+        myrvs$triggerBma <- value
+      }
+    )
+  })
+  
 
   # Create bma reactive needed for all outputs
   bma <- reactive({
-    req(MA())           # trigger to update bma; MA() gets updated only when "recalculate" button is pressed
+    #req(MA())           # trigger to update bma; MA() gets updated only when "recalculate" button is pressed
+    req(myrvs$triggerBma)  # Ensure this block runs only after user confirmation
     isolate({           # so that changes in priors do not trigger bma() update before "recalculate" button is pressed
       ## Generate bayesmeta-object "bma" depending on tau prior chosen
+      print(input$mainTabset) ; print("  is the mainTabset") # debugging
       old_bma <- FALSE
       # copy reactive values for use in this block.  Use as arguments to functions.
       MA          <-  MA()
@@ -685,6 +708,8 @@ server <- function(input, output, session) {
       }  ####
     })  # end of isolate()
   })   # end of bma() definition
+  
+ 
   
   
   # function to update the list of previous models when bma() changes; for use in the bma() block only

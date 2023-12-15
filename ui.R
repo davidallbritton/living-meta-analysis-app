@@ -28,6 +28,7 @@ library(shinythemes)
 library(stringr)
 library(tidyr)
 library(xtable)
+library(shinyalert)
 
 
 source("HelperFunctions.R")
@@ -178,7 +179,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                     ))),
                   mainPanel(
                     fluidRow(
-                      tabsetPanel(
+                      tabsetPanel(id = "mainTabset",
                         tabPanel("Explanation", 
                                  printButton,
                                  h3("Welcome to the interactive Bayesian meta-analysis tool!"), 
@@ -326,16 +327,18 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  plotOutput("freq_funnel") %>% withSpinner(type = 6, color = "#3498DB")
                         ),
                         
-                        tabPanel("Bayesian Forest plot", 
+                        tabPanel("Bayesian Forest plot",  value = "bayesian_forest_plot",
                                  printButton, 
                                  h4("Forest plot with 95% credible intervals:"),
                                  plotOutput("forest") %>% withSpinner(type = 6, color = "#3498DB")
                                  ),
-                        tabPanel("Bayesian Funnel plot", printButton,
+                        tabPanel("Bayesian Funnel plot", value = "bayesian_funnel_plot",
+                                 printButton,
                                  h4("Funnel plot to assess publication bias:"),
                                  plotOutput("funnel")  %>% withSpinner(type = 6, color = "#3498DB")
                                  ),
-                        tabPanel("Bayesian Statistics", printButton,
+                        tabPanel("Bayesian Statistics", value = "bayesian_statistics",
+                                 printButton,
                                  h4("Parameters:"),
                                  p("τ (tau): posterior distribution of heterogeneity."),
                                  p("μ (mu): posterior distribution of effect."),
@@ -350,7 +353,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  h4("Maximum-likelihood:"), verbatimTextOutput("ML") %>% withSpinner(type = 6, color = "#3498DB"), br(),
                                  h4("Joint maximum-a-posteriori:"), verbatimTextOutput("MAP") %>% withSpinner(type = 6, color = "#3498DB")
                                  ),
-                        tabPanel("Bayesian Additional plots", printButton,
+                        tabPanel("Bayesian Additional plots", value = "bayesian_additional_plots",
+                                 printButton,
                                  h4("Joint posterior density of heterogeneity τ and effect μ:"), plotOutput("joint") %>%  withSpinner(type = 6, color = "#3498DB"),
                                  p("Darker shading corresponds to higher probability density."),
                                  p("Red lines indicate (approximate) 2-dimensional credible regions,"),
@@ -361,7 +365,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  h4("Prior, posterior, & likelihood:"), plotOutput("evupdate") %>% withSpinner(type = 6, color = "#3498DB"), br(),
                                  h4("τ prior distribution:"), plotOutput("taupriorplot") %>% withSpinner(type = 6, color = "#3498DB")
                                  ),
-                        tabPanel("Bayes factor robustness check", printButton,
+                        tabPanel("Bayes factor robustness check", value = "bayesian_robustness",
+                                 printButton,
                                  h4("Bayes Factors over a variety of prior standard deviations:"),
                                  p("Will only be computed if 'Yes' is selected for 'µ Bayes Factor robustness check' and the priors for τ and μ are proper.",),br(),
                                  p("NOTE: The robustness check requires computing multiple bayesmeta models",
