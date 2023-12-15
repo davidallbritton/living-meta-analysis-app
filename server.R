@@ -76,6 +76,7 @@ server <- function(input, output, session) {
         myrvs$defaultYear <- thisYear
         myrvs$ma_num <- 1
         myrvs$triggerBma <- FALSE
+        myrvs$triggerBmaRobust <- FALSE
       })
     }
   })
@@ -610,6 +611,7 @@ server <- function(input, output, session) {
   # Create MA reactive for all outputs
   MA <- eventReactive(input$recalculateButton, {
     myrvs$triggerBma <- FALSE  ## reset the trigger for calculating bma()  
+    myrvs$triggerBmaRobust <- FALSE  ## reset the trigger for robustness plots  
     # import the reactive version of the data and the relevant column names
     df <- myrvs$df.reactive
     Variable.Factor.Names <- myrvs$Variable.Factor.Names 
@@ -829,7 +831,43 @@ server <- function(input, output, session) {
     tauprior.ggplot(bma())
   }, width = 800)
 
- 
+
+  ## modal to warn when Bayesian robust plot pane update is requested
+  observe({
+    # Reactively depend on MA()
+    MA()
+    # Trigger only when the robustness tab is selected
+    req(input$mainTabset %in% c("bayesian_robustness"))   # for that panel only
+    req(input$robust == "Yes")   # only if yes is checked in the priors panal
+    #
+    ##  repeating code  that checks for cached robustness plots:
+    isolate({    old_plot <- FALSE
+    # copy reactive values for use in this block.  Use as arguments to functions.
+    MA <- MA()
+    MA_nofactors <- as.data.frame(MA)
+    MA_nofactors <-  MA_nofactors %>% mutate_if(is.factor, as.character)
+    robust <- input$robust
+    tauprior <- input$tauprior
+    mupriorsd <- input$mupriorsd
+    scaletau <- input$scaletau
+    old_plot <- checkOldPlots(myrvs$previousPlots, MA=MA_nofactors, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, robust=robust)
+    if(!isTruthy(old_plot))  { # skip the shinyalert if that plot is already cached
+      #
+      # Display the shinyalert
+      shinyalert(
+        title = "Are you sure you want to do this new Bayesian robustness analysis?  It could take a VERY long time.",
+        type = "warning",
+        showCancelButton = TRUE,
+        confirmButtonText = "Yes, continue!",
+        cancelButtonText = "No, not right now.",
+        callbackR = function(value) {
+          myrvs$triggerBmaRobust <- value
+        }
+      )}
+    else  myrvs$triggerBmaRobust <- TRUE
+    })
+  })
+
   
   # Bayes factor robustness plot panel
   output$warning2 <- renderPrint({
@@ -845,12 +883,12 @@ server <- function(input, output, session) {
     mupriorsd <- input$mupriorsd
     scaletau <- input$scaletau
     old_plot <- checkOldPlots(myrvs$previousPlots, MA=MA_nofactors, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, robust=robust)
-    if(isTruthy(old_plot)) robustggplot <- old_plot  # retrieve previously calculated bma model
+    if(isTruthy(old_plot)) robustggplot <- old_plot  # retrieve previously calculated plot
     else {
       robustggplot <- NULL
-      if (robust == "Yes" & tauprior == "Half cauchy") {
+      if (robust == "Yes" & tauprior == "Half cauchy" & isTruthy(myrvs$triggerBmaRobust)) {
         robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfcauchy(t, scale = scaletau))
-      } else if (robust == "Yes" & tauprior == "Half student t") {
+      } else if (robust == "Yes" & tauprior == "Half student t" & isTruthy(myrvs$triggerBmaRobust)) {
         robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfnormal(t, scale = scaletau))
       }
       ## store the new plot in the list of old plots; this function only has a side effect, no return value
