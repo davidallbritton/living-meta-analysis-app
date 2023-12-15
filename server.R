@@ -11,6 +11,8 @@
 
 # Define server logic
 server <- function(input, output, session) {
+  
+  ### need to make the recalculate button wait until the app has loaded ***
  
   # increase the allowable file size for uploads:
   options(shiny.maxRequestSize = 100 * 1024^2)
