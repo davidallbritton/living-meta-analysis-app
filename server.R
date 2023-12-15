@@ -14,6 +14,14 @@ server <- function(input, output, session) {
  
   # increase the allowable file size for uploads:
   options(shiny.maxRequestSize = 100 * 1024^2)
+  
+  # list of the tabs that require Bayesian calculations:
+  bayestabs <- c(
+    "bayesian_forest_plot",
+    "bayesian_funnel_plot",
+    "bayesian_statistics",
+    "bayesian_additional_plots" ## "bayesian_robustness" must be treated separately
+  )
 
   ## Initialize with stored data, which will be replaced when a data file is uploaded
   ## by the user
@@ -601,7 +609,7 @@ server <- function(input, output, session) {
 
   # Create MA reactive for all outputs
   MA <- eventReactive(input$recalculateButton, {
-    myrvs$triggerBma <- FALSE  ## debugging   does this work here?  
+    myrvs$triggerBma <- FALSE  ## reset the trigger for calculating bma()  
     # import the reactive version of the data and the relevant column names
     df <- myrvs$df.reactive
     Variable.Factor.Names <- myrvs$Variable.Factor.Names 
@@ -656,18 +664,36 @@ server <- function(input, output, session) {
   observe({
     # Reactively depend on MA()
     MA()
+    # Trigger only when specific tabs that require bma() are selected
+    req(input$mainTabset %in% bayestabs)   # defined at the top of the server function
     #
-    # Display the shinyalert
-    shinyalert(
-      title = "Are you sure you want to continue?",
-      type = "warning",
-      showCancelButton = TRUE,
-      confirmButtonText = "Yes, continue!",
-      cancelButtonText = "No, cancel",
-      callbackR = function(value) {
-        myrvs$triggerBma <- value
-      }
-    )
+    ##  repeating code from bma() that checks for cached bma models:
+    isolate({    old_bma <- FALSE
+    # copy reactive values for use in this block.  Use as arguments to functions.
+    MA          <-  MA()
+    tauprior    <-  input$tauprior
+    mupriorsd   <-  input$mupriorsd
+    scaletau    <-  input$scaletau
+    mupriormean <-  input$mupriormean
+    # end of reactive values that are copied.
+    old_bma <- checkOldModels(myrvs$previousModels, MA=MA, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, mupriormean=mupriormean, prevMAsNoFactors = previousMAsNoFactors$MAs)
+    })
+    ##
+    #
+    if(!isTruthy(old_bma))  { # skip the shinyalert if that bma is already cached
+      #
+      # Display the shinyalert  ## need to check whether the bma is cached first...##***
+      shinyalert(
+        title = "Are you sure you want to do this new Bayesian analysis?  It could take a long time.",
+        type = "warning",
+        showCancelButton = TRUE,
+        confirmButtonText = "Yes, continue!",
+        cancelButtonText = "No, not right now.",
+        callbackR = function(value) {
+          myrvs$triggerBma <- value
+        }
+      )}
+    else  myrvs$triggerBma <- TRUE  # do trigger "recalculation" of bma without the shinyalert if that bma is already cached.  It will be retrieved from the cache.
   })
   
 
@@ -677,7 +703,6 @@ server <- function(input, output, session) {
     req(myrvs$triggerBma)  # Ensure this block runs only after user confirmation
     isolate({           # so that changes in priors do not trigger bma() update before "recalculate" button is pressed
       ## Generate bayesmeta-object "bma" depending on tau prior chosen
-      print(input$mainTabset) ; print("  is the mainTabset") # debugging
       old_bma <- FALSE
       # copy reactive values for use in this block.  Use as arguments to functions.
       MA          <-  MA()
