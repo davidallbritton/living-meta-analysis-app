@@ -29,7 +29,7 @@ library(stringr)
 library(tidyr)
 library(xtable)
 library(shinyalert)
-
+library(shinyjs)
 
 source("HelperFunctions.R")
 source("effect_sizes.R")
@@ -37,6 +37,7 @@ source("effect_sizes.R")
 
 # Define UI
 ui <- fluidPage(theme = shinytheme("cosmo"),
+                useShinyjs(),
                 titlePanel(title = div("A General Tool for BAYESIAN META-ANALYSIS"),
                            windowTitle = "A General Tool for BAYESIAN META-ANALYSIS"),
                 sidebarLayout(
@@ -45,7 +46,10 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                     
                     tabsetPanel(id = "dataSetupPanel",
                       tabPanel("Study criteria",    
-                               actionButton("recalculateButton","(Re)Calculate Meta-Analysis", icon("sync"), style = "color: yellow; background-color: green"),
+                               actionButton("recalculateButton","(Re)Calculate Meta-Analysis", icon("sync"), 
+                                            style = "color: yellow; background-color: green",
+                                            disabled = TRUE
+                                            ),
                                fileInput("DataFileUp", label = "Upload your data file (.csv .xls or .xlsx)", accept = c(".xls", ".xlsx", ".csv")),
                                uiOutput("inputFileError"),
                                

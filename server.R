@@ -12,7 +12,7 @@
 # Define server logic
 server <- function(input, output, session) {
   
-  ### need to make the recalculate button wait until the app has loaded ***
+  ### need to make the recalculate button wait until the app has loaded **
  
   # increase the allowable file size for uploads:
   options(shiny.maxRequestSize = 100 * 1024^2)
@@ -28,6 +28,9 @@ server <- function(input, output, session) {
   ## Initialize with stored data, which will be replaced when a data file is uploaded
   ## by the user
   myrvs <- reactiveValues(currentInputFile = NULL)   
+  
+  ## initialize reactive value to indicate whether the app has finished loading
+  myrvs$uiRendered  <- FALSE
   
   ###  initialize $previousPlots if the file exists on the server
   myrvs$previousPlots <- list()
@@ -118,6 +121,7 @@ server <- function(input, output, session) {
       myrvs$nfiles <- myrvs$nfiles + 1
       myrvs$recalculatedSinceUpload <- 0
       myrvs$currentInputFile <- input$DataFileUp$name
+      myrvs$uiRendered  <- FALSE    # to keep recalculate button inactive until UI loaded
       output$inputFileError <- renderUI(NULL) # remove error message if file uploaded successfully
     })
   
@@ -213,6 +217,7 @@ server <- function(input, output, session) {
                   trigger = "click",
                   options = list(container = "body"))
       )
+#    myrvs$uiRendered <- TRUE
   })
   #################### End of study criteria panel 
   
@@ -1114,4 +1119,27 @@ server <- function(input, output, session) {
   output$freq_funnel <- renderPlot({
     funnel(fma(), xlab = "Observed outcome")
   })
-}
+  
+  ## observer to signal when the "recalculate" button can be activated
+  observe({
+    # Check if the necessary reactive values are populated
+    if (!is.null(myrvs$df.reactive) && 
+        !is.null(myrvs$Variable.Factor.Names) && 
+        !is.null(myrvs$Variable.Numeric.Names) && 
+        !is.null(myrvs$na.warning)) {
+        # If the condition is met, set the flag to TRUE
+      myrvs$uiRendered <- TRUE
+    }
+  })
+  
+  ## activate the recalculate button after the UI finishes rendering
+  # Observe changes in myrvs$uiRendered
+  observe({
+    if (myrvs$uiRendered) {
+      # Enable the recalculate button
+      shinyjs::enable("recalculateButton")
+    }
+  })
+  
+  
+}  # end of server
