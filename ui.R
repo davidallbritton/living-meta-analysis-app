@@ -2,7 +2,7 @@
 ################### A General Tool for BAYESIAN META-ANALYSIS #######################
 #######################################################################################
 
-###################   Shiny App v.0.9.3 2023.12.11  UI ####################################
+###################   Shiny App v.0.9.4 2023.12.18  UI ####################################
 
 
 # Load required packages and source helper functions #----
@@ -259,7 +259,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                           #       br(),
                                  h4("Calculation methods:"),
                                  p("Meta-analysis calculations use the R", '"metafor" and "bayesmeta" packages, along with',
-                                  "functions adapted from", paste0(first_shiny_meta_paper, "."),
+                                  "functions adapted from", paste0(first_shiny_meta_paper, " and ", noise_meta_paper, "."),
                                   " Input data for meta-analysis are Hedges' g and the variance of g (yi and vi).",
                                   "When yi and vi are calculated from user input, the following are used:"),
                                  tags$ul(
@@ -278,11 +278,11 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  a("paper", href="https://doi.org/", target = "_blank"), 
                                  h4("Code and data:"),
                                  ("This app's R Code and sample dataset can be found "),
-                                 a("here", href="put github location here some day!!", target = "_blank"),
+                                 a("here", href="https://github.com/davidallbritton/Breathing_life_into_meta-analysis", target = "_blank"),
                                  ("on GitHub."),
                                  h4("Server:"),
                                  ("This app is currently hosted at "),
-                                 a("https://dallbrit.shinyapps.io/Living_Meta_Analysis_2_0/", href="https://dallbrit.shinyapps.io/Living_Meta_Analysis_2_0/", target="_blank"),
+                                 a("https://dallbrit.shinyapps.io/Breathing_Life_into_MetaAnalysis/", href="https://dallbrit.shinyapps.io/Breathing_Life_into_MetaAnalysis/", target="_blank"),
                                  br(), 
                                  h4("Contact:"),
                                  p("The app is maintained by David Allbritton"),

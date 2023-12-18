@@ -2,7 +2,9 @@
 ################### A General Tool for BAYESIAN META-ANALYSIS #################
 #######################################################################################
 
-################### Shiny App v.0.9.3 2023.12.11 SERVER ###################################
+################### Shiny App v.0.9.4 2023.12.18 SERVER ###################################
+# David Allbritton
+# https://github.com/davidallbritton/Breathing_life_into_meta-analysis
 #
 # Derived and adapted from https://vinzentwolf.shinyapps.io/taVNSHRVmeta/
 # as described in https://doi.org/10.1111/psyp.13933
@@ -12,8 +14,6 @@
 # Define server logic
 server <- function(input, output, session) {
   
-  ### need to make the recalculate button wait until the app has loaded **
- 
   # increase the allowable file size for uploads:
   options(shiny.maxRequestSize = 100 * 1024^2)
   
@@ -343,7 +343,7 @@ server <- function(input, output, session) {
       msdtags <- tagList( hr(),
         # get means and sds
         p("Group means and variabilities:"),
-        numericInput(inputId = "mean_E_add",  label = "Intervention mean", value =NULL), ### ****
+        numericInput(inputId = "mean_E_add",  label = "Intervention mean", value =NULL), 
         numericInput(inputId = "mean_C_add",  label = "Control mean", value =""),
         radioButtons(inputId = "reverseCode_add", choiceNames = c("No. (More is better, e.g., % correct)", "Yes. (More is worse, e.g., % errors, RT)"),
                      choiceValues = c("No", "Yes"),
@@ -691,7 +691,7 @@ server <- function(input, output, session) {
     #
     if(!isTruthy(old_bma))  { # skip the shinyalert if that bma is already cached
       #
-      # Display the shinyalert  ## need to check whether the bma is cached first...##***
+      # Display the shinyalert  
       shinyalert(
         title = "Are you sure you want to do this new Bayesian analysis?  It could take a long time.",
         type = "warning",
