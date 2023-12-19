@@ -1068,7 +1068,12 @@ server <- function(input, output, session) {
                      "currentData.display_cells_selected" ,  "currentData.display_rows_selected",
                       "currentData.display_rows_all"    ,     "currentData.display_search"   ,       
                        "currentData.display_rows_current"  ,   "currentData.display_columns_selected", "dataSetupPanel")
-      skipnames <- c(skipnames1, skipnames2, skipnames3)
+      skipnames4 <- c("ClearModels", "SavedPlotsUp",
+                      "mainTabset",
+                      "ClearPlots",
+                      "SavedModelsUp"
+      )
+      skipnames <- c(skipnames1, skipnames2, skipnames3, skipnames4)
       namestolist <- ns[! ns %in% skipnames]
       orderednames <- c("mupriormean", "mupriorsd", "tauprior", "scaletau", "robust", "DataFileUp", "aggregation", "Design", "Publication.Year","included" )
       extranames <- namestolist[! namestolist %in% orderednames]
