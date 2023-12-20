@@ -2,7 +2,7 @@
 ################### A General Tool for BAYESIAN META-ANALYSIS #######################
 #######################################################################################
 
-###################   Shiny App v.0.9.4 2023.12.18  UI ####################################
+###################   Shiny App v.0.9.4 2023.12.18  UI ###################################
 
 
 # Load required packages and source helper functions #----
@@ -30,6 +30,9 @@ library(tidyr)
 library(xtable)
 library(shinyalert)
 library(shinyjs)
+
+library(shinymeta)
+
 
 source("HelperFunctions.R")
 source("effect_sizes.R")
@@ -309,7 +312,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                           h4('This table lists all the studies included by the current selected criteria'),
                           p('(updated only when "Re-Calculate Meta-Analysis" button is pressed)'),
                           textOutput("warning"), br(),
-                          DT::dataTableOutput("studies") %>% withSpinner(type = 6, color = "#3498DB"), br()
+                          DT::dataTableOutput("studies") %>% withSpinner(type = 6, color = "#3498DB"), br(),
+                          verbatimTextOutput("MAcodeOutput")
                           ),
                         tabPanel("Current data", printButton,
                                  h4('This table displays the current data file plus any added studies'), br(),
@@ -325,10 +329,17 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  h4("Frequentist Forest plot with study weights and 95% confidence intervals:"),
                                  plotOutput("freq_forest") %>% withSpinner(type = 6, color = "#3498DB")
                         ),
+                        # tabPanel("Funnel plot",
+                        #          printButton,
+                        #          h4("Frequentist Funnel plot"),
+                        #          plotOutput("freq_funnel") %>% withSpinner(type = 6, color = "#3498DB")
+                        # ),
+                        
                         tabPanel("Funnel plot",
                                  printButton,
                                  h4("Frequentist Funnel plot"),
-                                 plotOutput("freq_funnel") %>% withSpinner(type = 6, color = "#3498DB")
+                                 plotOutput("freq_funnel") %>% withSpinner(type = 6, color = "#3498DB"),
+                                 verbatimTextOutput("funnel_code")  # Add this line to display the code
                         ),
                         
                         tabPanel("Bayesian Forest plot",  value = "bayesian_forest_plot",

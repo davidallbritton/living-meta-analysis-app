@@ -614,59 +614,142 @@ server <- function(input, output, session) {
   })  #### end of adding a study
   
   
-
-  # Create MA reactive for all outputs
-  MA <- eventReactive(input$recalculateButton, {
-    myrvs$triggerBma <- FALSE  ## reset the trigger for calculating bma()  
-    myrvs$triggerBmaRobust <- FALSE  ## reset the trigger for robustness plots  
-    # import the reactive version of the data and the relevant column names
-    df <- myrvs$df.reactive
-    Variable.Factor.Names <- myrvs$Variable.Factor.Names 
-    Variable.Numeric.Names <- myrvs$Variable.Numeric.Names 
-    ## Create subset based on chosen inclusion criteria
-    df_sub <- df %>% filter(Design %in% input$Design,
-                            Publication.Year >= input$Publication.Year[1], 
-                            Publication.Year <= input$Publication.Year[2],
-                            N_Intervention >= input$N_Intervention[1],
-                            N_Intervention <= input$N_Intervention[2],
-                            Paper.and.Exp %in% input$included)
-    #
-    ## Create subset based on the above plus input-file defined selection factors
-    for (varName in Variable.Factor.Names)  {
-      keepValues <- input[[varName]]
-      df_sub <- df_sub[df_sub[,varName] %in% keepValues, ]
-    }
-    #
-    ## Create subset based on the above plus input-file defined selection numerics
-    for (varName in Variable.Numeric.Names)  {
-      df_sub <- df_sub[df_sub[,varName] >= input[[varName]][1], ]
-      df_sub <- df_sub[df_sub[,varName] <= input[[varName]][2], ]
-    }
-    ### need to check to make sure nstudies is not zero; throw error message
-    validate(
-      need(nrow(df_sub) > 0, "That returns zero studies. Please change your selection criteria and Recalculate.")
-    )
-    #
-    # replace ID with Paper.Number if aggregating over papers:
-    if (input$aggregation == "Papers") {
-      df_sub$ID <- df_sub$Paper.Number
-      df_sub$study <- df_sub$Paper
-    }
-    #
-    ## Aggregate effect sizes
-    aggES <- agg(id     = ID,
-                 es     = yi,
-                 var    = vi,
-                 data   = df_sub,
-                 cor = .5,
-                 method = "BHHR")
-    ## Merging aggregated ES with original dataframe 
-    MA <- merge(x = aggES, y = df_sub, by.x = "id", by.y = "ID") 
-    MA <- unique(setDT(MA) [sort.list(id)], by = "id")
-    MA <- with(MA, MA[order(MA$es)])
-    myrvs$ma_num <- myrvs$ma_num + 1
-    MA
+# 
+#   # Create MA reactive for all outputs
+#   MA <- metaReactive({
+#     req(input$recalculateButton > 0)
+#     isolate({
+#     myrvs$triggerBma <- FALSE  ## reset the trigger for calculating bma()
+#     myrvs$triggerBmaRobust <- FALSE  ## reset the trigger for robustness plots
+#     # import the reactive version of the data and the relevant column names
+#     df <- myrvs$df.reactive
+#     Variable.Factor.Names <- myrvs$Variable.Factor.Names
+#     Variable.Numeric.Names <- myrvs$Variable.Numeric.Names
+#     ## Create subset based on chosen inclusion criteria
+#     df_sub <- df %>% filter(Design %in% input$Design,
+#                             Publication.Year >= input$Publication.Year[1],
+#                             Publication.Year <= input$Publication.Year[2],
+#                             N_Intervention >= input$N_Intervention[1],
+#                             N_Intervention <= input$N_Intervention[2],
+#                             Paper.and.Exp %in% input$included)
+#     #
+#     ## Create subset based on the above plus input-file defined selection factors
+#     for (varName in Variable.Factor.Names)  {
+#       keepValues <- input[[varName]]
+#       df_sub <- df_sub[df_sub[,varName] %in% keepValues, ]
+#     }
+#     #
+#     ## Create subset based on the above plus input-file defined selection numerics
+#     for (varName in Variable.Numeric.Names)  {
+#       df_sub <- df_sub[df_sub[,varName] >= input[[varName]][1], ]
+#       df_sub <- df_sub[df_sub[,varName] <= input[[varName]][2], ]
+#     }
+#     ### need to check to make sure nstudies is not zero; throw error message
+#     validate(
+#       need(nrow(df_sub) > 0, "That returns zero studies. Please change your selection criteria and Recalculate.")
+#     )
+#     #
+#     # replace ID with Paper.Number if aggregating over papers:
+#     if (input$aggregation == "Papers") {
+#       df_sub$ID <- df_sub$Paper.Number
+#       df_sub$study <- df_sub$Paper
+#     }
+#     #
+#     ## Aggregate effect sizes
+#     aggES <- agg(id     = ID,
+#                  es     = yi,
+#                  var    = vi,
+#                  data   = df_sub,
+#                  cor = .5,
+#                  method = "BHHR")
+#     ## Merging aggregated ES with original dataframe
+#     MA <- merge(x = aggES, y = df_sub, by.x = "id", by.y = "ID")
+#     MA <- unique(setDT(MA) [sort.list(id)], by = "id")
+#     MA <- with(MA, MA[order(MA$es)])
+#     myrvs$ma_num <- myrvs$ma_num + 1
+#     MA
+#     })
+#   })
+# # 
+#   
+  
+  
+  
+  # Create MA metaReactive for all outputs
+  MA <- metaReactive({
+    req(input$recalculateButton > 0)
+    isolate({
+      myrvs$triggerBma <- FALSE  ## reset the trigger for calculating bma()
+      myrvs$triggerBmaRobust <- FALSE  ## reset the trigger for robustness plots
+      # import the reactive version of the data and the relevant column names
+      df <- myrvs$df.reactive
+      Variable.Factor.Names <- myrvs$Variable.Factor.Names
+      Variable.Numeric.Names <- myrvs$Variable.Numeric.Names
+      ## Create subset based on chosen inclusion criteria
+      df_sub <- df %>% filter(Design %in% ..(input$Design),
+                              Publication.Year >= ..(input$Publication.Year[1]),
+                              Publication.Year <= ..(input$Publication.Year[2]),
+                              N_Intervention >= ..(input$N_Intervention[1]),
+                              N_Intervention <= ..(input$N_Intervention[2]),
+                              Paper.and.Exp %in% ..(input$included))
+      #
+      ## Create subset based on the above plus input-file defined selection factors
+      for (varName in Variable.Factor.Names)  {
+        keepValues <- input[[varName]]
+        df_sub <- df_sub[df_sub[,varName] %in% keepValues, ]
+      }
+      #
+      ## Create subset based on the above plus input-file defined selection numerics
+      for (varName in Variable.Numeric.Names)  {
+        df_sub <- df_sub[df_sub[,varName] >= input[[varName]][1], ]
+        df_sub <- df_sub[df_sub[,varName] <= input[[varName]][2], ]
+      }
+      ### need to check to make sure nstudies is not zero; throw error message
+      validate(
+        need(nrow(df_sub) > 0, "That returns zero studies. Please change your selection criteria and Recalculate.")
+      )
+      #
+      # replace ID with Paper.Number if aggregating over papers:
+      if (..(input$aggregation) == "Papers") {
+        df_sub$ID <- df_sub$Paper.Number
+        df_sub$study <- df_sub$Paper
+      }
+      #
+      ## Aggregate effect sizes
+      aggES <- agg(id     = ID,
+                   es     = yi,
+                   var    = vi,
+                   data   = df_sub,
+                   cor = .5,
+                   method = "BHHR")
+      ## Merging aggregated ES with original dataframe
+      MA <- merge(x = aggES, y = df_sub, by.x = "id", by.y = "ID")
+      MA <- unique(setDT(MA) [sort.list(id)], by = "id")
+      MA <- with(MA, MA[order(MA$es)])
+      myrvs$ma_num <- myrvs$ma_num + 1
+      MA
+    })
   })
+  
+  
+  
+  
+  
+
+  
+  output$MAcodeOutput <- metaRender(renderPrint, {
+    expandChain( MA())
+  })
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
   
   
   ## modal to warn when Bayesian model update is requested
@@ -1119,11 +1202,24 @@ server <- function(input, output, session) {
     plot
   }, height = freq_forest_height)
   
+  # 
+  # # Funnel plot (frequentist)
+  # output$freq_funnel <- renderPlot({
+  #   funnel(fma(), xlab = "Observed outcome")
+  # })
+  # 
   
-  # Funnel plot (frequentist)
-  output$freq_funnel <- renderPlot({
-    funnel(fma(), xlab = "Observed outcome")
+  output$freq_funnel <- metaRender(renderPlot, {
+    # Use ..() to call the reactive expression fma()
+      funnel((fma()), xlab = "Observed outcome")
   })
+  
+  # Render the captured R code for the funnel plot
+   output$funnel_code <- renderPrint({
+     expandChain(output$freq_funnel())
+   })
+  
+  
   
   ## observer to signal when the "recalculate" button can be activated
   observe({
