@@ -736,9 +736,46 @@ server <- function(input, output, session) {
   
   
 
-  
-  output$MAcodeOutput <- metaRender(renderPrint, {
-    expandChain( MA())
+  observeEvent(MA(), {
+    # Generate the code based on current inputs
+    dputWrapper <- function(obj) {
+      capture.output(dput(obj, control = "all"))
+    }
+    options(useFancyQuotes = F)
+    code_for_MA <- sprintf("
+# Non-reactive R code
+Variable.Factor.Names <- %s
+Variable.Numeric.Names <- %s
+Design <- %s
+Publication.Year <- c(%s, %s)
+N_Intervention <- c(%s, %s)
+included <- %s
+aggregation <- '%s'",
+                           # toString(input$Variable_Factor_Names),
+                           # toString(input$Variable_Numeric_Names),
+                           # toString(input$Design),
+                           # input$Publication_Year[1], input$Publication_Year[2],
+                           # input$N_Intervention[1], input$N_Intervention[2],
+                           # toString(input$included),
+                           # input$aggregation
+                           toString( "x1"),
+                           toString( "x1"),
+                           toString( "x1"),
+                           "x1",  "x1",
+                           input$N_Intervention[1],  input$N_Intervention[2],
+                         #  dputWrapper(input$included),
+                           paste("c(", paste(dQuote(input$included), collapse = ", "), ")", sep=""),
+                           input$aggregation
+                           
+    )
+    tempincluded <<- input$included
+    
+    print("XXXXX")
+    print(dputWrapper(input$included))
+    
+    # Assign the generated code to output
+    print(paste("code_for_MA", code_for_MA))
+    output$MAcodeOutput <- renderText({ code_for_MA })
   })
 
   
