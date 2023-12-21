@@ -33,6 +33,7 @@ library(shinyjs)
 
 library(shinymeta)
 
+options(useFancyQuotes = F)
 
 source("HelperFunctions.R")
 source("effect_sizes.R")
