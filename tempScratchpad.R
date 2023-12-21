@@ -48,7 +48,7 @@ aggregation <- '%s'",
 ## This part should stay the same always:
 ## *** but need to figure out how to handle the variable.factor and numeric.names...
 
-createMAnr <- function(df, Variable.Factor.Names, Variable.Numeric.Names, Design, Publication.Year, N_Intervention, included, aggregation, method = "BHHR", cor = 0.5) {
+createMA.nonReactive <- function(df, Variable.Factor.Names, Variable.Numeric.Names, Design, Publication.Year, N_Intervention, included, aggregation, method = "BHHR", cor = 0.5) {
   # Create subset based on chosen inclusion criteria
   df_sub <- df %>% filter(Design %in% Design,
                           Publication.Year >= Publication.Year[1], 
