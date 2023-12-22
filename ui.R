@@ -313,8 +313,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                           h4('This table lists all the studies included by the current selected criteria'),
                           p('(updated only when "Re-Calculate Meta-Analysis" button is pressed)'),
                           textOutput("warning"), br(),
-                          DT::dataTableOutput("studies") %>% withSpinner(type = 6, color = "#3498DB"), br(),
-                          verbatimTextOutput("MAcodeOutput")
+                          DT::dataTableOutput("studies") %>% withSpinner(type = 6, color = "#3498DB"), br()
                           ),
                         tabPanel("Current data", printButton,
                                  h4('This table displays the current data file plus any added studies'), br(),
@@ -409,10 +408,13 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  ),
                         tabPanel("Downloads", br(),
                           h4("Download Data and Results"),
-                          p("From the currently loaded data file and most recent calculations"), br(),
+                          p("From the currently loaded data file and most recent calculations"), 
                           uiOutput("downloadButtons")
                         ), #end of Downloads tab
                          #    
+                        tabPanel("R Code", br(),
+                                 verbatimTextOutput("MAcodeOutput")
+                                 ),
                         hr()
                           ) #end of main tabs panel
                         )

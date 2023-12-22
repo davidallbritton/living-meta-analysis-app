@@ -1,4 +1,66 @@
+### nonreactive R code generated within the app for reproducibility
+
+##############  Edit this part by hand as needed ######################
+## data file name; change as needed.  It can be .xlsx, .xls, or .csv ##
+input_file <- "originalData.xlsx"       # Change this to your file path
+#######################################################################
+
+## source the "HelperFunctions.R" file that is used to reformat the input data, etc.
+source("HelperFunctions.R")  # Functions from this file that are used:
+# reformat.df
+
+## load libraries
+# get  needed libraries from ui.R 
+# commenting out the ones that are shiny-specific
+library(purrr)
+library(metafor)
+library(readxl)
+library(writexl)
+library(tools)
+# library(shiny)
+library(bayesmeta)
+library(cowplot)
+library(dplyr)
+library(DT)
+library(data.table)
+library(esc)
+library(ggplot2)
+library(MAd)
+library(readr)
+library(R.rsp)
+# library(shinyBS)
+# library(shinycssloaders)
+# library(shinythemes)
+library(stringr)
+library(tidyr)
+library(xtable)
+# library(shinyalert)
+# library(shinyjs)
+# library(shinymeta)
+
+## Function to read data based on file extension
+read_data <- function(file_path) {
+  file_extension <- tools::file_ext(file_path)
+  #
+  if (file_extension %in% c("xlsx", "xls")) {
+    df <- read_excel(file_path) %>% as.data.frame()
+  } else if (file_extension == "csv") {
+    df <- read_csv(file_path, show_col_types = FALSE) %>% as.data.frame()
+  } else {
+    stop("File format not supported. Must be .xlsx, .xls, or .csv.")
+  }
+  #
+  return(df)
+}
+
+## Read and process the data from the input file
+df_as_uploaded <- read_data(input_file)
+newrvs <- reformat.df(df_as_uploaded)
+df <- newrvs$df  # reformatted for use in the analyses
+
+#
 ## R code to create MA object that contains selected data for all analyses
+#
 Variable.Factor.Names <- c("Meta-analysis.Source", "sample", "Measure", "task", "sound")
 Variable.Numeric.Names <- c("IF", "db")
 Design <- c("between", "within")
@@ -13,102 +75,3 @@ Variable.Factors.selected[["sample"]] <- c(c("adults", "children"))
 Variable.Factors.selected[["Measure"]] <- c(c("num_correct", "perc_correct", "prop_correct", "reading_score")) 
 Variable.Factors.selected[["task"]] <- c(c("reading comprehension", "reading comprehension (easy font)", "reading comprehension/ select word", "reading test (composite)", "select word", "text word learning")) 
 Variable.Factors.selected[["sound"]] <- c(c("music", "music+noise", "music+speech", "music+speech+noise", "noise", "noise+music", "noise+speech", "speech", "speech+music", "speech+noise")) 
-
-
-
-
-
-
-# Assuming the necessary libraries are loaded
-# library(dplyr)
-# library(data.table)
-# etc...
-
-##  This part may need to be edited by the user unless a standard filename is used
-#  Define the input file
-
-
-## This part depends on shiny input values:
-# record the selection values
-
-#   Variable.Factor.Names, Variable.Numeric.Names, 
-#   Design, Publication.Year, N_Intervention, included, aggregation
-
-observeEvent(MA(), {
-  # Generate the code based on current inputs
-  code_for_MA <- sprintf("
-# Non-reactive R code
-Variable.Factor.Names <- %s
-Variable.Numeric.Names <- %s
-Design <- %s
-Publication.Year <- c(%s, %s)
-N_Intervention <- c(%s, %s)
-included <- %s
-aggregation <- '%s'",
-                            toString(input$Variable_Factor_Names),
-                            toString(input$Variable_Numeric_Names),
-                            toString(input$Design),
-                            input$Publication_Year[1], input$Publication_Year[2],
-                            input$N_Intervention[1], input$N_Intervention[2],
-                            toString(input$included),
-                            input$aggregation
-  )
-  
-  # Assign the generated code to output
-  output$MAcodeOutput <- renderText({ code_for_MA })
-})
-
-
-
-
-# record the priors
-
-
-## This part should stay the same always:
-## *** but need to figure out how to handle the variable.factor and numeric.names...
-
-createMA.nonReactive <- function(df, Variable.Factor.Names, Variable.Numeric.Names, Design, Publication.Year, N_Intervention, included, aggregation, method = "BHHR", cor = 0.5) {
-  # Create subset based on chosen inclusion criteria
-  df_sub <- df %>% filter(Design %in% Design,
-                          Publication.Year >= Publication.Year[1], 
-                          Publication.Year <= Publication.Year[2],
-                          N_Intervention >= N_Intervention[1],
-                          N_Intervention <= N_Intervention[2],
-                          Paper.and.Exp %in% included)
-  
-  # Subset based on selection factors
-  for (varName in Variable.Factor.Names) {
-    keepValues <- df[[varName]]  # Adjust as needed
-    df_sub <- df_sub[df_sub[,varName] %in% keepValues, ]
-  }
-  
-  # Subset based on selection numerics
-  for (varName in Variable.Numeric.Names) {
-    df_sub <- df_sub[df_sub[,varName] >= df[[varName]][1], ]
-    df_sub <- df_sub[df_sub[,varName] <= df[[varName]][2], ]
-  }
-  
-  # Replace ID with Paper.Number if aggregating over papers
-  if (aggregation == "Papers") {
-    df_sub$ID <- df_sub$Paper.Number
-    df_sub$study <- df_sub$Paper
-  }
-  
-  # Aggregate effect sizes
-  aggES <- agg(id = ID,
-               es = yi,
-               var = vi,
-               data = df_sub,
-               cor = cor,
-               method = method)
-  
-  # Merging aggregated ES with original dataframe
-  MAnr <- merge(x = aggES, y = df_sub, by.x = "id", by.y = "ID") 
-  MAnr <- unique(setDT(MAnr)[sort.list(id)], by = "id")
-  MAnr <- with(MAnr, MAnr[order(MAnr$es)])
-  
-  return(MAnr)
-}
-
-# Example usage:
-# MAnr <- createMAnr(df, Variable.Factor.Names, Variable.Numeric.Names, Design, Publication.Year, N_Intervention, included, aggregation)

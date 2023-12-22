@@ -1,7 +1,5 @@
+'
 ### nonreactive R code generated within the app for reproducibility
-#
-# *** copied and pasted from the output tabs to see if it really works
-#
 
 ##############  Edit this part by hand as needed ######################
 ## data file name; change as needed.  It can be .xlsx, .xls, or .csv ##
@@ -9,7 +7,8 @@ input_file <- "originalData.xlsx"       # Change this to your file path
 #######################################################################
 
 ## source the "HelperFunctions.R" file that is used to reformat the input data, etc.
-source("HelperFunctions.R")
+source("HelperFunctions.R")  # Functions from this file that are used:
+  # reformat.df
 
 ## load libraries
 # get  needed libraries from ui.R 
@@ -40,9 +39,6 @@ library(xtable)
 # library(shinyjs)
 # library(shinymeta)
 
-## Function to reformat the data frame; defined in HelperFunctions.R
-#  reformat.df <- function(df)...
-
 ## Function to read data based on file extension
 read_data <- function(file_path) {
   file_extension <- tools::file_ext(file_path)
@@ -62,6 +58,8 @@ read_data <- function(file_path) {
 df_as_uploaded <- read_data(input_file)
 newrvs <- reformat.df(df_as_uploaded)
 df <- newrvs$df  # reformatted for use in the analyses
+
+#'
 
 ### ** The above is static predefined code that does not need to be generated from the app ###
 
