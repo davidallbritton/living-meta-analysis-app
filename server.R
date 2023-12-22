@@ -695,19 +695,18 @@ aggregation <- '%s'
                     input$aggregation
                            
     )
-    #
-    # Assign the generated code to output
+    # Initialize the string that contains the non-reactive R code that will be output
     code_for_MA <- paste0(code_for_MA.inputs)
+    #
+    # Write the code for filtering based on user-defined selection factors
+    for (varName in Variable.Factor.Names)  {
+      keepValues <- input[[varName]]
+      df_sub <- df_sub[df_sub[,varName] %in% keepValues, ]
+    }
+    # Assign the generated code to output
     output$MAcodeOutput <- renderText({ code_for_MA })
   })
 
-  
-  
-  
-  
-  
-  
-  
   
   
   
