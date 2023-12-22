@@ -11,8 +11,16 @@
 #
 ###################################################################################
 
+
 # Define server logic
 server <- function(input, output, session) {
+  
+  # Include code from other files.  Note that the "source" command
+  # must be inside the "server" function and "local = T" must be
+  # included so that the code is evaluated within the server envirnoment
+  # rather than in the user's workspace (global environment)
+  #
+  source("codeGenerator.R", local = T)  # for generating non-reactive R code to download for reproducibility
   
   # increase the allowable file size for uploads:
   options(shiny.maxRequestSize = 100 * 1024^2)
@@ -668,67 +676,68 @@ server <- function(input, output, session) {
     MA
   })
   
+#  source("codeGenerator.R", local = T)  # for generating non-reactive R code to download for reproducibility
   
-  
-  
-  
-## Generate non-reactive R code to create MA object
-#  This code can be displayed or downloaded for reproducibility
-  observeEvent(MA(), {
-    # Generate the code based on current inputs
-    code_for_MA.inputs <- sprintf("
-## R code to create MA object that contains selected data for all analyses
-Variable.Factor.Names <- %s
-Variable.Numeric.Names <- %s
-Design <- %s
-Publication.Year <- c(%s, %s)
-N_Intervention <- c(%s, %s)
-included <- %s
-aggregation <- '%s'
-#",
-                    paste("c(", paste(dQuote(myrvs$Variable.Factor.Names), collapse = ", "), ")", sep=""),
-                    paste("c(", paste(dQuote(myrvs$Variable.Numeric.Names), collapse = ", "), ")", sep=""),
-                    paste("c(", paste(dQuote(input$Design), collapse = ", "), ")", sep=""),
-                    input$Publication.Year[1], input$Publication.Year[2],
-                    input$N_Intervention[1],  input$N_Intervention[2],
-                    paste("c(", paste(dQuote(input$included), collapse = ", "), ")", sep=""),
-                    input$aggregation
-                           
-    )
-    # Initialize the string that contains the non-reactive R code that will be output
-    code_for_MA <- paste0(code_for_MA.inputs)
-    #
-    # Write the code for filtering based on user-defined selection factors
-    ##  the plan: write code to create a list with names = Variable.Factor.Names;
-    ##            loop over the factor names; for each one:
-    ##                write code that will record the selections for that factor
-    ##                use #w# to indicate code that should be written out rather than executed here
-    ##            ## that will be the list that gets passed to the MA function
-    ##            and the parts between #and# should be printed literally rather than expanded.
-    #
-#w#    Variable.Factors.selected <- list(NULL)  
-    
-    ## Write code for the variable selection factors 
-    someCode <- sprintf("
-Variable.Factors.selected <- list() ")
-    code_for_MA <- paste0(code_for_MA, someCode)
-    #
-    # loop over the variable factor names to write code
-    for (varName in Variable.Factor.Names)  {
-      keepValues <- input[[varName]]
-      someCode <- sprintf("
-Variable.Factors.selected[[%s]] <- c(%s) ",
-                          dQuote(varName),
-                          paste("c(", paste(dQuote(keepValues), collapse = ", "), ")", sep="")
-      )
-      code_for_MA <- paste0(code_for_MA, someCode)
-    }
-    # Assign the generated code to output
-    output$MAcodeOutput <- renderText({ code_for_MA })
-  })
 
-  
-  
+# 
+# 
+# ## Generate non-reactive R code to create MA object
+# #  This code can be displayed or downloaded for reproducibility
+#   observeEvent(MA(), {
+#     # Generate the code based on current inputs
+#     code_for_MA.inputs <- sprintf("
+# ## R code to create MA object that contains selected data for all analyses
+# Variable.Factor.Names <- %s
+# Variable.Numeric.Names <- %s
+# Design <- %s
+# Publication.Year <- c(%s, %s)
+# N_Intervention <- c(%s, %s)
+# included <- %s
+# aggregation <- '%s'
+# #",
+#                     paste("c(", paste(dQuote(myrvs$Variable.Factor.Names), collapse = ", "), ")", sep=""),
+#                     paste("c(", paste(dQuote(myrvs$Variable.Numeric.Names), collapse = ", "), ")", sep=""),
+#                     paste("c(", paste(dQuote(input$Design), collapse = ", "), ")", sep=""),
+#                     input$Publication.Year[1], input$Publication.Year[2],
+#                     input$N_Intervention[1],  input$N_Intervention[2],
+#                     paste("c(", paste(dQuote(input$included), collapse = ", "), ")", sep=""),
+#                     input$aggregation
+# 
+#     )
+#     # Initialize the string that contains the non-reactive R code that will be output
+#     code_for_MA <- paste0(code_for_MA.inputs)
+#     #
+#     # Write the code for filtering based on user-defined selection factors
+#     ##  the plan: write code to create a list with names = Variable.Factor.Names;
+#     ##            loop over the factor names; for each one:
+#     ##                write code that will record the selections for that factor
+#     ##                use #w# to indicate code that should be written out rather than executed here
+#     ##            ## that will be the list that gets passed to the MA function
+#     ##            and the parts between #and# should be printed literally rather than expanded.
+#     #
+# #w#    Variable.Factors.selected <- list(NULL)
+# 
+#     ## Write code for the variable selection factors
+#     someCode <- sprintf("
+# Variable.Factors.selected <- list() ")
+#     code_for_MA <- paste0(code_for_MA, someCode)
+#     #
+#     # loop over the variable factor names to write code
+#     for (varName in Variable.Factor.Names)  {
+#       keepValues <- input[[varName]]
+#       someCode <- sprintf("
+# Variable.Factors.selected[[%s]] <- c(%s) ",
+#                           dQuote(varName),
+#                           paste("c(", paste(dQuote(keepValues), collapse = ", "), ")", sep="")
+#       )
+#       code_for_MA <- paste0(code_for_MA, someCode)
+#     }
+#     # Assign the generated code to output
+#     output$MAcodeOutput <- renderText({ code_for_MA })
+#   })
+# 
+# 
+#   
   
   
   ## modal to warn when Bayesian model update is requested
