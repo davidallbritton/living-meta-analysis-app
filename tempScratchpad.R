@@ -1,3 +1,5 @@
+Variable.Factors.selected <- list()
+Variable.Factors.selected[[xxx]] <- c(1,2,3)
 
 
 # Assuming the necessary libraries are loaded

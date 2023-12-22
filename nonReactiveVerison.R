@@ -84,7 +84,7 @@ aggregation <- 'ID'
 
 ## function to create MA data object for all analyses
 createMA.nonReactive <- function(df, Variable.Factor.Names, Variable.Numeric.Names, 
-                                 Variable.Factor.include, Variable.Numeric.include,
+                                 Variable.Factors.selected, Variable.Numerics.selected,
                                  Design.include, Publication.Year.include, N_Intervention.include, 
                                  included, aggregation, method = "BHHR", cor = 0.5) {
   # Create subset based on chosen inclusion criteria
