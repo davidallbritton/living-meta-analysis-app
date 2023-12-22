@@ -1127,24 +1127,12 @@ server <- function(input, output, session) {
     plot
   }, height = freq_forest_height)
   
-  # 
-  # # Funnel plot (frequentist)
-  # output$freq_funnel <- renderPlot({
-  #   funnel(fma(), xlab = "Observed outcome")
-  # })
-  # 
-  
-  output$freq_funnel <- metaRender(renderPlot, {
-    # Use ..() to call the reactive expression fma()
-      funnel((fma()), xlab = "Observed outcome")
+
+  # Funnel plot (frequentist)
+  output$freq_funnel <- renderPlot({
+    funnel(fma(), xlab = "Observed outcome")
   })
-  
-  # Render the captured R code for the funnel plot
-   output$funnel_code <- renderPrint({
-     expandChain(output$freq_funnel())
-   })
-  
-  
+
   
   ## observer to signal when the "recalculate" button can be activated
   observe({
