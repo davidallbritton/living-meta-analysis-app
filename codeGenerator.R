@@ -79,7 +79,6 @@ df <- newrvs$df  # reformatted for use in the analyses
 
 ################### Generate MA ########
 ## Generate non-reactive R code to create MA object
-#  This code can be displayed or downloaded for reproducibility
 #
 observeEvent(MA(), {
   # Initialize the code with the static content from above
@@ -213,7 +212,7 @@ MA <- createMA.nonReactive(df, Variable.Factor.Names, Variable.Numeric.Names,
 
 
 ####### Get the code to record the priors ######
-
+#
 someCode <- sprintf('
 ## Record the priors for Bayesian analyses ##
 tauprior    <-  %s
@@ -238,14 +237,14 @@ if (scaletau == "") scaletau <- NULL else scaletau <- as.numeric(scaletau)
 if (mupriormean == "") mupriormean <- NULL else mupriormean <- as.numeric(mupriormean)
 #
 '
-  
   code_for_bma <- paste0(code_for_bma, someCode)   # update the block of code
+  ####### End of code to record the priors ######
   
 
-  #####
 
-
-
+  ################### Generate bma ###############################
+  ## Generate non-reactive R code to create bma bayesmeta object
+  #
 
   someCode <- '
 
@@ -276,19 +275,24 @@ bma <- createMA.nonReactive(MA, tauprior, mupriorsd, scaletau, mupriormean)
 '
 
   code_for_bma <- paste0(code_for_bma, someCode)   # update code block
+  #
+  ############### End of  Generate bma ###############################
+  
 
 
 
+  
 
-
+  ####### Wrapping up and saving the code for display and downloading ###########
   # Put together all the code
   code_for_R_script <- paste0(code_for_MA, code_for_bma)
 
   # Assign the generated code to output
   output$R_code_Output <- renderText({ code_for_R_script })
 
-  ## code_for_MA should be done at this point.               #debugging
-  write(code_for_R_script, file = "nonReactiveVersion_part1.R")    #debugging
+  ## save code to a file.               #debugging
+  write(code_for_R_script, file = "nonReactiveVersion_part_1.R")    #debugging
+  ## need a version that downloads a file instead.  One for R code, one for markdown.
 
 
 })  # end of observeEvent(MA())
