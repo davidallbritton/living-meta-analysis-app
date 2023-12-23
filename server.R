@@ -6,7 +6,7 @@
 # David Allbritton
 # https://github.com/davidallbritton/Breathing_life_into_meta-analysis
 #
-# Derived and adapted from https://vinzentwolf.shinyapps.io/taVNSHRVmeta/
+# Portions derived and adapted from https://vinzentwolf.shinyapps.io/taVNSHRVmeta/
 # as described in https://doi.org/10.1111/psyp.13933
 #
 ###################################################################################

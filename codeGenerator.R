@@ -22,7 +22,10 @@ input_file <- "originalData.xlsx"       # Change this to your file path
 
 ## source the "HelperFunctions.R" file that is used to reformat the input data, etc.
 source("HelperFunctions.R")  # Functions from this file that are used:
-                             # reformat.df
+                             # reformat.df()
+                             # is_outlier()
+                             # priorposteriorlikelihood.ggplot()
+                             # tauprior.ggplot
 
 ## load libraries
 # get  needed libraries from ui.R
