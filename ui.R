@@ -413,7 +413,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                         ), #end of Downloads tab
                          #    
                         tabPanel("R Code", br(),
-                                 verbatimTextOutput("MAcodeOutput")
+                                 verbatimTextOutput("R_code_Output")
+                         #        verbatimTextOutput("MAcodeOutput")
                                  ),
                         hr()
                           ) #end of main tabs panel
