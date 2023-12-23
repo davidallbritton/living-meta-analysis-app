@@ -109,32 +109,21 @@ output$taupriorplot
 
 ## *** do this last
 # Bayes factor robustness plot panel
-output$warning2 <- renderPrint({
-  print("WARNING: Plot will not be computed, because an improper τ prior was chosen. Proper τ priors are 'Half student t' and 'Half cauchy'.")
-})
 #
-output$robustplot <- renderPlot({
-  MA <- MA()  #trigger recalculation
-  MA_nofactors <- as.data.frame(MA) 
-  MA_nofactors <-  MA_nofactors %>% mutate_if(is.factor, as.character)
-  robust <- input$robust
-  tauprior <- input$tauprior
-  mupriorsd <- input$mupriorsd
-  scaletau <- input$scaletau
-  old_plot <- checkOldPlots(myrvs$previousPlots, MA=MA_nofactors, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, robust=robust)
-  if(isTruthy(old_plot)) robustggplot <- old_plot  # retrieve previously calculated plot
-  else {
-    robustggplot <- NULL
-    if (robust == "Yes" & tauprior == "Half cauchy" & isTruthy(myrvs$triggerBmaRobust)) {
-      robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfcauchy(t, scale = scaletau))
-    } else if (robust == "Yes" & tauprior == "Half student t" & isTruthy(myrvs$triggerBmaRobust)) {
-      robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfnormal(t, scale = scaletau))
-    }
-    ## store the new plot in the list of old plots; this function only has a side effect, no return value
-    if (isTruthy(robustggplot)) {
-      updated <- updatePlots(MA=MA_nofactors, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, robust=robust, robustggplot=robustggplot)
-    }
+create_robustplot <- function(tauprior, mupriorsd, scaletau){
+  robust = "Yes"
+  robustggplot <- NULL
+  if (robust == "Yes" & tauprior == "Half cauchy") {
+    robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfcauchy(t, scale = scaletau))
+  } else if (robust == "Yes" & tauprior == "Half student t") {
+    robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfnormal(t, scale = scaletau))
   }
   robustggplot
-}, width = 800)
+}
+#
+output$robustplot <- create_robustplot(tauprior, mupriorsd, scaletau)
 
+print("Bayes Factors over a variety of prior standard deviations:")
+output$robustplot 
+
+  
