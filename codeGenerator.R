@@ -117,7 +117,7 @@ Variable.Factors.selected <- list() ")
   code_for_MA <- paste0(code_for_MA, someCode)
   #
   # loop over the variable factor names to write code
-  for (varName in Variable.Factor.Names)  {
+  for (varName in myrvs$Variable.Factor.Names)  {
     keepValues <- input[[varName]]
     someCode <- sprintf("
 Variable.Factors.selected[[%s]] <- c(%s) ",
@@ -137,7 +137,7 @@ Variable.Numerics.selected <- list() ")
   code_for_MA <- paste0(code_for_MA, someCode)
   #
   # loop over the variable numeric names to write code
-  for (varName in Variable.Numeric.Names)  {
+  for (varName in myrvs$Variable.Numeric.Names)  {
     keepValues <- input[[varName]]
     someCode <- sprintf("
 Variable.Numerics.selected[[%s]] <- c(%s) ",
@@ -222,13 +222,25 @@ scaletau    <-  %s
 mupriormean <-  %s
 #
                 ',
-        input$tauprior,
-        input$mupriorsd,
-        input$scaletau,
-        input$mupriormean
+                    paste(dQuote(input$tauprior), collapse = ", "),
+                    paste(dQuote(input$mupriorsd), collapse = ", "),
+                    paste(dQuote(input$scaletau), collapse = ", "),
+                    paste(dQuote(input$mupriormean), collapse = ", ")
         )
 
   code_for_bma <- paste0(someCode)   # start a new block of code
+  
+  ## Reformat the priors
+  someCode <- '
+## reformat the priors to work for bayesmeta
+if (mupriorsd == "") mupriorsd <- NULL else mupriorsd <- as.numeric(mupriorsd)
+if (scaletau == "") scaletau <- NULL else scaletau <- as.numeric(scaletau)
+if (mupriormean == "") mupriormean <- NULL else mupriormean <- as.numeric(mupriormean)
+#
+'
+  
+  code_for_bma <- paste0(code_for_bma, someCode)   # update the block of code
+  
 
   #####
 
@@ -276,7 +288,7 @@ bma <- createMA.nonReactive(MA, tauprior, mupriorsd, scaletau, mupriormean)
   output$R_code_Output <- renderText({ code_for_R_script })
 
   ## code_for_MA should be done at this point.               #debugging
-  write(code_for_R_script, file = "nonReactiveVErsion_part1.R")    #debugging
+  write(code_for_R_script, file = "nonReactiveVersion_part1.R")    #debugging
 
 
 })  # end of observeEvent(MA())
