@@ -1155,5 +1155,25 @@ server <- function(input, output, session) {
     }
   })
   
+  ## Download handler for the R code file
+  output$downloadCode <- downloadHandler(
+    filename = function() {
+      "R_code_script.R"
+    },
+    content = function(file) {
+      writeLines(output$R_code_Output(), file)
+    }
+  )
+  
+  ## Download handler for the R markdown file
+  output$downloadMarkdown <- downloadHandler(
+    filename = function() {
+      "R_code_markdown.Rmd"
+    },
+    content = function(file) {
+      writeLines(output$R_markdown_Output(), file)
+    }
+  )
+  
   
 }  # end of server

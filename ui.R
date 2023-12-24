@@ -416,8 +416,9 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                         ), #end of Downloads tab
                          #    
                         tabPanel("R Code", br(),
+                                 downloadButton("downloadCode", "Download R Code"),
+                                 downloadButton("downloadMarkdown", "Download R Markdown"),
                                  verbatimTextOutput("R_code_Output")
-                         #        verbatimTextOutput("MAcodeOutput")
                                  ),
                         hr()
                           ) #end of main tabs panel

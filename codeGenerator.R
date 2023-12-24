@@ -417,17 +417,23 @@ output$robustplot
   
 
   ####### Wrapping up and saving the code for display and downloading ###########
-  # Put together all the code
+  # Put together all the R code
   code_for_R_script <- paste0(code_for_MA, code_for_bma, code_for_plots)
+  
+  # Put the R code into markdown form
+  code_for_R_markdown <- paste0(code_for_R_script)
 
-  # Assign the generated code to output
+  # Assign the generated code and markdown to output
   output$R_code_Output <- renderText({ code_for_R_script })
+  output$R_markdown_Output <- renderText({ code_for_R_markdown })
 
   ## save code to a file.               # debugging
-  # write(code_for_R_script, file = "nonReactiveVersion_part_1.R")    #doesnt work for non asci characters
-  writeLines(code_for_R_script, con = "nonReactiveVersion_part_1_utf8.R", useBytes = TRUE) #debugging
-  ## need a version that downloads a file instead.  One for R code, one for markdown.
-
+   writeLines(code_for_R_script, con = "nonReactiveVersion_part_1_utf8.R", useBytes = TRUE) # "write" could not handle the non-asci characters
+  
+   ## Download file for R code -- done in ui.R and server.R
+   ## Download file for R markdown -- done in ui.R and server.R
+   
+### *** dont forget they need to download the HelperFunctions.R file too! #debug
 
   
 })  # end of observeEvent(MA())
