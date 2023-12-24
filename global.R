@@ -1,8 +1,42 @@
 #----
-# Load files
-
 # default data file for initial display, before user uploads their own data file:
 load(file = "2023updatedData.Rda")             # loads a dataframe called "df"
+
+####################################################################################
+
+# Load required packages and source helper functions #----
+library(purrr)
+library(metafor)
+library(readxl)
+library(writexl)
+library(tools)
+library(shiny)
+library(bayesmeta)
+library(cowplot)
+library(dplyr)
+library(DT)
+library(data.table)
+library(esc)
+library(ggplot2)
+library(MAd)
+library(readr)
+library(R.rsp)
+library(shinyBS)
+library(shinycssloaders)
+library(shinythemes)
+library(stringr)
+library(tidyr)
+library(xtable)
+library(shinyalert)
+library(shinyjs)
+# library(shinymeta)
+
+options(useFancyQuotes = F)
+
+################### load external R source files ################################
+source("HelperFunctions.R")
+source("effect_sizes.R")
+
 
 ################## Constants #######################################################
 printButton <- HTML('<p  style="text-align:right; font-size: 8px;"><button  onClick="window.print()">PRINT</button></p>')

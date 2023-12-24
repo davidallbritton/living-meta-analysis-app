@@ -4,41 +4,6 @@
 
 ###################   Shiny App v.0.9.4 2023.12.18  UI ###################################
 
-
-# Load required packages and source helper functions #----
-library(purrr)
-library(metafor)
-library(readxl)
-library(writexl)
-library(tools)
-library(shiny)
-library(bayesmeta)
-library(cowplot)
-library(dplyr)
-library(DT)
-library(data.table)
-library(esc)
-library(ggplot2)
-library(MAd)
-library(readr)
-library(R.rsp)
-library(shinyBS)
-library(shinycssloaders)
-library(shinythemes)
-library(stringr)
-library(tidyr)
-library(xtable)
-library(shinyalert)
-library(shinyjs)
-
-library(shinymeta)
-
-options(useFancyQuotes = F)
-
-source("HelperFunctions.R")
-source("effect_sizes.R")
-#----
-
 # Define UI
 ui <- fluidPage(theme = shinytheme("cosmo"),
                 tags$head(
