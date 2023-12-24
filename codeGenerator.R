@@ -311,7 +311,8 @@ create_boxplot <- function(MA) {
 }
 #
 output$boxplot <- create_boxplot(MA)
-  
+output$boxplot  
+
 
 ########## frequentist analyses
 
@@ -427,4 +428,6 @@ output$robustplot
   writeLines(code_for_R_script, con = "nonReactiveVersion_part_1_utf8.R", useBytes = TRUE) #debugging
   ## need a version that downloads a file instead.  One for R code, one for markdown.
 
+
+  
 })  # end of observeEvent(MA())
