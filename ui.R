@@ -383,6 +383,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                         tabPanel("R Code", br(),
                                  downloadButton("downloadCode", "Download R Code"),
                                  downloadButton("downloadMarkdown", "Download R Markdown"),
+                                 downloadButton("download_HelperFunctions", "Download required helper functions"),
                                  verbatimTextOutput("R_code_Output")
                                  ),
                         hr()

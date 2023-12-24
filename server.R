@@ -1175,5 +1175,14 @@ server <- function(input, output, session) {
     }
   )
   
+  # Download handler for the HelperFunctions.R file
+  output$download_HelperFunctions <- downloadHandler(
+    filename = function() {
+      "HelperFunctions.R"
+    },
+    content = function(file) {
+      file.copy("HelperFunctions.R", file)
+    }
+  )
   
 }  # end of server
