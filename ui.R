@@ -41,6 +41,9 @@ source("effect_sizes.R")
 
 # Define UI
 ui <- fluidPage(theme = shinytheme("cosmo"),
+                tags$head(
+                  tags$meta(charset = "UTF-8")
+                ),
                 useShinyjs(),
                 titlePanel(title = div("A General Tool for BAYESIAN META-ANALYSIS"),
                            windowTitle = "A General Tool for BAYESIAN META-ANALYSIS"),
