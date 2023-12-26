@@ -279,7 +279,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  ),
                         tabPanel("Included Studies", printButton,
                           h4('This table lists all the studies included by the current selected criteria'),
-                          p('(updated only when "Re-Calculate Meta-Analysis" button is pressed)'),
+                          p('(updated only when "Re-Calculate Meta-Analysis" button on the left-side of the screen is pressed
+                            )'),
                           textOutput("warning"), br(),
                           DT::dataTableOutput("studies") %>% withSpinner(type = 6, color = "#3498DB"), br()
                           ),

@@ -420,11 +420,37 @@ output$robustplot
   # Put together all the R code
   code_for_R_script <- paste0(code_for_MA, code_for_bma, code_for_plots)
   
+  # Create headers and footers for R markdown file
+  
+  markdown_header <- paste(
+    '---',
+    'title: "Untitled"',
+    'output: html_document',
+    '---',
+    '',
+    '```{r setup, include=FALSE}',
+    'knitr::opts_chunk$set(echo = TRUE)',
+    '```',
+    '',
+    '## R Markdown',
+    '',
+    'This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.',
+    '',
+    'When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document.',
+    '',
+    '```{r rcode}',
+    '```',
+    sep = "\n"
+  )
+  
+  markdown_footer <- "```"
+  code_for_R_markdown  <- paste(markdown_header, code_for_R_script, markdown_footer, sep = "\n")
+  
   # Put the R code into markdown form
   code_for_R_markdown <- paste0(code_for_R_script)
 
   # Assign the generated code and markdown to output
-  output$R_markdown_Output <- renderText({ code_for_R_script })
+  output$R_code_Output <- renderText({ code_for_R_script })
   output$R_markdown_Output <- renderText({ code_for_R_markdown })
   
 
