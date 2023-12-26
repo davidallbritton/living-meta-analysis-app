@@ -343,22 +343,22 @@ create_freq_forest <- function(fma) {
 }
 #
 output$freq_forest <- create_freq_forest(fma)
-output$freq_forest
+#  output$freq_forest
 
 # Funnel plot (frequentist)
 output$freq_funnel <- funnel(fma, xlab = "Observed outcome")
-output$freq_funnel
+#  output$freq_funnel
 
 
 ######### bayesian analyses:
 
 # Forest Plot panel
 output$forest <-  forestplot.bayesmeta(bma, xlab = "Hedges g")
-output$forest
+# output$forest
 
 # Funnel Plot panel
 output$funnel <-  funnel.bayesmeta(bma, main = "")
-output$funnel
+# output$funnel
 
 # Statistics panel
 output$statistics_panel <-  capture.output({
@@ -439,15 +439,15 @@ output$robustplot
     'When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document.',
     '',
     '```{r rcode}',
-    '```',
+    '',
     sep = "\n"
   )
   
   markdown_footer <- "```"
-  code_for_R_markdown  <- paste(markdown_header, code_for_R_script, markdown_footer, sep = "\n")
   
   # Put the R code into markdown form
-  code_for_R_markdown <- paste0(code_for_R_script)
+  code_for_R_markdown  <- paste(markdown_header, code_for_R_script, markdown_footer, sep = "\n")
+  
 
   # Assign the generated code and markdown to output
   output$R_code_Output <- renderText({ code_for_R_script })
@@ -455,7 +455,7 @@ output$robustplot
   
 
   ## save code to a file.               # debugging
-   writeLines(code_for_R_script, con = "nonReactiveVersion_part_1_utf8.R", useBytes = TRUE) # "write" could not handle the non-asci characters
+  # writeLines(code_for_R_script, con = "nonReactiveVersion_part_1_utf8.R", useBytes = TRUE) # "write" could not handle the non-asci characters
   
    ## Download handler for the R code file
    output$downloadCode <- downloadHandler(
