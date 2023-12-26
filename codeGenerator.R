@@ -463,7 +463,7 @@ output$robustplot
        "R_code_script.R"
      },
      content = function(file) {
-       writeLines(code_for_R_script, file)
+       writeLines(enc2utf8(code_for_R_script), file)
      }
    )
    
@@ -473,7 +473,7 @@ output$robustplot
        "R_code_markdown.Rmd"
      },
      content = function(file) {
-       writeLines(code_for_R_markdown, file)
+       writeLines(enc2utf8(code_for_R_markdown), file)
      }
    )
    
