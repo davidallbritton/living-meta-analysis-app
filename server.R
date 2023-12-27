@@ -42,14 +42,14 @@ server <- function(input, output, session) {
   
   ###  initialize $previousPlots if the file exists on the server
   myrvs$previousPlots <- list()
-  if (file.exists("defaultPrecalculatedPlots.RDS")) {
-    myrvs$previousPlots <- readRDS("defaultPrecalculatedPlots.RDS")
+  if (file.exists("data/defaultPrecalculatedPlots.RDS")) {
+    myrvs$previousPlots <- readRDS("data/defaultPrecalculatedPlots.RDS")
   }
   
   ###  initialize $previousModels if the file exists on the server
   myrvs$previousModels <- list()
-  if (file.exists("defaultPrecalculatedModels.RDS")) {
-    myrvs$previousModels <- readRDS("defaultPrecalculatedModels.RDS")
+  if (file.exists("data/defaultPrecalculatedModels.RDS")) {
+    myrvs$previousModels <- readRDS("data/defaultPrecalculatedModels.RDS")
   }
 
   ### a reactive value that gets updated whenever myrvs$previousModels changes:

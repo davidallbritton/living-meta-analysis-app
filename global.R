@@ -1,6 +1,6 @@
 #----
 # default data file for initial display, before user uploads their own data file:
-load(file = "2023updatedData.Rda")             # loads a dataframe called "df"
+load(file = "data/2023updatedData.Rda")             # loads a dataframe called "df"
 
 ####################################################################################
 
