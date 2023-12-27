@@ -7,6 +7,7 @@
 ########################################
 # David Allbritton
 # December 2023
+# v.0.9.5 2023.12.26
 ########################################
 
 ## Print out initial static code that does not depend on app user input selections:
