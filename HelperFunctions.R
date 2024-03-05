@@ -333,3 +333,82 @@ checkOldPlots <- function(listPrevious, MA, tauprior, mupriorsd, scaletau, robus
   }
   if(isTruthy(return_robustggplot)) return_robustggplot else FALSE
 }
+
+########## Functions for generating R code
+
+removeBadCharacters <- function(df) { # remove problematic characters, like " \r \n
+  # Define the characters to remove: carriage returns, newlines, tab, backspace, form feed
+  chars_to_remove <- c("\\r", "\\n", "\\t", "\\b", "\\f")
+  pattern <- paste(chars_to_remove, collapse = "|")
+  #
+  # Apply the removal operation only to character and factor columns
+  df_clean <- as.data.frame(lapply(df, function(column) {
+    # Store the original type for later use
+    original_type <- class(column)
+    #
+    # Convert factor to character to process it
+    column_as_char <- as.character(column)
+    # Remove the unwanted characters
+    column_cleaned <- gsub(pattern, "", column_as_char)
+    #
+    # If the original column was a factor, convert it back
+    if (original_type == "factor") {
+      column_cleaned <- factor(column_cleaned)
+    }
+    #
+    # Return the cleaned column
+    return(column_cleaned)
+  }), stringsAsFactors = FALSE) # Keeps strings as characters unless explicitly converted back to factors
+  #
+  return(df_clean)
+}
+
+removeBadCharactersFromString <- function(inputString) {  # remove problematic characters, like " \r \n
+  # Define the characters to remove: carriage returns, newlines, tabs, backspaces, and form feeds
+  chars_to_remove <- c("\r", "\n", "\t", "\b", "\f")
+  pattern <- paste(chars_to_remove, collapse = "|")
+  #
+  # Remove the defined characters from the input string
+  cleanedString <- gsub(pattern, "", inputString)
+  #
+  return(cleanedString)
+}
+
+replaceBadCharacters  <- function(df) { # replace problematic characters, like " \r \n with a space
+  # Define the characters to remove: carriage returns, newlines, tab, backspace, form feed
+  chars_to_remove <- c("\\r", "\\n", "\\t", "\\b", "\\f")
+  pattern <- paste(chars_to_remove, collapse = "|")
+  #
+  # Apply the removal operation only to character and factor columns
+  df_clean <- as.data.frame(lapply(df, function(column) {
+    # Store the original type for later use
+    original_type <- class(column)
+    #
+    # Convert factor to character to process it
+    column_as_char <- as.character(column)
+    # Remove the unwanted characters
+    column_cleaned <- gsub(pattern, " ", column_as_char)
+    #
+    # If the original column was a factor, convert it back
+    if (original_type == "factor") {
+      column_cleaned <- factor(column_cleaned)
+    }
+    #
+    # Return the cleaned column
+    return(column_cleaned)
+  }), stringsAsFactors = FALSE) # Keeps strings as characters unless explicitly converted back to factors
+  #
+  return(df_clean)
+}
+
+replaceBadCharactersFromString <- function(inputString) {  # replace problematic characters, like " \r \n with a space
+  # Define the characters to remove: carriage returns, newlines, tabs, backspaces, and form feeds
+  chars_to_remove <- c("\r", "\n", "\t", "\b", "\f")
+  pattern <- paste(chars_to_remove, collapse = "|")
+  #
+  # Remove the defined characters from the input string
+  cleanedString <- gsub(pattern, " ", inputString)
+  #
+  return(cleanedString)
+}
+
