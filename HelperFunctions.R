@@ -336,9 +336,10 @@ checkOldPlots <- function(listPrevious, MA, tauprior, mupriorsd, scaletau, robus
 
 ########## Functions for generating R code
 
-removeBadCharacters <- function(df) { # remove problematic characters, like " \r \n
-  # Define the characters to remove: carriage returns, newlines, tab, backspace, form feed
-  chars_to_remove <- c("\\r", "\\n", "\\t", "\\b", "\\f")
+removeBadCharacters <- function(df) { # remove problematic characters, like " \r \n 
+  #    from a dataframe
+  # Define the characters to remove: carriage returns, newlines, tab, form feed
+  chars_to_remove <- c("\\r", "\\n", "\\t",  "\\f")
   pattern <- paste(chars_to_remove, collapse = "|")
   #
   # Apply the removal operation only to character and factor columns
@@ -364,8 +365,8 @@ removeBadCharacters <- function(df) { # remove problematic characters, like " \r
 }
 
 removeBadCharactersFromString <- function(inputString) {  # remove problematic characters, like " \r \n
-  # Define the characters to remove: carriage returns, newlines, tabs, backspaces, and form feeds
-  chars_to_remove <- c("\r", "\n", "\t", "\b", "\f")
+  # Define the characters to remove: carriage returns, newlines, tabs, and form feeds
+  chars_to_remove <- c("\r", "\n", "\t",  "\f")
   pattern <- paste(chars_to_remove, collapse = "|")
   #
   # Remove the defined characters from the input string
@@ -375,8 +376,9 @@ removeBadCharactersFromString <- function(inputString) {  # remove problematic c
 }
 
 replaceBadCharacters  <- function(df) { # replace problematic characters, like " \r \n with a space
-  # Define the characters to remove: carriage returns, newlines, tab, backspace, form feed
-  chars_to_remove <- c("\\r", "\\n", "\\t", "\\b", "\\f")
+  #    in a dataframe
+  # Define the characters to remove: carriage returns, newlines, tab, form feed
+  chars_to_remove <- c("\\r", "\\n", "\\t", "\\f")
   pattern <- paste(chars_to_remove, collapse = "|")
   #
   # Apply the removal operation only to character and factor columns
@@ -402,8 +404,8 @@ replaceBadCharacters  <- function(df) { # replace problematic characters, like "
 }
 
 replaceBadCharactersFromString <- function(inputString) {  # replace problematic characters, like " \r \n with a space
-  # Define the characters to remove: carriage returns, newlines, tabs, backspaces, and form feeds
-  chars_to_remove <- c("\r", "\n", "\t", "\b", "\f")
+  # Define the characters to remove: carriage returns, newlines, tabs, and form feeds
+  chars_to_remove <- c("\r", "\n", "\t",  "\f")
   pattern <- paste(chars_to_remove, collapse = "|")
   #
   # Remove the defined characters from the input string
