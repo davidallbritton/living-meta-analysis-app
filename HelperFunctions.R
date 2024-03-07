@@ -414,3 +414,21 @@ replaceBadCharactersFromString <- function(inputString) {  # replace problematic
   return(cleanedString)
 }
 
+check_for_bad_chars <- function(df) {   # check for newlines and other problematic characters
+  # Define the pattern to search for bad characters
+  # \r - carriage return, \n - newline, \t - tab, \f - form feed
+  pattern <- "[\r\n\t\f]"
+  #
+  # Use apply to check each element of the dataframe
+  contains_special_chars <- apply(df, c(1, 2), function(x) {
+    # Check if the current element matches the pattern
+    return(grepl(pattern, x))
+  })
+  #
+  # If any element contains special (bad) characters, return TRUE
+  if (any(contains_special_chars)) {
+    return(TRUE)
+  } else {
+    return(FALSE)
+  }
+}
