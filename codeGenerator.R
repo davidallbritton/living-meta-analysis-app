@@ -145,10 +145,6 @@ Variable.Factors.selected <- list() ")
   # loop over the variable factor names to write code
   for (varName in myrvs$Variable.Factor.Names)  {
     keepValues <- input[[varName]]   
-    print("str(keepValues)****")  # debugging
-    print(str(keepValues))  # debugging
-    print("keepValues******")  # debugging
-    print(keepValues)  # debugging
     someCode <- sprintf("
 Variable.Factors.selected[[%s]] <- c(%s) ",
                         escapeAndDQuote(varName),
@@ -479,10 +475,6 @@ output$robustplot
   # Assign the generated code and markdown to output
   output$R_code_Output <- renderText({ code_for_R_script })
   output$R_markdown_Output <- renderText({ code_for_R_markdown })
-  
-
-  ## save code to a file.               # debugging
-  # writeLines(code_for_R_script, con = "nonReactiveVersion_part_1_utf8.R", useBytes = TRUE) # "write" could not handle the non-asci characters
   
    ## Download handler for the R code file
    output$downloadCode <- downloadHandler(

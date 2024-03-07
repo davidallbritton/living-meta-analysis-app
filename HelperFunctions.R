@@ -57,6 +57,9 @@ reformat.df <- function(df.input) {
   if(!("yi" %in% colnames(df))) {df$yi <- df$g}
   if(!("vi" %in% colnames(df))) {df$vi <- df$g_var}
   #
+  # Check for newlines and other problem characters:
+  hasBadCharacters <- check_and_alert_bad_chars(df)
+  #
   # the function returns this list:
   dfout <- list(
     df.original = df.original,
@@ -430,5 +433,26 @@ check_for_bad_chars <- function(df) {   # check for newlines and other problemat
     return(TRUE)
   } else {
     return(FALSE)
+  }
+}
+
+# Function to warn of bad characters in the uploaded data
+check_and_alert_bad_chars <- function(df) {
+  # Check if any bad characters are present
+  contains_bad_chars <- check_for_bad_chars(df)
+  #
+  # If bad characters are found, display the shinyalert
+  if(contains_bad_chars) {
+    shinyalert(
+      title = "Your datafile contains newlines, carriage returns, or other problematic characters. This probably will not affect the interactive analysis, but it could cause problems in the downloaded R or R Markdown code.",
+      type = "warning",
+      showCancelButton = F,
+      confirmButtonText = "OK, I understand",
+     # size = "m", # Adjust the size of the alert. Options: 's' (small), 'm' (medium), 'l' (large)
+    #  shinyCustomCSS = ".swal2-popup { font-size: 14px !important; } .swal2-content { max-height: 300px; overflow-y: auto; }" # Custom CSS to adjust font size and content max-height
+    )
+    return(TRUE) # Return TRUE to indicate bad characters were found
+  } else {
+    return(FALSE) # Return FALSE to indicate no bad characters were found
   }
 }
