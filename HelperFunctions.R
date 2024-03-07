@@ -436,7 +436,7 @@ check_for_bad_chars <- function(df) {   # check for newlines and other problemat
   }
 }
 
-# Function to warn of bad characters in the uploaded data
+# Function to warn of bad characters in the uploaded data in the Shiny app
 check_and_alert_bad_chars <- function(df) {
   # Check if any bad characters are present
   contains_bad_chars <- check_for_bad_chars(df)
@@ -448,8 +448,6 @@ check_and_alert_bad_chars <- function(df) {
       type = "warning",
       showCancelButton = F,
       confirmButtonText = "OK, I understand",
-     # size = "m", # Adjust the size of the alert. Options: 's' (small), 'm' (medium), 'l' (large)
-    #  shinyCustomCSS = ".swal2-popup { font-size: 14px !important; } .swal2-content { max-height: 300px; overflow-y: auto; }" # Custom CSS to adjust font size and content max-height
     )
     return(TRUE) # Return TRUE to indicate bad characters were found
   } else {
