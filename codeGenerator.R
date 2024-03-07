@@ -19,7 +19,7 @@ escapeAndDQuote <- function(x) {  # replacement for dQuote for strings that cont
   return(dquotedEscaped)
 }
 
-#  replaceBadCharactersFromString  and replaceBadCharacters -- in HelperFunctions.R
+#  check_for_bad_chars -- in HelperFunctions.R
 
 ##############################################################
 
@@ -42,8 +42,7 @@ source("HelperFunctions.R")  # Functions from this file that are used:
                              # priorposteriorlikelihood.ggplot()
                              # tauprior.ggplot
                              # robustness
-                             # replaceBadCharacters
-                             # replaceBadCharactersFromString
+                             # check_for_bad_chars
 
 ## load libraries
 # get  needed libraries from ui.R
@@ -94,8 +93,12 @@ df_as_uploaded <- read_data(input_file)
 newrvs <- reformat.df(df_as_uploaded)
 df <- newrvs$df  # reformatted for use in the analyses
 
-## Remove newlines and other problematic characters
-df <- replaceBadCharacters(df)
+if(check_for_bad_chars(df)) {  
+  # Give a warning if the data contains newlines and other problematic characters
+  warning("Your datafile contains newlines, carriage returns, or other problematic characters. 
+          This probably will cause problems and the analysis produced here will not be 
+          identical to what you produced interactively in the Shiny app.")
+}
 
 #'
 ####### end of static code block
@@ -141,7 +144,7 @@ Variable.Factors.selected <- list() ")
   #
   # loop over the variable factor names to write code
   for (varName in myrvs$Variable.Factor.Names)  {
-    keepValues <- replaceBadCharactersFromString(input[[varName]])   # debugging ??
+    keepValues <- input[[varName]]   
     print("str(keepValues)****")  # debugging
     print(str(keepValues))  # debugging
     print("keepValues******")  # debugging
@@ -149,8 +152,7 @@ Variable.Factors.selected <- list() ")
     someCode <- sprintf("
 Variable.Factors.selected[[%s]] <- c(%s) ",
                         escapeAndDQuote(varName),
-                        paste(escapeAndDQuote(replaceBadCharactersFromString(keepValues)), collapse = ",\n ") 
-                        # bad characters = newlines etc. that are hard to deal with in the generated R code
+                        paste(escapeAndDQuote(keepValues), collapse = ",\n ") 
     )
     code_for_MA <- paste0(code_for_MA, someCode)
   }
