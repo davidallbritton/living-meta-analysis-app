@@ -431,12 +431,17 @@ check_and_alert_bad_chars <- function(df) {
   #
   # If bad characters are found, display the shinyalert
   if(contains_bad_chars) {
-    shinyalert(
-      title = "Your datafile contains newlines, carriage returns, or other problematic characters. This probably will not affect the interactive analysis, but it could cause problems in the downloaded R or R Markdown code.",
-      type = "warning",
-      showCancelButton = F,
-      confirmButtonText = "OK, I understand",
-    )
+    if (shiny::isRunning()) {
+      shinyalert(
+        title = "Your datafile contains newlines, carriage returns, or other problematic characters. This probably will not affect the interactive analysis, but it could cause problems in the downloaded R or R Markdown code.",
+        type = "warning",
+        showCancelButton = F,
+        confirmButtonText = "OK, I understand",
+      )
+    } else {
+      warning("Your datafile contains newlines, carriage returns, or other problematic characters. This could cause problems in the downloaded R or R Markdown code.")
+    }
+    #
     return(TRUE) # Return TRUE to indicate bad characters were found
   } else {
     return(FALSE) # Return FALSE to indicate no bad characters were found
