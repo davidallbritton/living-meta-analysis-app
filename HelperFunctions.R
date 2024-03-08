@@ -339,30 +339,24 @@ checkOldPlots <- function(listPrevious, MA, tauprior, mupriorsd, scaletau, robus
 
 ########## Functions for generating R code
 
-removeBadCharacters <- function(df) { # remove problematic characters, like " \r \n 
-  #    from a dataframe
-  # Define the characters to remove: carriage returns, newlines, tab, form feed
-  chars_to_remove <- c("\\r", "\\n", "\\t",  "\\f")
+removeBadCharacters  <- function(df) {  # remove newlines, etc.
+  chars_to_remove <- c("\\r", "\\n", "\\t", "\\f")
   pattern <- paste(chars_to_remove, collapse = "|")
   #
-  # Apply the removal operation only to character and factor columns
   df_clean <- as.data.frame(lapply(df, function(column) {
-    # Store the original type for later use
     original_type <- class(column)
-    #
-    # Convert factor to character to process it
-    column_as_char <- as.character(column)
-    # Remove the unwanted characters
-    column_cleaned <- gsub(pattern, "", column_as_char)
-    #
-    # If the original column was a factor, convert it back
-    if (original_type == "factor") {
-      column_cleaned <- factor(column_cleaned)
+    
+    if (original_type %in% c("character", "factor")) {
+      column_as_char <- as.character(column)
+      column_cleaned <- gsub(pattern, "", column_as_char)
+      if (original_type == "factor") {
+        column_cleaned <- factor(column_cleaned)
+      }
+      return(column_cleaned)
+    } else {
+      return(column)  # Keep other types unchanged
     }
-    #
-    # Return the cleaned column
-    return(column_cleaned)
-  }), stringsAsFactors = FALSE) # Keeps strings as characters unless explicitly converted back to factors
+  }), stringsAsFactors = FALSE)
   #
   return(df_clean)
 }
@@ -378,30 +372,24 @@ removeBadCharactersFromString <- function(inputString) {  # remove problematic c
   return(cleanedString)
 }
 
-replaceBadCharacters  <- function(df) { # replace problematic characters, like " \r \n with a space
-  #    in a dataframe
-  # Define the characters to remove: carriage returns, newlines, tab, form feed
+replaceBadCharacters <- function(df) {
   chars_to_remove <- c("\\r", "\\n", "\\t", "\\f")
   pattern <- paste(chars_to_remove, collapse = "|")
   #
-  # Apply the removal operation only to character and factor columns
   df_clean <- as.data.frame(lapply(df, function(column) {
-    # Store the original type for later use
     original_type <- class(column)
-    #
-    # Convert factor to character to process it
-    column_as_char <- as.character(column)
-    # Remove the unwanted characters
-    column_cleaned <- gsub(pattern, " ", column_as_char)
-    #
-    # If the original column was a factor, convert it back
-    if (original_type == "factor") {
-      column_cleaned <- factor(column_cleaned)
+    
+    if (original_type %in% c("character", "factor")) {
+      column_as_char <- as.character(column)
+      column_cleaned <- gsub(pattern, " ", column_as_char)
+      if (original_type == "factor") {
+        column_cleaned <- factor(column_cleaned)
+      }
+      return(column_cleaned)
+    } else {
+      return(column)  # Keep other types unchanged
     }
-    #
-    # Return the cleaned column
-    return(column_cleaned)
-  }), stringsAsFactors = FALSE) # Keeps strings as characters unless explicitly converted back to factors
+  }), stringsAsFactors = FALSE)
   #
   return(df_clean)
 }
