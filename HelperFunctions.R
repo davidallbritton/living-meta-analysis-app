@@ -57,6 +57,9 @@ reformat.df <- function(df.input) {
   if(!("yi" %in% colnames(df))) {df$yi <- df$g}
   if(!("vi" %in% colnames(df))) {df$vi <- df$g_var}
   #
+  # Fix colons in column names
+  df <- removeColons(df)
+  #
   # Check for newlines and other problem characters:
   hasBadCharacters <- check_and_alert_bad_chars(df)
   #
@@ -338,6 +341,27 @@ checkOldPlots <- function(listPrevious, MA, tauprior, mupriorsd, scaletau, robus
 }
 
 ########## Functions for generating R code
+
+removeColons <- function(df) {
+  # the shiny app can't handle colons in the column names, so change them to underscores
+  original_colnames <- colnames(df)
+  colnames(df) <- gsub(":", "_", colnames(df))
+  #
+  if(colnames(df) != original_colnames) {
+    if (shiny::isRunning()) {
+      shinyalert(
+        title = "Your datafile column names contained colons, which may break the app.  They were changed to underscores.",
+        type = "warning",
+        showCancelButton = F,
+        confirmButtonText = "OK, I understand",
+      )
+    } else {
+      warning("Your datafile column names contained colons, which may break the app.  They were changed to underscores.")
+    }
+    #
+  } 
+  return(df)
+}
 
 removeBadCharacters  <- function(df) {  # remove newlines, etc.
   chars_to_remove <- c("\\r", "\\n", "\\t", "\\f")
