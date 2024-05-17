@@ -114,6 +114,7 @@ server <- function(input, output, session) {
       #
       if (file_extension %in% c("xlsx", "xls")) {
         df <- readxl::read_excel(file_path) %>% as.data.frame()
+        #
         # make sure the numeric columns are of the correct type
         start_col <- which(names(df) == "Begin.Selection.Numerics")
         end_col <- which(names(df) == "End.Selection.Numerics")
@@ -164,6 +165,9 @@ server <- function(input, output, session) {
           }
         }
       }
+      #
+      # Fix colons in column names
+      df <- removeColons(df)    
       #
       newrvs <- reformat.df(df)
       myrvs$df.reactive <- newrvs$df
