@@ -11,3 +11,13 @@
 #         5. "source" the code in the server function in server.R
 
 #### Code to insert into the server function for meta-regression
+
+# create UI stuff for "moderatorSelection_ui"
+#   yes/no button for doing meta-regression
+#   list all the factors and numerics to choose as moderators, non selected
+
+# calculate fmaReg using the selected moderators
+
+# create UI stuff for "metaRegressionUI"
+#   model test statistics and plots???
+

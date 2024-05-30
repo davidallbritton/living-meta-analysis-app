@@ -1215,4 +1215,7 @@ server <- function(input, output, session) {
     }
   )
   
+  # meta-regression, frequentist
+  source("metaRegressionCode.R")
+  
 }  # end of server

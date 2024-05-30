@@ -32,7 +32,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                tags$a(href="#currentDataFile", class="btn btn-default", "Go to top")
                                ),
                       tabPanel("Moderator Selection",
-                               uiOutput("moderator_ui")
+                               uiOutput("moderatorSelection_ui")
                       ),
 
                       tabPanel("Prior specifications",
@@ -315,13 +315,12 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  h4("Frequentist Funnel plot"),
                                  plotOutput("freq_funnel") %>% withSpinner(type = 6, color = "#3498DB")
                         ),
-
-                        # tabPanel("Funnel plot",
-                        #          printButton,
-                        #          h4("Frequentist Funnel plot"),
-                        #          plotOutput("freq_funnel") %>% withSpinner(type = 6, color = "#3498DB"),
-                        #          verbatimTextOutput("funnel_code")  # Add this line to display the code
-                        # ),
+                        
+                        tabPanel("Meta-Regression",
+                                 printButton,
+                                 h4("Frequentist Meta-Regression"),
+                                 uiOutput("metaRegressionOutputUI")
+                                 ),
                         
                         tabPanel("Bayesian Forest plot",  value = "bayesian_forest_plot",
                                  printButton, 
