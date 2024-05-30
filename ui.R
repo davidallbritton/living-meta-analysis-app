@@ -307,19 +307,12 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  h4("Frequentist Forest plot with study weights and 95% confidence intervals:"),
                                  plotOutput("freq_forest") %>% withSpinner(type = 6, color = "#3498DB")
                         ),
-                        # tabPanel("Funnel plot",
-                        #          printButton,
-                        #          h4("Frequentist Funnel plot"),
-                        #          plotOutput("freq_funnel") %>% withSpinner(type = 6, color = "#3498DB")
-                        # ),
-                        
                         tabPanel("Funnel plot",
                                  printButton,
                                  h4("Frequentist Funnel plot"),
-                                 plotOutput("freq_funnel") %>% withSpinner(type = 6, color = "#3498DB"),
-                                 verbatimTextOutput("funnel_code")  # Add this line to display the code
+                                 plotOutput("freq_funnel") %>% withSpinner(type = 6, color = "#3498DB")
                         ),
-                        
+
                         tabPanel("Bayesian Forest plot",  value = "bayesian_forest_plot",
                                  printButton, 
                                  h4("Forest plot with 95% credible intervals:"),
