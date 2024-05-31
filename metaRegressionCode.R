@@ -41,6 +41,7 @@ MA <- readRDS("/Users/David/Downloads/MA.RDS")
 
 fmabak <- fma
 df <- MA
+moderator <- MA$Instruction_category
 
 forestByGroup <- function(MA, moderator) {  
   # MA is the dataframe with yi=es, vi=var
@@ -54,19 +55,25 @@ forestByGroup <- function(MA, moderator) {
   }
   #
   # calculate some things for the height of the plot
-  groupSpace <-  4     # space below each group for group summary
+  groupSpace <-  4     # space around each group for group summary; 2 above and 2 below
+  spaceBelow <- groupSpace / 2
+  spaceAbove <- groupSpace / 2
   belowGroup <- -1.5   # how far below the group data to put the group summary
   belowPlot <-  -1.8   # how far below plot to put the meta-regression summary
   topSpace  <-  2      # how much room to leave at the top for labels
   nDataPoints <- length(fma$yi)
-  nGroups <- levels(moderator)  
-  #  need the number in each group; top and bottom row for each group
+  GroupNames <- levels(moderator)  
+  nGroups <- length(levels(moderator)) 
   totalHeight <- nDataPoints + (nGroups * groupSpace) + (topSpace)
+  # need the number in each group; top and bottom row for each group
+  groupSizes <- table(moderator)          # number in each level of GroupNames
     
-  
-  
+  lineNum <- 0  # initialize the line of the forest plot to zero
+  groupRowsPlot <- integer(nGroups)
   for (groupname in levels(moderator)) {
     print (groupname)
+    lineNum <- lineNum + spaceBelow
+    gSize <- groupSizes[groupname]
   }
   
 }
