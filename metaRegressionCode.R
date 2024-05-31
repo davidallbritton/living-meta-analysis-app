@@ -25,6 +25,9 @@
 # create UI stuff for "metaRegressionUI"
 #   model test statistics and plots???
 
+# switch between full forest plot (height = nrows + x) and 
+# caterpillar plot (height = 60; scaled proportionlly)
+
 
 # fma()  is the reactive containing the frequentist meta-analysis model without moderators
 # MA()  is the reactive containing the currently subsetted data
@@ -43,13 +46,25 @@ forestByGroup <- function(MA, moderator) {
   # MA is the dataframe with yi=es, vi=var
   # moderator is a vector of the same length as MA, such as MA$moderatorFactor
   fma <- rma(MA$es, MA$var, slab=MA$study)
-  forest(fma)
-  nTotal <- length(fma$yi)
+  forest(fma)  # temp; debugging; actual forest call will be later *****
+  #
   # if the moderator is not a factor, make it one
   if (!is.factor(moderator)) {
     moderator <- as.factor(as.character(moderator))
   }
-  ngroups <- levels(moderator)  # use for calculating lines for plot...
+  #
+  # calculate some things for the height of the plot
+  groupSpace <-  4     # space below each group for group summary
+  belowGroup <- -1.5   # how far below the group data to put the group summary
+  belowPlot <-  -1.8   # how far below plot to put the meta-regression summary
+  topSpace  <-  2      # how much room to leave at the top for labels
+  nDataPoints <- length(fma$yi)
+  nGroups <- levels(moderator)  
+  #  need the number in each group; top and bottom row for each group
+  totalHeight <- nDataPoints + (nGroups * groupSpace) + (topSpace)
+    
+  
+  
   for (groupname in levels(moderator)) {
     print (groupname)
   }
