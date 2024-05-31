@@ -27,10 +27,33 @@
 
 
 # fma()  is the reactive containing the frequentist meta-analysis model without moderators
+# MA()  is the reactive containing the currently subsetted data
+#
+# load a nonreactive copy of each of them, subsetting only to remove the duplicate
+# effect sizes in the Sedlmeier paper
+#
+fma <- readRDS("/Users/David/Downloads/fma.RDS") 
+MA <- readRDS("/Users/David/Downloads/MA.RDS") 
 
-# 
-# need to copy MA to df to work on this....
-forestByGroup <- function(df, moderator) {
-  fma <- rma(df)
-  forest(df,  vi = vi)
+
+fmabak <- fma
+df <- MA
+
+forestByGroup <- function(MA, moderator) {  
+  # MA is the dataframe with yi=es, vi=var
+  # moderator is a vector of the same length as MA, such as MA$moderatorFactor
+  fma <- rma(MA$es, MA$var, slab=MA$study)
+  forest(fma)
+  nTotal <- length(fma$yi)
+  # if the moderator is not a factor, make it one
+  if (!is.factor(moderator)) {
+    moderator <- as.factor(as.character(moderator))
+  }
+  ngroups <- levels(moderator)  # use for calculating lines for plot...
+  for (groupname in levels(moderator)) {
+    print (groupname)
+  }
+  
 }
+
+forestByGroup(MA, MA$Instruction_category)
