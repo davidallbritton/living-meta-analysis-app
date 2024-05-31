@@ -10,6 +10,10 @@
 #         4. put the server code for the meta-regression tab in a separate file
 #         5. "source" the code in the server function in server.R
 
+# and see this for forest plot code with subgroups:  
+# https://www.metafor-project.org/doku.php/plots:forest_plot_with_subgroups
+
+
 #### Code to insert into the server function for meta-regression
 
 # create UI stuff for "moderatorSelection_ui"
@@ -21,3 +25,12 @@
 # create UI stuff for "metaRegressionUI"
 #   model test statistics and plots???
 
+
+# fma()  is the reactive containing the frequentist meta-analysis model without moderators
+
+# 
+# need to copy MA to df to work on this....
+forestByGroup <- function(df, moderator) {
+  fma <- rma(df)
+  forest(df,  vi = vi)
+}
