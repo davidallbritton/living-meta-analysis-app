@@ -37,7 +37,8 @@
 #
 fma <- readRDS("/Users/David/Downloads/fma.RDS") 
 MA <- readRDS("/Users/David/Downloads/MA.RDS") 
-
+fma <- readRDS("/Users/dallbrit//Downloads/fma.RDS") 
+MA <- readRDS("/Users/dallbrit//Downloads/MA.RDS") 
 
 fmabak <- fma
 df <- MA
