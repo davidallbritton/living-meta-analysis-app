@@ -44,7 +44,14 @@ MA <- readRDS("/Users/dallbrit//Downloads/MA.RDS")
 
 fmabak <- fma
 df <- MA
+cexSize <-  0.6
+
+## try with a smaller dataset
+MA <- MA[MA$Instruction_category != "Instruction_NatFreq"]
+MA <- MA[MA$Instruction_category != "Instruction_Bayes_prob"]
+
 moderator <- MA$Instruction_category
+
 ######## end of temp debugging stuff:
 
 ################ Functions ###############################################
@@ -62,7 +69,7 @@ mlabfun <- function(text, x) {
 
 
 ### function to create the forest plot with a categorical moderator
-forestByGroup <- function(MA, moderator) {  
+forestByGroup <- function(MA, moderator, cexSize = 0.6) {  
   # MA is the dataframe with yi=es, vi=var
   # moderator is a vector of the same length as MA, such as MA$moderatorFactor
   fma <- rma(MA$es, MA$var, slab=MA$study)
@@ -116,16 +123,32 @@ forestByGroup <- function(MA, moderator) {
  
  # forest(fma)  # temp; debugging; actual forest call will be later *****
   forest(fma, 
-         xlim=c(-16, 4.6),  
-         cex=0.75, 
-         ylim=c(-1, 27), 
-         order=alloc, 
-         rows=c(3:4,9:15,20:23),
+    #     xlim=c(-20, 15),  
+         cex=cexSize, 
+         ylim=c(-1, totalHeight), 
+         order=moderator, 
+   #      rows=c(3:6, 11:32, 37:81, 86:90, 95:99, 104:110),
+         rows=c(3:6, 11:15, 20:24, 29:35),
          mlab=mlabfun("RE Model for All Studies", fma),
          psize=1, header="Study")
   
+  ### set font expansion factor (as in forest() above) and use a bold font
+  op <- par(cex=cexSize, font=2)
+  ### switch to bold italic font
+  par(font=4)
   
+  ### add text for the subgroups
+  # text(-16, groupLabelRow, pos=4, GroupNames)
+
+  usr <- par("usr")
+  text(usr[1], groupLabelRow, pos=4, GroupNames, xpd=TRUE)
+  
+  par(op)
+  #  dev.off()  resets plot parameters  
   
 }
+
+
+
 
 forestByGroup(MA, MA$Instruction_category)
