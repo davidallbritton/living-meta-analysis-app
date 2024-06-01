@@ -44,7 +44,7 @@ MA <- readRDS("/Users/dallbrit//Downloads/MA.RDS")
 
 fmabak <- fma
 df <- MA
-cexSize <-  0.6
+cexSize <-  0.6 
 
 ## try with a smaller dataset
 MA <- MA[MA$Instruction_category != "Instruction_NatFreq"]
@@ -69,7 +69,7 @@ mlabfun <- function(text, x) {
 
 
 ### function to create the forest plot with a categorical moderator
-forestByGroup <- function(MA, moderator, cexSize = 0.6) {  
+forestByGroup <- function(MA, moderator, cex=0.6, xlim="", psize="") {  
   # MA is the dataframe with yi=es, vi=var
   # moderator is a vector of the same length as MA, such as MA$moderatorFactor
   fma <- rma(MA$es, MA$var, slab=MA$study)
@@ -78,14 +78,18 @@ forestByGroup <- function(MA, moderator, cexSize = 0.6) {
   if (!is.factor(moderator)) {
     moderator <- as.factor(as.character(moderator))
   }
-  #
+  
   # calculate some things for the height of the plot
+  #
+  ### Things you might want to change:
   spaceBelow <- 2
   spaceAbove <- 2
   groupSpace <-  spaceBelow + spaceAbove     # space around each group for group summary; 2 above and 2 below
   belowGroup <- -1.5   # how far below the group data to put the group summary
   belowPlot <-  -1.8   # how far below plot to put the meta-regression summary
   topSpace  <-  2      # how much room to leave at the top for labels
+  #
+  ### Things you probably do not want to change:
   nDataPoints <- length(fma$yi)
   GroupNames <- levels(moderator)  
   nGroups <- length(levels(moderator)) 
@@ -98,7 +102,7 @@ forestByGroup <- function(MA, moderator, cexSize = 0.6) {
   groupLabelRow <- integer(nGroups)
   groupModelRow <- integer(nGroups)
   lineNum <-  spaceBelow + 1 # initialize the line of the forest plot to the row for the first ES
-  rowsString <- "rows=c("    # initialize the string
+  rowsString <- "c("    # initialize the string
   #
   for(i in 1:nGroups) {
     groupname <- GroupNames[i]
@@ -116,35 +120,55 @@ forestByGroup <- function(MA, moderator, cexSize = 0.6) {
     # update for the next entry
     lineNum <- (y + groupSpace + 1)
     #
-    print (i)  # debugging 
-    print (groupname)  # debugging 
-    print(rowsString)  # debugging 
+    # print (i)  # debugging 
+    # print (groupname)  # debugging 
+    # print(rowsString)  # debugging 
   }
+  
+  rowsVector <- eval(parse(text = rowsString))
  
- # forest(fma)  # temp; debugging; actual forest call will be later *****
-  forest(fma, 
-    #     xlim=c(-20, 15),  
-         cex=cexSize, 
-         ylim=c(-1, totalHeight), 
-         order=moderator, 
-   #      rows=c(3:6, 11:32, 37:81, 86:90, 95:99, 104:110),
-         rows=c(3:6, 11:15, 20:24, 29:35),
-         mlab=mlabfun("RE Model for All Studies", fma),
-         psize=1, header="Study")
+  # Define the list of arguments for forest()
+  args_list <- list()
+  args_list$x <- fma
+  args_list$ylim <- c(-2, totalHeight)
+  args_list$order <- moderator
+  args_list$rows <- rowsVector
+  args_list$mlab <- mlabfun("RE Model for All Studies", fma)
+  args_list$header <- "Study"
+  args_list$cex <- cex
+  # Conditionally add optional parameters if declared in function call
+  if (!missing(xlim)) {
+    args_list$xlim <- xlim
+    print("xlim is not missing")
+  }
+  if (!missing(psize)) {
+    args_list$psize <- psize
+  }
+  
+  # Call the forest function with the dynamically constructed argument list
+  do.call(forest, args_list)
   
   ### set font expansion factor (as in forest() above) and use a bold font
   op <- par(cex=cexSize, font=2)
+  
   ### switch to bold italic font
   par(font=4)
-  
   ### add text for the subgroups
-  # text(-16, groupLabelRow, pos=4, GroupNames)
-
   usr <- par("usr")
   text(usr[1], groupLabelRow, pos=4, GroupNames, xpd=TRUE)
   
+  # restore original plot parameters
   par(op)
   #  dev.off()  resets plot parameters  
+  
+  # add models for subgroups
+  for(i in 1:nGroups) {
+    addpoly(submodels[[i]], 
+            row=groupModelRow[i], 
+            mlab=mlabfun("RE Model for Subgroup", submodels[[i]]),
+            xpd = TRUE
+            )
+  }
   
 }
 
