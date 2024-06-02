@@ -37,20 +37,20 @@
 #
 
 ######## temp debugging stuff:
-fma <- readRDS("/Users/David/Downloads/fma.RDS") 
+# fma <- readRDS("/Users/David/Downloads/fma.RDS") 
 MA <- readRDS("/Users/David/Downloads/MA.RDS") 
-fma <- readRDS("/Users/dallbrit//Downloads/fma.RDS") 
-MA <- readRDS("/Users/dallbrit//Downloads/MA.RDS") 
+# fma <- readRDS("/Users/dallbrit//Downloads/fma.RDS") 
+# MA <- readRDS("/Users/dallbrit//Downloads/MA.RDS") 
 
-fmabak <- fma
-df <- MA
-cexSize <-  0.6 
+# fmabak <- fma
+# df <- MA
+# cexSize <-  0.6 
 
 ## try with a smaller dataset
 MA <- MA[MA$Instruction_category != "Instruction_NatFreq"]
 MA <- MA[MA$Instruction_category != "Instruction_Bayes_prob"]
 
-moderator <- MA$Instruction_category
+# moderator <- MA$Instruction_category
 
 ######## end of temp debugging stuff:
 
@@ -68,11 +68,16 @@ mlabfun <- function(text, x) {
 
 
 
-### function to create the forest plot with a categorical moderator
-forestByGroup <- function(MA, moderator, cex=0.6, xlim="", psize="") {  
+### function to create a forest plot with a categorical moderator
+forestByGroup <- function(MA, moderator, slab=MA$study, cex=0.6, header="Study", ...) {  
+  ## additional arguments that might be useful: xlim, psize, xlab
+  ## For caterpillar plot, slab=NA
+  ## You can also add any other arguments that forest() allows
+  #
   # MA is the dataframe with yi=es, vi=var
   # moderator is a vector of the same length as MA, such as MA$moderatorFactor
-  fma <- rma(MA$es, MA$var, slab=MA$study)
+  #
+  fma <- rma(MA$es, MA$var, slab=slab)
   #
   # if the moderator is not a factor, make it one
   if (!is.factor(moderator)) {
@@ -115,7 +120,8 @@ forestByGroup <- function(MA, moderator, cex=0.6, xlim="", psize="") {
     groupModelRow[i] <- lineNum + belowGroup
     # create a model for each group
     subMA <- MA[moderator == groupname,]
-    subfma <- rma(subMA$es, subMA$var, slab=subMA$study)
+    subslab <- slab[moderator == groupname]
+    subfma <- rma(subMA$es, subMA$var, slab=subslab)
     submodels[[i]] <- subfma
     # update for the next entry
     lineNum <- (y + groupSpace + 1)
@@ -128,28 +134,20 @@ forestByGroup <- function(MA, moderator, cex=0.6, xlim="", psize="") {
   rowsVector <- eval(parse(text = rowsString))
  
   # Define the list of arguments for forest()
-  args_list <- list()
+  args_list <- list(...)
   args_list$x <- fma
+  args_list$cex <- cex
   args_list$ylim <- c(-2, totalHeight)
   args_list$order <- moderator
   args_list$rows <- rowsVector
   args_list$mlab <- mlabfun("RE Model for All Studies", fma)
-  args_list$header <- "Study"
-  args_list$cex <- cex
-  # Conditionally add optional parameters if declared in function call
-  if (!missing(xlim)) {
-    args_list$xlim <- xlim
-    print("xlim is not missing")
-  }
-  if (!missing(psize)) {
-    args_list$psize <- psize
-  }
-  
+  args_list$header <- header
+
   # Call the forest function with the dynamically constructed argument list
   do.call(forest, args_list)
   
   ### set font expansion factor (as in forest() above) and use a bold font
-  op <- par(cex=cexSize, font=2)
+  op <- par(cex=cex, font=2)
   
   ### switch to bold italic font
   par(font=4)
@@ -170,9 +168,14 @@ forestByGroup <- function(MA, moderator, cex=0.6, xlim="", psize="") {
             )
   }
   
+  # add model testing moderator
+  
+  
 }
 
 
 
 
-forestByGroup(MA, MA$Instruction_category)
+forestByGroup(MA, MA$Instruction_category, xlab="Hedges g")
+# forestByGroup(MA, MA$Instruction_category, cex=.4)
+# forestByGroup(MA, MA$Instruction_category, xlim=c(-40, 20))
