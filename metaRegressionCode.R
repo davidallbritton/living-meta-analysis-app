@@ -69,15 +69,16 @@ mlabfun <- function(text, x) {
 
 
 ### function to create a forest plot with a categorical moderator
-forestByGroup <- function(MA, moderator, slab=MA$study, cex=0.6, header="Study", ...) {  
+forestByGroup <- function(MA, moderator, slab=MA$study, cex=0.6, header="Study", caterpillar=F, ...) {  
   ## additional arguments that might be useful: xlim, psize, xlab
-  ## For caterpillar plot, slab=NA
+  ## For caterpillar plot, caterpillar=TRUE (not slab=NA)
   ## You can also add any other arguments that forest() allows
   #
   # MA is the dataframe with yi=es, vi=var
   # moderator is a vector of the same length as MA, such as MA$moderatorFactor
   #
   fma <- rma(MA$es, MA$var, slab=slab)
+  print("fma done") # debugging
   #
   # if the moderator is not a factor, make it one
   if (!is.factor(moderator)) {
@@ -91,7 +92,7 @@ forestByGroup <- function(MA, moderator, slab=MA$study, cex=0.6, header="Study",
   spaceAbove <- 2
   groupSpace <-  spaceBelow + spaceAbove     # space around each group for group summary; 2 above and 2 below
   belowGroup <- -1.5   # how far below the group data to put the group summary
-  belowPlot <-  -1.8   # how far below plot to put the meta-regression summary
+  belowPlot <-  -2.5     # how far below plot to put the meta-regression summary
   topSpace  <-  2      # how much room to leave at the top for labels
   #
   ### Things you probably do not want to change:
@@ -142,6 +143,7 @@ forestByGroup <- function(MA, moderator, slab=MA$study, cex=0.6, header="Study",
   args_list$rows <- rowsVector
   args_list$mlab <- mlabfun("RE Model for All Studies", fma)
   args_list$header <- header
+  if(caterpillar) args_list$slab <- NA
 
   # Call the forest function with the dynamically constructed argument list
   do.call(forest, args_list)
@@ -169,6 +171,14 @@ forestByGroup <- function(MA, moderator, slab=MA$study, cex=0.6, header="Study",
   }
   
   # add model testing moderator
+  fmaMod <- rma(MA$es, MA$var, mods = ~ moderator)
+  #
+  ### add text for the test of subgroup differences
+  text(usr[1], belowPlot, pos=4, cex=cex, xpd=TRUE,
+       bquote(paste("Test for Subgroup Differences: ", 
+                    Q[M], " = ", .(fmtx(fmaMod$QM, digits=2)),
+                    ", df = ", .(fmaMod$p - 1), ", ",
+                    .(fmtp(fmaMod$QMp, digits=2, pname="p", add0=TRUE, sep=TRUE, equal=TRUE)))))
   
   
 }
