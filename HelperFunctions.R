@@ -469,3 +469,8 @@ check_and_alert_bad_chars <- function(df) {
     return(FALSE) # Return FALSE to indicate no bad characters were found
   }
 }
+
+################ Functions ###############################################
+source("metaRegressionFunctions.R")
+################ Functions ###############################################
+# these will need to be copied in later so they can be downloaded with this file...

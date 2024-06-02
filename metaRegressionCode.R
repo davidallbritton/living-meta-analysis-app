@@ -36,23 +36,6 @@
 # effect sizes in the Sedlmeier paper
 #
 
-######## temp debugging stuff:
-# fma <- readRDS("/Users/David/Downloads/fma.RDS") 
-MA <- readRDS("/Users/David/Downloads/MA.RDS") 
-# fma <- readRDS("/Users/dallbrit//Downloads/fma.RDS") 
-# MA <- readRDS("/Users/dallbrit//Downloads/MA.RDS") 
-#
-# fmabak <- fma
-# df <- MA
-# cexSize <-  0.6 
-#
-## try with a smaller dataset
-### MA <- MA[MA$Instruction_category != "Instruction_NatFreq"]
- MA <- MA[MA$Instruction_category != "Instruction_Bayes_prob"]
-#
-# moderator <- MA$Instruction_category
-#
-######## end of temp debugging stuff:
 
 ################ Functions ###############################################
 source("metaRegressionFunctions.R")
@@ -64,5 +47,39 @@ forestByGroup(MA=MA, MA$Instruction_category, xlab="Hedges g")
  ## For caterpillar plot, caterpillar=TRUE (not slab=NA)
  ## You can also add any other arguments that forest() allows
 
-forestByGroup(MA=MA, MA$Instruction_category, xlab="Hedges g", caterpillar = T)
+forestByGroup(MA=MA, moderator=MA$Instruction_category, xlab="Hedges g", caterpillar = T, xlim=c(-25,15))
 
+
+######### tab panel for selecting a moderator and saying "yes" do moderator 
+
+# tabPanel("Moderator Selection",
+#          uiOutput("moderatorSelection_ui")
+# ),
+
+
+######### tab panel for forest plot results
+
+# tabPanel("Meta-Regression",
+#          printButton,
+#          h4("Frequentist Meta-Regression"),
+#          plotOutput("metaRegressionOutput")
+# ),
+
+# Render the forest plot
+output$metaRegressionOutput <- renderPlot({
+  MA <- MA()
+  moderatorName <- input$moderator_variable
+  forestByGroup(MA=MA, moderator=MA$moderator_column)
+})
+
+
+tabPanel("Meta-Regression", value = "bayesian_robustness",
+         printButton,
+         h4("Forest Plot with Subgroups"),
+         p("Will only be computed if 'Yes' is selected for 'Include Moderator'",),br(),
+         p("and one categorical moderator is selected."),
+         
+         conditionalPanel(condition = "input.includeModerator == 'Yes'", 
+                          plotOutput("robustplot") %>% withSpinner(type = 6, color = "#3498DB"),
+ 
+),
