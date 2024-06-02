@@ -20,66 +20,35 @@ output$moderatorSelection_ui <- renderUI({
   ))
 })
 
-
-# output$dynamic_ui <- renderUI({
-#   tagList(
-#     radioButtons("includeModerator", "Do you want to include a moderator for meta-regression?",
-#                  choices = list("No" = "No", "Yes" = "Yes"), selected = "No"),
-#     conditionalPanel(
-#       condition = "input.includeModerator == 'Yes'",
-#       radioButtons("variable_factor", "Select one option:",
-#                    choices = Variable.Factor.Names)
-#     )
-#   )
-# })
-
-
-
-
-print("working ok")
-
-# ## loop over the variable factor columns
-# lapply(Variable.Factor.Names, function(varName) {                             
-#   checkboxGroupInput(inputId = varName, label = p(varName,style="color:#333333"), 
-#                      choices = levels(df[,varName]), selected = levels(df[,varName]))
-# })
-# 
-# 
-# for (varName in Variable.Factor.Names)  {
-#   keepValues <- input[[varName]]
-#   df_sub <- df_sub[df_sub[,varName] %in% keepValues, ]
-# }
-
-
-
-
-
-
-
-
-
-
-
-
-
+print("working ok")  # debugging
 
 
 
 
 ######### tab panel for forest plot results
-
+#
+##  goes with this section of the UI.R file:
 # tabPanel("Meta-Regression",
 #          printButton,
 #          h4("Frequentist Meta-Regression"),
-#          plotOutput("metaRegressionOutput")
+#          uiOutput("metaRegressionOutputUI")
 # ),
 
-# # Render the forest plot
-# output$metaRegressionOutput <- renderPlot({
-#   MA <- MA()
-#   moderatorName <- input$moderator_variable
-#   forestByGroup(MA=MA, moderator=MA$moderator_column)
-# })
+output$metaRegressionOutputUI <- renderUI({
+  MA <- MA()
+  moderatorName <- input$moderator_variable
+  conditionalPanel(
+    condition = "input.includeModerator == 'Yes'",
+    tagList(
+      renderText(paste("Moderator variable is:  ", moderatorName)),
+  #    renderPlot(forestByGroup(MA=MA, moderator=MA$moderatorName))
+  p("debugging   d")
+    )
+  )
+
+  
+})
+print("still working ok")  # debugging
 
 # 
 # tabPanel("Meta-Regression", value = "bayesian_robustness",
@@ -92,3 +61,5 @@ print("working ok")
 #                           plotOutput("robustplot") %>% withSpinner(type = 6, color = "#3498DB"),
 #  
 # ),
+
+
