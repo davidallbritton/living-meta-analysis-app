@@ -41,17 +41,17 @@
 MA <- readRDS("/Users/David/Downloads/MA.RDS") 
 # fma <- readRDS("/Users/dallbrit//Downloads/fma.RDS") 
 # MA <- readRDS("/Users/dallbrit//Downloads/MA.RDS") 
-
+#
 # fmabak <- fma
 # df <- MA
 # cexSize <-  0.6 
-
+#
 ## try with a smaller dataset
 MA <- MA[MA$Instruction_category != "Instruction_NatFreq"]
 MA <- MA[MA$Instruction_category != "Instruction_Bayes_prob"]
-
+#
 # moderator <- MA$Instruction_category
-
+#
 ######## end of temp debugging stuff:
 
 ################ Functions ###############################################
@@ -67,9 +67,9 @@ mlabfun <- function(text, x) {
                     tau^2, " = ", .(fmtx(x$tau2, digits=2)), ")")))}
 
 
-
+###### start of forestByGroup() function
 ### function to create a forest plot with a categorical moderator
-forestByGroup <- function(MA, moderator, slab=MA$study, cex=0.6, header="Study", caterpillar=F, ...) {  
+forestByGroup <- function(x=MA, moderator, slab=MA$study, cex=0.6, header="Study",addpred=TRUE, caterpillar=F, ...) {  
   ## additional arguments that might be useful: xlim, psize, xlab
   ## For caterpillar plot, caterpillar=TRUE (not slab=NA)
   ## You can also add any other arguments that forest() allows
@@ -77,8 +77,9 @@ forestByGroup <- function(MA, moderator, slab=MA$study, cex=0.6, header="Study",
   # MA is the dataframe with yi=es, vi=var
   # moderator is a vector of the same length as MA, such as MA$moderatorFactor
   #
+  MA <- x  # used x as argument name for consistency with forest()
+  #
   fma <- rma(MA$es, MA$var, slab=slab)
-  print("fma done") # debugging
   #
   # if the moderator is not a factor, make it one
   if (!is.factor(moderator)) {
@@ -126,10 +127,6 @@ forestByGroup <- function(MA, moderator, slab=MA$study, cex=0.6, header="Study",
     submodels[[i]] <- subfma
     # update for the next entry
     lineNum <- (y + groupSpace + 1)
-    #
-    # print (i)  # debugging 
-    # print (groupname)  # debugging 
-    # print(rowsString)  # debugging 
   }
   
   rowsVector <- eval(parse(text = rowsString))
@@ -143,6 +140,7 @@ forestByGroup <- function(MA, moderator, slab=MA$study, cex=0.6, header="Study",
   args_list$rows <- rowsVector
   args_list$mlab <- mlabfun("RE Model for All Studies", fma)
   args_list$header <- header
+  args_list$addpred <- addpred
   if(caterpillar) args_list$slab <- NA
 
   # Call the forest function with the dynamically constructed argument list
@@ -166,7 +164,8 @@ forestByGroup <- function(MA, moderator, slab=MA$study, cex=0.6, header="Study",
     addpoly(submodels[[i]], 
             row=groupModelRow[i], 
             mlab=mlabfun("RE Model for Subgroup", submodels[[i]]),
-            xpd = TRUE
+            xpd = TRUE,
+            addpred=addpred
             )
   }
   
@@ -179,13 +178,15 @@ forestByGroup <- function(MA, moderator, slab=MA$study, cex=0.6, header="Study",
                     Q[M], " = ", .(fmtx(fmaMod$QM, digits=2)),
                     ", df = ", .(fmaMod$p - 1), ", ",
                     .(fmtp(fmaMod$QMp, digits=2, pname="p", add0=TRUE, sep=TRUE, equal=TRUE)))))
-  
-  
 }
+###### end of forestByGroup() function
 
 
 
 
-forestByGroup(MA, MA$Instruction_category, xlab="Hedges g")
-# forestByGroup(MA, MA$Instruction_category, cex=.4)
-# forestByGroup(MA, MA$Instruction_category, xlim=c(-40, 20))
+
+forestByGroup(x=MA, MA$Instruction_category, xlab="Hedges g")
+ ## additional arguments that might be useful: xlim, psize, xlab
+ ## For caterpillar plot, caterpillar=TRUE (not slab=NA)
+ ## You can also add any other arguments that forest() allows
+
