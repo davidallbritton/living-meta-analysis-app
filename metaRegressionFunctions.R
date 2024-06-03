@@ -16,7 +16,10 @@ mlabfun <- function(text, x) {
 
 ##################### function to create a forest plot with a categorical moderator
 ###### start of forestByGroup() function
-forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=0.6, header="Study",addpred=TRUE, caterpillar=F, ...) {  
+forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1, 
+                          header="Study",addpred=TRUE, caterpillar=F,
+         ##                 col="black", border="black",
+                          ...) {  
   ## additional arguments that might be useful: xlim, psize, xlab
   ## For caterpillar plot, use caterpillar=TRUE (not slab=NA as you would in forest() )
   ## You can also add any other arguments that forest() allows
@@ -105,16 +108,42 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=0.6, header="Stud
   par(op)
   #  dev.off()  resets plot parameters  
   
+  
+  
+  # # get color arguments for subgroup polygons
+  # argsForSubs <- list(...)
+  # # Check if col and border are missing
+  # if (!missing(col)) {       ###  why does this produce an error?
+  #   argsForSubs$col <- col
+  # }
+  # if (!missing(border)) {
+  #   argsForSubs$border <- border
+  # }
+  # 
+  # # add models for subgroups
+  # for (i in 1:nGroups) {
+  #   # Define the base arguments for addpoly
+  #   baseArgs <- list(model=submodels[[i]], 
+  #                    row=groupModelRow[i], 
+  #                    mlab=mlabfun("RE Model for Subgroup", submodels[[i]]),
+  #                    xpd=TRUE,
+  #                    addpred=addpred)
+  #   # Combine the base arguments with the additional arguments
+  #   combinedArgs <- c(baseArgs, argsForSubs)
+  #   # Call addpoly with the combined arguments
+  #   do.call(addpoly, combinedArgs)
+  # }
+  
   # add models for subgroups
   for(i in 1:nGroups) {
-    addpoly(submodels[[i]], 
-            row=groupModelRow[i], 
+    addpoly(submodels[[i]],
+            row=groupModelRow[i],
             mlab=mlabfun("RE Model for Subgroup", submodels[[i]]),
             xpd = TRUE,
             addpred=addpred
             )
   }
-  
+
   # add model testing moderator
   fmaMod <- rma(MA$es, MA$var, mods = ~ moderator)
   #
