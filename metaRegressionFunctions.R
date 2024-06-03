@@ -108,41 +108,41 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
   par(op)
   #  dev.off()  resets plot parameters  
   
-  
-  
-  # # get color arguments for subgroup polygons
-  # argsForSubs <- list(...)
-  # # Check if col and border are missing
-  # if (!missing(col)) {       ###  why does this produce an error?
-  #   argsForSubs$col <- col
-  # }
-  # if (!missing(border)) {
-  #   argsForSubs$border <- border
-  # }
-  # 
-  # # add models for subgroups
-  # for (i in 1:nGroups) {
-  #   # Define the base arguments for addpoly
-  #   baseArgs <- list(model=submodels[[i]], 
-  #                    row=groupModelRow[i], 
-  #                    mlab=mlabfun("RE Model for Subgroup", submodels[[i]]),
-  #                    xpd=TRUE,
-  #                    addpred=addpred)
-  #   # Combine the base arguments with the additional arguments
-  #   combinedArgs <- c(baseArgs, argsForSubs)
-  #   # Call addpoly with the combined arguments
-  #   do.call(addpoly, combinedArgs)
-  # }
-  
-  # add models for subgroups
-  for(i in 1:nGroups) {
-    addpoly(submodels[[i]],
-            row=groupModelRow[i],
-            mlab=mlabfun("RE Model for Subgroup", submodels[[i]]),
-            xpd = TRUE,
-            addpred=addpred
-            )
+  # get color arguments for subgroup polygons
+  argsForSubs <- list()
+  # Check if col and border are in args_list
+  if ("col" %in% names(args_list)) {
+    argsForSubs$col <- args_list$col
   }
+  if ("border" %in% names(args_list)) {
+    argsForSubs$border <- args_list$border
+  }
+
+  # add models for subgroups
+  for (i in 1:nGroups) {
+    # Define the base arguments for addpoly
+    baseArgs <- list(x=submodels[[i]],
+                     row=groupModelRow[i],
+                     mlab=mlabfun("RE Model for Subgroup", submodels[[i]]),
+                     xpd=TRUE,
+                     addpred=addpred)
+    # Combine the base arguments with the additional arguments
+    combinedArgs <- c(baseArgs, argsForSubs)
+    # Call addpoly with the combined arguments
+    do.call(addpoly, combinedArgs)
+  }
+  
+  #### The simpler version that does not pass color arguments:
+  # # add models for subgroups
+  # for(i in 1:nGroups) {
+  #   addpoly(submodels[[i]],
+  #           row=groupModelRow[i],
+  #           mlab=mlabfun("RE Model for Subgroup", submodels[[i]]),
+  #           xpd = TRUE,
+  #           addpred=addpred
+  #           )
+  # }
+  ####
 
   # add model testing moderator
   fmaMod <- rma(MA$es, MA$var, mods = ~ moderator)

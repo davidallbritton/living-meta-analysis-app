@@ -1,6 +1,7 @@
 # server code for meta-regression
 # generates parts of the UI and generates the results tab for meta-regression
 
+
 ######### tab panel for selecting a moderator and saying "yes" do meta-analysis 
 #
 # This section is referenced by this part of the UI.R file:
@@ -19,10 +20,6 @@ output$moderatorSelection_ui <- renderUI({
                  choices = Variable.Factor.Names)
   ))
 })
-
-print("working ok")  # debugging
-
-
 
 
 ######### tab panel for forest plot results
@@ -45,28 +42,24 @@ output$metaRegressionOutputUI <- renderUI({
   
   tagList(
     printButton,
-    h4("Forest Plot with Subgroups"),
-    p("Will only be computed if 'Yes' is selected for 'Include Moderator'",),br(),
-    p("and one categorical moderator is selected.") ,
+    h4("Frequentist Meta-Regression: Forest Plot with Subgroups"),
+    p("Will only be computed if 'Yes' is selected for 'Include Moderator'",
+      "and one categorical moderator is selected.") ,
     conditionalPanel(
       condition = "input.includeModerator == 'Yes'",
       tagList(
         renderText(paste("Moderator variable is:  ", moderatorName)),
         renderPlot(forestByGroup(MA=MA, moderator=moderator, 
-                                 # col = "red",
-                                 # border = "red",
+                                  col = "red",       # color of the summary polygon
+                                  border = "red",    # color of the summary polygon
                                  efac = .3
                                  ), 
-                   height=freq_forest_height_mod),
-        # efac = 0     to remove the vertical tics on the ends of the error bars
-        p("height = ", freq_forest_height_mod()),  # debugging
-        p("debugging")
+                   height=freq_forest_height_mod)
       )
     )
   )   # end of tagList
 })  
 
-print("still working ok")  # debugging
 
 
 

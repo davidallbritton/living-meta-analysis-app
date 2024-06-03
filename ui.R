@@ -317,8 +317,6 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                         ),
                         
                         tabPanel("Meta-Regression",
-                                 printButton,
-                                 h4("Frequentist Meta-Regression"),
                                  uiOutput("metaRegressionOutputUI")
                                  ),
                         
