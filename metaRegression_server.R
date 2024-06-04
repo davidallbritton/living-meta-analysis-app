@@ -38,7 +38,14 @@ freq_forest_height_mod <- reactive(nrow(MA()) * 12 + 400)  # values for panel wi
 output$metaRegressionOutputUI <- renderUI({
   MA <- MA()
   moderatorName <- input$moderator_variable
-  moderator <- MA[[moderatorName]]
+
+  # check to make sure input$moderator_variable exists before assigning its value to something:
+  if (is.null(input$moderator_variable)) {
+    warning("First you must select a valid moderator in the Moderator Selection tab...")
+    moderator <- NULL
+  } else {
+    moderator <- MA[[moderatorName]]
+  }
   
   tagList(
     printButton,
