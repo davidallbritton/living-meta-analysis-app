@@ -32,8 +32,8 @@ output$moderatorSelection_ui <- renderUI({
 # ),
 
 ##  set the plot height....
-# freq_forest_height_mod <- reactive(nrow(MA()) * 12 + 200)
-freq_forest_height_mod <- reactive(nrow(MA()) * 12 + 400)
+# freq_forest_height_mod <- reactive(nrow(MA()) * 12 + 200)  # values from forest panel without moderators
+freq_forest_height_mod <- reactive(nrow(MA()) * 12 + 400)  # values for panel with a moderator
 
 output$metaRegressionOutputUI <- renderUI({
   MA <- MA()
@@ -49,19 +49,47 @@ output$metaRegressionOutputUI <- renderUI({
       condition = "input.includeModerator == 'Yes'",
       tagList(
         renderText(paste("Moderator variable is:  ", moderatorName)),
-        renderPlot(forestByGroup(MA=MA, moderator=moderator, 
-                                  col = "red",       # color of the summary polygon
-                                  border = "red",    # color of the summary polygon
-                                 efac = .3
-                                 ), 
-                   height=freq_forest_height_mod)
+        renderPlot({
+          plot_args <- list(
+            MA = MA, 
+            moderator = moderator,
+            col = "red",       # color of the summary polygon
+            border = "red",    # color of the summary polygon
+            efac = .3
+          )
+          
+          if (input$update_x_axis > 0) {
+            x_min <- as.numeric(input$x_min)
+            x_max <- as.numeric(input$x_max)
+            
+            if (!is.na(x_min) && !is.na(x_max)) {
+              plot_args$xlim <- c(x_min, x_max)
+            }
+          }
+          
+          do.call(forestByGroup, plot_args)
+        }, height = freq_forest_height_mod),
+
+        # input boxes for adjusting x axis:
+        hr(),
+        fluidRow(
+          column(2, 
+                 actionButton("update_x_axis", "Update x axis"),
+                 tags$style(type='text/css', "
+    #update_x_axis {
+      height: 5px;
+      line-height: 3px;
+      background-color: tan; /* Change this to your desired color */
+      color: black; /* Change text color if needed */
+    }
+  ")
+          ),
+          column(2, textInput("x_min", label = NULL, placeholder = "Min", width = "100px")),
+          tags$style(type='text/css', "#x_min { height: 3px; }"),
+          column(2, textInput("x_max", label = NULL, placeholder = "Max", width = "100px")),
+          tags$style(type='text/css', "#x_max { height: 3px; }")
+        )
       )
     )
   )   # end of tagList
-})  
-
-
-
-
-
-
+})
