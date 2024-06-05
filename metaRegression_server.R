@@ -31,10 +31,9 @@ output$moderatorSelection_ui <- renderUI({
 ## set plot height and x axis limits:
 reactiveValuesListMetaRegression <- reactiveValues(
   plot_height = 1000,  # initial default value, you can adjust this
-  xlim_min = NULL,     
-  xlim_max = NULL     
+  xlim_min = NULL,     # not used for now
+  xlim_max = NULL      # not used for now
 )
-
 
 # Update plot height based on the number of rows in MA when MA is available
 observe({
@@ -48,20 +47,7 @@ observeEvent(input$update_x_axis, {
   if (!is.null(input$freq_forest_height_input) && !is.na(input$freq_forest_height_input)) {
     reactiveValuesListMetaRegression$plot_height <- as.numeric(input$freq_forest_height_input)
   }
-  # update x axis limits
-  if (!is.null(reactiveValuesListMetaRegression$xlim_min) && !is.null(reactiveValuesListMetaRegression$xlim_max)) {
-    updateTextInput(session, "x_min", value = reactiveValuesListMetaRegression$xlim_min)
-    updateTextInput(session, "x_max", value = reactiveValuesListMetaRegression$xlim_max)
-  }
 })
-
-# # Observer to update x_min and x_max input fields
-# observe({
-#   if (!is.null(reactiveValuesListMetaRegression$xlim_min) && !is.null(reactiveValuesListMetaRegression$xlim_max)) {
-#     updateTextInput(session, "x_min", value = reactiveValuesListMetaRegression$xlim_min)
-#     updateTextInput(session, "x_max", value = reactiveValuesListMetaRegression$xlim_max)
-#   }
-# })
 
 # A reactive that depends on those values
 freq_forest_height_mod <- reactive({
@@ -109,23 +95,7 @@ output$metaRegressionOutputUI <- renderUI({
             }
           }
           
-          # 
-          # 
-          plot_obj <- do.call(forestByGroup, plot_args)
-          
-          # Extract xlim values from the plot
-          plot_xlim <- plot_obj$xlim                     # New line
-          reactiveValuesListMetaRegression$xlim_min <- plot_xlim[1]  # New line
-          reactiveValuesListMetaRegression$xlim_max <- plot_xlim[2]  # New line
-          
-          plot_obj
-          # 
-          # 
-          # 
-          # 
-          # 
-          # 
-          # do.call(forestByGroup, plot_args)
+          do.call(forestByGroup, plot_args)
         }, 
         height = freq_forest_height_mod()),    
         
@@ -147,14 +117,10 @@ output$metaRegressionOutputUI <- renderUI({
           column(2, textInput("x_max", label = NULL, placeholder = "Max", width = "100px")),
           tags$style(type='text/css', "#x_max { height: 3px; }")
         ),
-        textInput("freq_forest_height_input", "Change plot height:", value = freq_forest_height_mod()),
+        textInput("freq_forest_height_input", "Change plot height: (also resets x axis)", value = freq_forest_height_mod()),
         tags$style(type='text/css', "#freq_forest_height_input { height: 3px; }")
       )
     )
   )   # end of tagList
 })
 
-
-observeEvent(reactiveValuesListMetaRegression$plot_height, {  # debugging
-  print("The value just changed!!!  ")  # debugging
-})  # debugging
