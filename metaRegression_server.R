@@ -32,8 +32,15 @@ output$moderatorSelection_ui <- renderUI({
 # ),
 
 ##  set the plot height....
-# freq_forest_height_mod <- reactive(nrow(MA()) * 12 + 200)  # values from forest panel without moderators
-freq_forest_height_mod <- reactive(nrow(MA()) * 12 + 400)  # values for panel with a moderator
+# freq_forest_height_mod <- reactive(nrow(MA()) * 12 + 200)  # height value from forest panel without moderators
+freq_forest_height_mod <- reactive({                         # height value for panel with a moderator
+  heightVal <- nrow(MA()) * 12 + 400
+  if (!is.null(input$freq_forest_height_input) && !is.na(input$freq_forest_height_input)) {
+    heightVal <- as.numeric(input$freq_forest_height_input)
+  }
+  heightVal  # value to assign
+})  
+
 
 output$metaRegressionOutputUI <- renderUI({
   MA <- MA()
@@ -75,13 +82,14 @@ output$metaRegressionOutputUI <- renderUI({
           }
           
           do.call(forestByGroup, plot_args)
-        }, height = freq_forest_height_mod),
+          }, 
+          height = freq_forest_height_mod()),    
 
         # input boxes for adjusting x axis:
         hr(),
         fluidRow(
           column(2, 
-                 actionButton("update_x_axis", "Update x axis"),
+                 actionButton("update_x_axis", "Update plot"),
                  tags$style(type='text/css', "
     #update_x_axis {
       height: 5px;
@@ -91,11 +99,13 @@ output$metaRegressionOutputUI <- renderUI({
     }
   ")
           ),
-          column(2, textInput("x_min", label = NULL, placeholder = "Min", width = "100px")),
+          column(2, textInput("x_min", label = NULL, placeholder = "x Min", width = "100px")),
           tags$style(type='text/css', "#x_min { height: 3px; }"),
-          column(2, textInput("x_max", label = NULL, placeholder = "Max", width = "100px")),
+          column(2, textInput("x_max", label = NULL, placeholder = "x Max", width = "100px")),
           tags$style(type='text/css', "#x_max { height: 3px; }")
-        )
+        ),
+        textInput("freq_forest_height_input", "Plot height:", value = freq_forest_height_mod()),
+        tags$style(type='text/css', "#freq_forest_height_input { height: 3px; }")
       )
     )
   )   # end of tagList
