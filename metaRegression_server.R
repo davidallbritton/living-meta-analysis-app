@@ -30,9 +30,17 @@ output$moderatorSelection_ui <- renderUI({
 
 ## set plot height:
 # Reactive values to store the data
+# 
+# reactiveValuesListMetaRegression <- reactiveValues(
+#   plot_height = 1000  # initial default value, you can adjust this
+# )
+# 
 reactiveValuesListMetaRegression <- reactiveValues(
-  plot_height = 1000  # initial default value, you can adjust this
+  plot_height = 1000,  # initial default value, you can adjust this
+  xlim_min = NULL,     # New line
+  xlim_max = NULL      # New line
 )
+
 
 # Update plot height based on the number of rows in MA when MA is available
 observe({
@@ -92,30 +100,45 @@ output$metaRegressionOutputUI <- renderUI({
             }
           }
           
-          do.call(forestByGroup, plot_args)
+          # 
+          # 
+          plot_obj <- do.call(forestByGroup, plot_args)
+          
+          # Extract xlim values from the plot
+          plot_xlim <- plot_obj$xlim                     # New line
+          reactiveValuesListMetaRegression$xlim_min <- plot_xlim[1]  # New line
+          reactiveValuesListMetaRegression$xlim_max <- plot_xlim[2]  # New line
+          
+          plot_obj
+          # 
+          # 
+          # 
+          # 
+          # 
+          # 
+          # do.call(forestByGroup, plot_args)
         }, 
         height = freq_forest_height_mod()),    
         
         # input boxes for adjusting x axis:
         hr(),
+        actionButton("update_x_axis", "Update plot", style = "margin-bottom: 3px;"),
+        tags$style(type='text/css', "
+          #update_x_axis {
+          height: 5px;
+          line-height: 3px;
+          background-color: tan; /* Change this to your desired color */
+          color: black; /* Change text color if needed */
+          }
+        "),
+        p("Update x axis values:"),
         fluidRow(
-          column(2, 
-                 actionButton("update_x_axis", "Update plot"),
-                 tags$style(type='text/css', "
-    #update_x_axis {
-      height: 5px;
-      line-height: 3px;
-      background-color: tan; /* Change this to your desired color */
-      color: black; /* Change text color if needed */
-    }
-  ")
-          ),
-          column(2, textInput("x_min", label = NULL, placeholder = "x Min", width = "100px")),
+          column(2, textInput("x_min", label = NULL, placeholder = "Min", width = "100px")),
           tags$style(type='text/css', "#x_min { height: 3px; }"),
-          column(2, textInput("x_max", label = NULL, placeholder = "x Max", width = "100px")),
+          column(2, textInput("x_max", label = NULL, placeholder = "Max", width = "100px")),
           tags$style(type='text/css', "#x_max { height: 3px; }")
         ),
-        textInput("freq_forest_height_input", "Plot height:", value = freq_forest_height_mod()),
+        textInput("freq_forest_height_input", "Change plot height:", value = freq_forest_height_mod()),
         tags$style(type='text/css', "#freq_forest_height_input { height: 3px; }")
       )
     )
@@ -123,6 +146,6 @@ output$metaRegressionOutputUI <- renderUI({
 })
 
 
-observeEvent(reactiveValuesListMetaRegression$plot_height, {
-  print("The value just changed!!!  ")
-})
+observeEvent(reactiveValuesListMetaRegression$plot_height, {  # debugging
+  print("The value just changed!!!  ")  # debugging
+})  # debugging
