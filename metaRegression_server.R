@@ -1,7 +1,3 @@
-# server code for meta-regression
-# generates parts of the UI and generates the results tab for meta-regression
-
-
 ######### tab panel for selecting a moderator and saying "yes" do meta-analysis 
 #
 # This section is referenced by this part of the UI.R file:
@@ -13,12 +9,12 @@ output$moderatorSelection_ui <- renderUI({
   Variable.Factor.Names <- myrvs$Variable.Factor.Names
   tagList(
     radioButtons("includeModerator", "Do you want to include a moderator for meta-regression?",
-               choices = list("No" = "No", "Yes" = "Yes"), selected = "No"),
+                 choices = list("No" = "No", "Yes" = "Yes"), selected = "No"),
     conditionalPanel(
       condition = "input.includeModerator == 'Yes'",
       radioButtons("moderator_variable", "Select one moderator variable",
-                 choices = Variable.Factor.Names)
-  ))
+                   choices = Variable.Factor.Names)
+    ))
 })
 
 
@@ -31,21 +27,36 @@ output$moderatorSelection_ui <- renderUI({
 #          uiOutput("metaRegressionOutputUI")
 # ),
 
-##  set the plot height....
-# freq_forest_height_mod <- reactive(nrow(MA()) * 12 + 200)  # height value from forest panel without moderators
-freq_forest_height_mod <- reactive({                         # height value for panel with a moderator
-  heightVal <- nrow(MA()) * 12 + 400
+
+## set plot height:
+# Reactive values to store the data
+reactiveValuesListMetaRegression <- reactiveValues(
+  plot_height = 1000  # initial default value, you can adjust this
+)
+
+# Update plot height based on the number of rows in MA when MA is available
+observe({
+  MA_data <- MA()
+  reactiveValuesListMetaRegression$plot_height <- nrow(MA_data) * 12 + 400
+})
+
+# New values when "update" button is pressed
+observeEvent(input$update_x_axis, {
   if (!is.null(input$freq_forest_height_input) && !is.na(input$freq_forest_height_input)) {
-    heightVal <- as.numeric(input$freq_forest_height_input)
+    reactiveValuesListMetaRegression$plot_height <- as.numeric(input$freq_forest_height_input)
   }
-  heightVal  # value to assign
-})  
+})
+# A reactive that depends on those values
+freq_forest_height_mod <- reactive({
+  reactiveValuesListMetaRegression$plot_height
+})   # height value for panel with a moderator
 
 
+# draw the plot:
 output$metaRegressionOutputUI <- renderUI({
   MA <- MA()
   moderatorName <- input$moderator_variable
-
+  
   # check to make sure input$moderator_variable exists before assigning its value to something:
   if (is.null(input$moderator_variable)) {
     warning("First you must select a valid moderator in the Moderator Selection tab...")
@@ -82,9 +93,9 @@ output$metaRegressionOutputUI <- renderUI({
           }
           
           do.call(forestByGroup, plot_args)
-          }, 
-          height = freq_forest_height_mod()),    
-
+        }, 
+        height = freq_forest_height_mod()),    
+        
         # input boxes for adjusting x axis:
         hr(),
         fluidRow(
@@ -109,4 +120,9 @@ output$metaRegressionOutputUI <- renderUI({
       )
     )
   )   # end of tagList
+})
+
+
+observeEvent(reactiveValuesListMetaRegression$plot_height, {
+  print("The value just changed!!!  ")
 })
