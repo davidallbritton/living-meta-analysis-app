@@ -99,7 +99,11 @@ output$metaRegressionOutputUI <- renderUI({
             }
           }
           
+          ### This creates the plot and passes the chosen arguments:
           do.call(forestByGroup, plot_args)
+          ## additional arguments that might be useful: xlim, psize, xlab
+          ## For caterpillar plot, caterpillar=TRUE (not slab=NA)
+          ## You can also add any other arguments that forest() allows
         }, 
         height = freq_forest_height_mod()),    
         
