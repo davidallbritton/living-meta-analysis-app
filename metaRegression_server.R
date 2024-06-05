@@ -28,17 +28,11 @@ output$moderatorSelection_ui <- renderUI({
 # ),
 
 
-## set plot height:
-# Reactive values to store the data
-# 
-# reactiveValuesListMetaRegression <- reactiveValues(
-#   plot_height = 1000  # initial default value, you can adjust this
-# )
-# 
+## set plot height and x axis limits:
 reactiveValuesListMetaRegression <- reactiveValues(
   plot_height = 1000,  # initial default value, you can adjust this
-  xlim_min = NULL,     # New line
-  xlim_max = NULL      # New line
+  xlim_min = NULL,     
+  xlim_max = NULL     
 )
 
 
@@ -50,10 +44,25 @@ observe({
 
 # New values when "update" button is pressed
 observeEvent(input$update_x_axis, {
+  # update height
   if (!is.null(input$freq_forest_height_input) && !is.na(input$freq_forest_height_input)) {
     reactiveValuesListMetaRegression$plot_height <- as.numeric(input$freq_forest_height_input)
   }
+  # update x axis limits
+  if (!is.null(reactiveValuesListMetaRegression$xlim_min) && !is.null(reactiveValuesListMetaRegression$xlim_max)) {
+    updateTextInput(session, "x_min", value = reactiveValuesListMetaRegression$xlim_min)
+    updateTextInput(session, "x_max", value = reactiveValuesListMetaRegression$xlim_max)
+  }
 })
+
+# # Observer to update x_min and x_max input fields
+# observe({
+#   if (!is.null(reactiveValuesListMetaRegression$xlim_min) && !is.null(reactiveValuesListMetaRegression$xlim_max)) {
+#     updateTextInput(session, "x_min", value = reactiveValuesListMetaRegression$xlim_min)
+#     updateTextInput(session, "x_max", value = reactiveValuesListMetaRegression$xlim_max)
+#   }
+# })
+
 # A reactive that depends on those values
 freq_forest_height_mod <- reactive({
   reactiveValuesListMetaRegression$plot_height
