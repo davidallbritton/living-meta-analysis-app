@@ -93,6 +93,10 @@ output$metaRegressionOutputUI <- renderUI({
             if (!is.na(x_min) && !is.na(x_max)) {
               plot_args$xlim <- c(x_min, x_max)
             }
+            
+            if (input$caterpillar) {
+              plot_args$caterpillar <- TRUE
+            }
           }
           
           do.call(forestByGroup, plot_args)
@@ -117,6 +121,7 @@ output$metaRegressionOutputUI <- renderUI({
           column(2, textInput("x_max", label = NULL, placeholder = "Max", width = "100px")),
           tags$style(type='text/css', "#x_max { height: 3px; }")
         ),
+        checkboxInput("caterpillar", label="Caterpillar plot",value = F),
         textInput("freq_forest_height_input", "Change plot height: (also resets x axis)", value = freq_forest_height_mod()),
         tags$style(type='text/css', "#freq_forest_height_input { height: 3px; }")
       )
