@@ -93,7 +93,7 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
   if(caterpillar) args_list$slab <- NA
 
   # Call the forest function with the dynamically constructed argument list
-  do.call(forest, args_list)
+  do.call(metafor::forest, args_list)
   
   ### set font expansion factor (as in forest() above) and use a bold font
   op <- par(cex=cex, font=2)

@@ -437,11 +437,11 @@ output$robustplot
 '
   ########## End of  Create code_for_plots ###############################
 
-  
+  codeForMetaRegression <- metaRegCode()
 
   ####### Wrapping up and saving the code for display and downloading ###########
   # Put together all the R code
-  code_for_R_script <- paste0(code_for_MA, code_for_bma, code_for_plots)
+  code_for_R_script <- paste0(code_for_MA, code_for_bma, code_for_plots, codeForMetaRegression)
   
   # Create headers and footers for R markdown file
   
