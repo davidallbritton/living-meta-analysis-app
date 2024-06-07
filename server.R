@@ -1211,7 +1211,13 @@ server <- function(input, output, session) {
       "HelperFunctions.R"
     },
     content = function(file) {
-      file.copy("HelperFunctions.R", file)
+      # Read contents of both files
+      content1 <- readLines("HelperFunctions.R")
+      content2 <- readLines("metaRegressionFunctions.R")
+      # Combine the contents
+      combined_content <- c(content1, content2)
+      # Write the combined content to the output file
+      writeLines(combined_content, file)
     }
   )
   
