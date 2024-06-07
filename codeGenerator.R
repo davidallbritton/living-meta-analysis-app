@@ -104,14 +104,27 @@ if(check_for_bad_chars(df)) {
 ####### end of static code block
 
 
+## debugging:  
+observeEvent(metaRegCode(),{
+  print("\nthe current metaregression code is: \n ")
+  cat(metaRegCode())
+})
+
+print("about to enter the Generate MA section.....")  # debugging
+
+
+
+
 ################### Generate MA ########
-## Generate non-reactive R code to create MA object
+## Generate non-reactive R code to create MA object and export the code to a file
 #
-observeEvent(MA(), {
+observeEvent(reactiveTriggers(), {  # was just MA(), but needs additional reactive triggers, therefore updated to this
   # Initialize the code with the static content from above
   code_for_MA <- paste0(initialCode)
   #
   ##########
+  print("wwwwwwwwwwwwwwwwww in the MA section now.....") # debugging
+  
   ## Generate the code for the required selection fields based on current inputs
   code_for_MA.inputs <- sprintf("
 ## R code to create MA object that contains selected data for all analyses
@@ -502,8 +515,24 @@ output$robustplot
   
 })  # end of observeEvent(MA())
 
+## debugging:  
+observeEvent(metaRegCode(),{
+  print("\nthe current metaregression code is: \n ")
+  cat(metaRegCode())
+})
 
+print("sourcing the R file now.....")  # debugging
 
+## adding code for the meta-regression plot
 source("metaRegression_code_generator.R", local = T)
 
+## adding additional reactives to trigger updating the R code before downloading it
+## this will replace MA() as the trigger for the observeEvent above
+reactiveTriggers <- reactive(list(MA(), metaRegCode()))
+
+## debugging:  
+observeEvent(metaRegCode(),{
+  print("\nthe current metaregression code is: \n ")
+  cat(metaRegCode())
+})
 
