@@ -31,6 +31,9 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                ##########
                                tags$a(href="#currentDataFile", class="btn btn-default", "Go to top")
                                ),
+                      tabPanel("Moderator Selection",
+                               uiOutput("moderatorSelection_ui")
+                      ),
 
                       tabPanel("Prior specifications",
                                br(), 
@@ -312,7 +315,15 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  h4("Frequentist Funnel plot"),
                                  plotOutput("freq_funnel") %>% withSpinner(type = 6, color = "#3498DB")
                         ),
+<<<<<<< HEAD
 
+=======
+                        
+                        tabPanel("Meta-Regression",
+                                 uiOutput("metaRegressionOutputUI")
+                                 ),
+                        
+>>>>>>> moderator
                         tabPanel("Bayesian Forest plot",  value = "bayesian_forest_plot",
                                  printButton, 
                                  h4("Forest plot with 95% credible intervals:"),

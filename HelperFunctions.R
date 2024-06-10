@@ -469,3 +469,4 @@ check_and_alert_bad_chars <- function(df) {
     return(FALSE) # Return FALSE to indicate no bad characters were found
   }
 }
+

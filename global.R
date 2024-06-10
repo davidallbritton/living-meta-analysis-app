@@ -38,6 +38,8 @@ options(useFancyQuotes = F)
 ################### load external R source files ################################
 source("HelperFunctions.R")
 source("effect_sizes.R")
+source("metaRegressionFunctions.R")
+
 
 
 ################## Constants #######################################################

@@ -105,9 +105,9 @@ if(check_for_bad_chars(df)) {
 
 
 ################### Generate MA ########
-## Generate non-reactive R code to create MA object
+## Generate non-reactive R code to create MA object and export the code to a file
 #
-observeEvent(MA(), {
+observeEvent(reactiveTriggers(), {  # was just MA(), but needs additional reactive triggers, therefore updated to this
   # Initialize the code with the static content from above
   code_for_MA <- paste0(initialCode)
   #
@@ -437,11 +437,11 @@ output$robustplot
 '
   ########## End of  Create code_for_plots ###############################
 
-  
+  codeForMetaRegression <- metaRegCode()
 
   ####### Wrapping up and saving the code for display and downloading ###########
   # Put together all the R code
-  code_for_R_script <- paste0(code_for_MA, code_for_bma, code_for_plots)
+  code_for_R_script <- paste0(code_for_MA, code_for_bma, code_for_plots, codeForMetaRegression)
   
   # Create headers and footers for R markdown file
   
@@ -499,5 +499,13 @@ output$robustplot
    ## Download file for R code -- done in server.R
    ## Download file for R markdown -- done in  server.R
    
-  
 })  # end of observeEvent(MA())
+
+## adding code for the meta-regression plot
+source("metaRegression_code_generator.R", local = T)
+
+## adding additional reactives to trigger updating the R code before downloading it
+## this will replace MA() as the trigger for the observeEvent above
+reactiveTriggers <- reactive(list(MA(), metaRegCode()))
+
+
