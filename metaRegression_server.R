@@ -79,11 +79,12 @@ output$metaRegressionOutputUI <- renderUI({
         renderText(paste("Moderator variable is:  ", moderatorName)),
         renderPlot({
           plot_args <- list(
-            MA = MA, 
+            MA = MA,
             moderator = moderator,
             col = "red",       # color of the summary polygon
             border = "red",    # color of the summary polygon
-            efac = .3
+            # symbol size (CI ends + diamonds) from the "Symbol size" slider
+            efac = if (is.null(input$freq_efac)) 0.3 else input$freq_efac
           )
           
           if (input$update_x_axis > 0) {
@@ -127,7 +128,9 @@ output$metaRegressionOutputUI <- renderUI({
         ),
         checkboxInput("caterpillar", label="Caterpillar plot",value = F),
         textInput("freq_forest_height_input", "Change plot height: (also resets x axis)", value = freq_forest_height_mod()),
-        tags$style(type='text/css', "#freq_forest_height_input { height: 3px; }")
+        tags$style(type='text/css', "#freq_forest_height_input { height: 3px; }"),
+        sliderInput("freq_efac", "Symbol size (efac):",
+                    min = 0.1, max = 1.0, value = 0.3, step = 0.05)
       )
     )
   )   # end of tagList

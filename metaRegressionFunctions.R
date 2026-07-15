@@ -218,8 +218,11 @@ buildBmrModel <- function(MA, moderatorName, tauprior, scaletau, mupriormean, mu
 # pooled polygon is drawn, because a cell-means meta-regression has a per-group
 # estimate rather than a single overall effect.
 #   efac      : vertical expansion factor for the CI arrow ends and the summary
-#               diamonds (metafor default is 1, which is too tall for the close
-#               row spacing here; 0.3 matches the frequentist forestByGroup call).
+#               diamonds, passed straight through to metafor.  metafor's default
+#               of 1 is too tall for the close row spacing here; the Bayesian
+#               meta-regression tab exposes this as a "Symbol size" slider
+#               (default 0.3).  Larger = taller symbols; useful when a plot has
+#               few studies, smaller when it has many.
 forestBmrByGroup <- function(bmr, MA, moderator, slab = MA$study, cex = 1,
                              header = "Study", efac = 0.3, ...) {
   # match the group structure used when the model was fit

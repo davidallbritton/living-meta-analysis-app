@@ -347,6 +347,12 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                    textOutput("bmrModeratorLabel"),
                                    h4("Forest plot (per-group posterior estimates):"),
                                    plotOutput("bmrForest", height = "auto") %>% withSpinner(type = 6, color = "#3498DB"), br(),
+                                   fluidRow(
+                                     column(4, sliderInput("bmrEfac", "Symbol size (efac):",
+                                                           min = 0.1, max = 1.0, value = 0.3, step = 0.05)),
+                                     column(4, numericInput("bmrForestHeightInput", "Plot height (pixels):",
+                                                            value = 1000, min = 200, step = 50))
+                                   ),
                                    h4("Marginal posterior summary:"),
                                    p("τ (tau): posterior heterogeneity. Each remaining column is a moderator",
                                      "group's posterior effect (mode, median, mean, sd, and 95% credible interval)."),

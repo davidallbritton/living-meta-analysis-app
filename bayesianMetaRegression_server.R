@@ -129,15 +129,28 @@ output$bmrModeratorLabel <- renderText({
   paste("Moderator variable is:  ", input$moderator_variable)
 })
 
-# Plot height grows with the number of studies (does not trigger a model build)
-bmrForestHeight <- reactive(nrow(MA()) * 25 + 250)
+# Plot height defaults to grow with the number of studies, but the user can
+# override it with the "Plot height" box.  Whenever the meta-analysis data (MA)
+# changes, reset the box to the default so it tracks the new study count.
+# (Changing the height only re-renders the plot; it never rebuilds the model.)
+bmrDefaultForestHeight <- reactive(nrow(MA()) * 25 + 250)
+observe({
+  updateNumericInput(session, "bmrForestHeightInput", value = bmrDefaultForestHeight())
+})
+bmrForestHeight <- reactive({
+  h <- input$bmrForestHeightInput
+  if (is.null(h) || is.na(h)) bmrDefaultForestHeight() else h
+})
 
 # Forest plot: studies grouped within each moderator level (like the frequentist
 # forestByGroup plot), with a Bayesian posterior summary polygon per group.
+# Symbol size (efac) comes from the "Symbol size" slider; height from the box above.
 output$bmrForest <- renderPlot({
   MA <- MA()
   moderator <- MA[[input$moderator_variable]]
-  forestBmrByGroup(bmrModel(), MA = MA, moderator = moderator, xlab = "Hedges' g")
+  efac <- if (is.null(input$bmrEfac)) 0.3 else input$bmrEfac
+  forestBmrByGroup(bmrModel(), MA = MA, moderator = moderator, xlab = "Hedges' g",
+                   efac = efac)
 }, height = bmrForestHeight)
 
 # Marginal posterior summary (tau + one column per moderator group)
