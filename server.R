@@ -201,9 +201,29 @@ server <- function(input, output, session) {
     })
   })
   
-  #################### 
+  ####################
   ##   tabPanel("Study criteria",    ## creating UI content for this tabPanel ##
+  #
+  # Briefly blank this panel whenever a NEW data file is uploaded, then rebuild it,
+  # so the previous file's filter selections are not carried over. Shiny preserves
+  # an input's value across a renderUI when the inputId is unchanged (e.g. Design,
+  # included), so simply regenerating the panel keeps the old selections. Removing
+  # the old inputs from the DOM for a moment forces the rebuilt panel to start from
+  # its "include all" defaults. The pause also visually signals that data is loading.
+  # (later::later runs the un-blank in a separate flush, which both guarantees the
+  # teardown and produces the brief blank; the reactive domain is captured so the
+  # deferred reactiveVal write is tied to this session.)
+  studyPanelHidden <- reactiveVal(FALSE)
+  observeEvent(input$DataFileUp, {
+    studyPanelHidden(TRUE)                              # blank the panel this flush
+    domain <- getDefaultReactiveDomain()
+    later::later(function() {                           # ...rebuild it ~0.3s later
+      withReactiveDomain(domain, studyPanelHidden(FALSE))
+    }, 0.3)
+  })
+
   output$studyCriteria <- renderUI({
+    if (isTRUE(studyPanelHidden())) return(NULL)   # brief blank while a new file loads
     ## read in the reactive values to use in creating the UI tabPanel entries:
     df <- myrvs$df.reactive
     Variable.Factor.Names <- myrvs$Variable.Factor.Names 
