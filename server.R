@@ -2,6 +2,7 @@
 ################### A General Tool for Living Meta-Analysis #################
 #######################################################################################
 # v.0.9.6 2024.03.06
+# feature (2026-07-14): selection-factor checkboxes show live "[n ES, k studies]" count badges.
 
 ################### Shiny App SERVER ###################################
 # David Allbritton
@@ -208,8 +209,11 @@ server <- function(input, output, session) {
     Variable.Numeric.Names <- myrvs$Variable.Numeric.Names 
     na.warning <- myrvs$na.warning
     
-    tagList(    
-             br(), 
+    tagList(
+             br(),
+             checkboxInput(inputId = "liveCounts",
+                           label = "Live counts: update the [n ES, k studies] badges to reflect the current filters (uncheck for whole-dataset totals)",
+                           value = TRUE),
              radioButtons(inputId = "aggregation", label = p("Aggregate over", style="color:#333333",
                                                              tags$style(type = "text/css", "#q18 {vertical-align: top;}"),
                                                              bsButton("q118", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")),    
@@ -223,8 +227,8 @@ server <- function(input, output, session) {
                        options = list(container = "body")),
              checkboxGroupInput(inputId = "Design", label = p("Study design",style="color:#333333",
                                                               tags$style(type = "text/css", "#q1 {vertical-align: top;}"),
-                                                              bsButton("q1", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")), 
-                                choices = levels(df$Design), selected = levels(df$Design)),
+                                                              bsButton("q1", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")),
+                                choices = choicesWithCounts(df, "Design"), selected = levels(df$Design)),
              bsPopover(id="q1", title = "Study design.",
                        content = paste0("<p>Choose to include effect sizes calculated within subjects, between subjects, or both.",
                                         "<p>Default: both."),
@@ -255,9 +259,11 @@ server <- function(input, output, session) {
                                            }), 
              
              ## loop over the variable factor columns
-             lapply(Variable.Factor.Names, function(varName) {                             
-               checkboxGroupInput(inputId = varName, label = p(varName,style="color:#333333"), 
-                                  choices = levels(df[,varName]), selected = levels(df[,varName]))
+             ## (choicesWithCounts adds "[n ES, k studies]" badges to each level's label;
+             ##  the checkbox VALUES stay the plain level strings, so filtering is unchanged)
+             lapply(Variable.Factor.Names, function(varName) {
+               checkboxGroupInput(inputId = varName, label = p(varName,style="color:#333333"),
+                                  choices = choicesWithCounts(df, varName), selected = levels(df[,varName]))
              }),
              
         checkboxGroupInput(
@@ -277,9 +283,62 @@ server <- function(input, output, session) {
       )
 #    myrvs$uiRendered <- TRUE
   })
-  #################### End of study criteria panel 
-  
-  
+  #################### End of study criteria panel
+
+  ####################  Dynamic count badges  [prototype, 2026-07-14]  ####################
+  # Keep the [n ES, k studies] badges on the Design + factor checkboxes in sync with the
+  # current filter selections. Each factor's badges are computed from the subset passing
+  # ALL OTHER filters (applyFiltersExcept), so ticking within a factor updates the other
+  # factors' badges, not its own. When "Live counts" is unchecked, badges revert to
+  # whole-dataset totals.
+  #
+  # Loop-safety: the observer depends on every filter input (via building `sig`), but it
+  # only calls updateCheckboxGroupInput when `sig` actually changes. updateCheckboxGroupInput
+  # preserves each input's value (selected = its current value), so it does not change any
+  # filter input -> the observer is not re-triggered by its own updates.
+  lastFilterSig <- reactiveVal("")
+  observe({
+    df <- myrvs$df.reactive
+    fN <- myrvs$Variable.Factor.Names
+    nN <- myrvs$Variable.Numeric.Names
+    if (is.null(df) || is.null(input$Design)) return(NULL)   # wait until the panel has rendered
+    live <- isTRUE(input$liveCounts)
+
+    # signature over all filter inputs (also establishes the reactive dependencies)
+    sig <- paste(
+      live,
+      paste(input$Design, collapse = ","),
+      paste(input$Publication.Year, collapse = ","),
+      paste(input$N_Intervention, collapse = ","),
+      paste(input$included, collapse = ","),
+      paste(vapply(fN, function(v) paste(input[[v]], collapse = "~"), character(1)), collapse = "|"),
+      paste(vapply(nN, function(v) paste(input[[v]], collapse = "~"), character(1)), collapse = "|"),
+      sep = "||")
+    if (identical(sig, lastFilterSig())) return(NULL)
+    lastFilterSig(sig)
+
+    # Only touch checkboxes that have actually rendered (input value non-NULL). Updating a
+    # not-yet-rendered checkbox with selected = NULL would blank its selection, which after a
+    # data upload emptied the whole analysis subset. NULL = "not rendered" (skip); character(0)
+    # = "user unticked all" (a real state we preserve). Skipped factors keep their correct
+    # static badges until they render, after which the observer fires again and upgrades them.
+    targets <- c("Design", fN)
+    targets <- targets[vapply(targets, function(tv) !is.null(input[[tv]]), logical(1))]
+    if (length(targets) == 0) return(NULL)
+
+    if (live) {
+      chList <- dynamicChoicesAllTargets(df, input, fN, nN, targets)
+    } else {  # whole-dataset totals
+      chList <- stats::setNames(lapply(targets, function(tv) choicesWithCounts(df, tv)), targets)
+    }
+    for (tv in targets) {
+      updateCheckboxGroupInput(session, tv, choices = chList[[tv]],
+                               selected = input[[tv]])   # preserve current ticks
+    }
+  })
+  ####################  End dynamic count badges  ####################
+
+
 
   ##  addStudies
   #################### 

@@ -470,3 +470,88 @@ check_and_alert_bad_chars <- function(df) {
   }
 }
 
+
+
+#######################################################################################
+## choicesWithCounts()  [added 2026-07-14: count badges on selection-factor checkboxes]
+#######################################################################################
+# Build a NAMED choices vector for checkboxGroupInput so each level's checkbox label
+# shows how much data sits behind it, e.g.  "Instruction_NatFreq  [70 ES, 12 studies]".
+#
+# Key property: the VALUES returned are the plain level strings (identical to the old
+# choices = levels(df[,varName])), so input[[varName]] is unchanged and all downstream
+# filtering works exactly as before -- only the displayed label gains a count badge.
+#
+# Counts are static totals over the whole current data set (the count that answers
+# "how much data exists for this level", which is the feasibility question this feature
+# is for). They do NOT update as you tick/untick other factors.
+choicesWithCounts <- function(df, varName, studyCol = "Paper") {
+  lvls <- levels(df[[varName]])
+  if (is.null(lvls)) lvls <- sort(unique(as.character(df[[varName]])))
+  v <- as.character(df[[varName]])
+  rowCounts <- vapply(lvls, function(l) sum(v == l, na.rm = TRUE), integer(1))
+  if (!is.null(df[[studyCol]])) {
+    st <- as.character(df[[studyCol]])
+    studyCounts <- vapply(lvls, function(l) length(unique(st[!is.na(v) & v == l])),
+                          integer(1))
+    labs <- sprintf("%s  [%d ES, %d studies]", lvls, rowCounts, studyCounts)
+  } else {
+    labs <- sprintf("%s  [%d ES]", lvls, rowCounts)
+  }
+  stats::setNames(lvls, labs)   # names = display labels, values = level strings
+}
+
+#######################################################################################
+## DYNAMIC (filter-aware) count badges  [added 2026-07-14, prototype]
+#######################################################################################
+# dynamicChoicesAllTargets(): for every target checkbox (Design + the factor columns),
+# return a named choices vector whose labels carry "[n ES, k studies]" counts computed
+# from the rows passing ALL OTHER current filters (a "faceted" count -- a factor's own
+# selection is excluded from its own counts, so ticking within a factor updates the
+# OTHER factors' badges, not its own).
+#
+# Performance: this is written to avoid repeated data-frame subsetting. With ~130 factor
+# columns, the naive "subset the data frame once per factor per target" approach is
+# O(nFactors^2) data-frame copies and hangs the app. Instead we compute each filter's
+# per-row PASS logical vector ONCE, then for each target AND the other filters' vectors
+# together (cheap length-n logical ops) and tally with the mask. Levels come from the
+# full data so every checkbox stays present (an empty level shows "[0 ES, 0 studies]").
+dynamicChoicesAllTargets <- function(df, input, factorNames, numericNames, targets,
+                                     studyCol = "Paper") {
+  n <- nrow(df)
+  pass <- list()  # named list of per-row logical PASS vectors, one per active filter
+  add  <- function(name, ok) { ok[is.na(ok)] <- FALSE; pass[[name]] <<- ok }
+  if (!is.null(input$Design))
+    add("Design", as.character(df$Design) %in% input$Design)
+  if (!is.null(input$Publication.Year))
+    add("__year", df$Publication.Year >= input$Publication.Year[1] &
+                  df$Publication.Year <= input$Publication.Year[2])
+  if (!is.null(input$N_Intervention))
+    add("__nint", df$N_Intervention >= input$N_Intervention[1] &
+                  df$N_Intervention <= input$N_Intervention[2])
+  if (!is.null(input$included))
+    add("__incl", as.character(df$Paper.and.Exp) %in% input$included)
+  for (vn in factorNames) { sel <- input[[vn]]
+    if (!is.null(sel)) add(vn, as.character(df[[vn]]) %in% sel) }
+  for (vn in numericNames) { rng <- input[[vn]]
+    if (!is.null(rng)) add(vn, df[[vn]] >= rng[1] & df[[vn]] <= rng[2]) }
+
+  st <- if (!is.null(df[[studyCol]])) as.character(df[[studyCol]]) else NULL
+  allNames <- names(pass)
+  out <- vector("list", length(targets)); names(out) <- targets
+  for (tv in targets) {
+    useNames <- setdiff(allNames, tv)          # all filters except this target's own
+    mask <- if (length(useNames)) Reduce(`&`, pass[useNames]) else rep(TRUE, n)
+    lvls <- levels(df[[tv]]); if (is.null(lvls)) lvls <- sort(unique(as.character(df[[tv]])))
+    v <- as.character(df[[tv]])
+    rc <- vapply(lvls, function(l) sum(mask & !is.na(v) & v == l), integer(1))
+    if (!is.null(st)) {
+      sc <- vapply(lvls, function(l) length(unique(st[mask & !is.na(v) & v == l])), integer(1))
+      labs <- sprintf("%s  [%d ES, %d studies]", lvls, rc, sc)
+    } else {
+      labs <- sprintf("%s  [%d ES]", lvls, rc)
+    }
+    out[[tv]] <- stats::setNames(lvls, labs)
+  }
+  out
+}
