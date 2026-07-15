@@ -33,7 +33,12 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
   if (!is.factor(moderator)) {
     moderator <- as.factor(as.character(moderator))
   }
-  
+  # drop any empty subgroups so they are left out of the plot.
+  # (e.g. a moderator group whose studies were all deselected in the
+  #  selection tab still lingers as an empty factor level, which would
+  #  otherwise make rma() fail on a subgroup with zero data points)
+  moderator <- droplevels(moderator)
+
   # calculate some things for the height of the plot
   #
   ### Things you might want to change:
