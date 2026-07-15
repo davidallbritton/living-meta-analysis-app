@@ -211,7 +211,10 @@ server <- function(input, output, session) {
     na.warning <- myrvs$na.warning
     
     tagList(
-             br(),
+             actionButton(inputId = "resetFilters",
+                          label = "Reset filters (include all studies)",
+                          class = "btn-sm",
+                          style = "margin-top: 6px; margin-bottom: 8px; padding: 2px 8px; font-size: 12px; background-color: tan; color: black;"),
              checkboxInput(inputId = "liveCounts",
                            label = "Live counts: update the [n ES, k studies] badges to reflect the current filters (uncheck for whole-dataset totals)",
                            value = TRUE),
@@ -285,6 +288,32 @@ server <- function(input, output, session) {
 #    myrvs$uiRendered <- TRUE
   })
   #################### End of study criteria panel
+
+  ####################  Reset filters button  ####################
+  # Restore every study-criteria filter to its "include all studies" default:
+  # all factor levels ticked and every range slider back to its full min..max.
+  # (The dynamic-badge observer below re-fires afterwards and refreshes the counts.)
+  # aggregation and liveCounts are left as-is, since they don't include/exclude studies.
+  observeEvent(input$resetFilters, {
+    df <- myrvs$df.reactive
+    req(df)
+    fN <- myrvs$Variable.Factor.Names
+    nN <- myrvs$Variable.Numeric.Names
+
+    # factor filters -> all levels selected
+    updateCheckboxGroupInput(session, "Design", selected = levels(df$Design))
+    for (v in fN) updateCheckboxGroupInput(session, v, selected = levels(df[[v]]))
+    updateCheckboxGroupInput(session, "included", selected = levels(df$Paper.and.Exp))
+
+    # numeric range sliders -> full min..max range
+    updateSliderInput(session, "Publication.Year",
+                      value = c(min(df$Publication.Year), max(df$Publication.Year)))
+    updateSliderInput(session, "N_Intervention",
+                      value = c(min(df$N_Intervention), max(df$N_Intervention)))
+    for (v in nN) updateSliderInput(session, v,
+                      value = c(min(df[[v]], na.rm = TRUE), max(df[[v]], na.rm = TRUE)))
+  })
+  ####################  End reset filters button  ####################
 
   ####################  Dynamic count badges  [prototype, 2026-07-14]  ####################
   # Keep the [n ES, k studies] badges on the Design + factor checkboxes in sync with the

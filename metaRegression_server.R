@@ -130,7 +130,7 @@ output$metaRegressionOutputUI <- renderUI({
         textInput("freq_forest_height_input", "Change plot height: (also resets x axis)", value = freq_forest_height_mod()),
         tags$style(type='text/css', "#freq_forest_height_input { height: 3px; }"),
         sliderInput("freq_efac", "Symbol size (efac):",
-                    min = 0.1, max = 1.0, value = 0.3, step = 0.05)
+                    min = 0.1, max = 2.0, value = 0.3, step = 0.05)
       )
     )
   )   # end of tagList

@@ -145,13 +145,21 @@ bmrForestHeight <- reactive({
 # Forest plot: studies grouped within each moderator level (like the frequentist
 # forestByGroup plot), with a Bayesian posterior summary polygon per group.
 # Symbol size (efac) comes from the "Symbol size" slider; height from the box above.
-output$bmrForest <- renderPlot({
+#
+# Rendered inside a renderUI (mirroring the frequentist Meta-Regression tab) so the
+# plot element gets an EXPLICIT pixel height instead of "auto".  The height is read
+# here, in the renderUI body, so changing it re-lays-out the element cleanly; with
+# "auto" the container collapsed and regrew on every re-render, scrolling the page.
+output$bmrForestUI <- renderUI({
   MA <- MA()
+  req(input$moderator_variable)
   moderator <- MA[[input$moderator_variable]]
-  efac <- if (is.null(input$bmrEfac)) 0.3 else input$bmrEfac
-  forestBmrByGroup(bmrModel(), MA = MA, moderator = moderator, xlab = "Hedges' g",
-                   efac = efac)
-}, height = bmrForestHeight)
+  renderPlot({
+    efac <- if (is.null(input$bmrEfac)) 0.3 else input$bmrEfac
+    forestBmrByGroup(bmrModel(), MA = MA, moderator = moderator, xlab = "Hedges' g",
+                     efac = efac)
+  }, height = bmrForestHeight())
+})
 
 # Marginal posterior summary (tau + one column per moderator group)
 output$bmrSummary <- renderPrint({
