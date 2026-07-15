@@ -202,6 +202,88 @@ buildBmrModel <- function(MA, moderatorName, tauprior, scaletau, mupriormean, mu
 ###### end of buildBmrModel() function
 
 
+##################### Forest plot for a Bayesian meta-regression (bmr) model
+###### start of forestBmrByGroup() function
+# Draws a forest plot for a bmr() model that is laid out like the frequentist
+# forestByGroup() plot: the individual studies are grouped WITHIN each level of
+# the moderator, and each group gets a Bayesian posterior summary polygon
+# (posterior mean + 95% credible interval, taken from the bmr model that was fit
+# with cell-means coding, so each coefficient is that group's pooled effect).
+#
+#   bmr       : a model returned by buildBmrModel() (cell-means coded)
+#   MA        : the data frame with es, var, study (same MA used to fit bmr)
+#   moderator : the moderator vector (same length as MA), e.g. MA[[moderatorName]]
+#
+# Only observed study effect sizes are plotted (as in forestByGroup); no overall
+# pooled polygon is drawn, because a cell-means meta-regression has a per-group
+# estimate rather than a single overall effect.
+forestBmrByGroup <- function(bmr, MA, moderator, slab = MA$study, cex = 1,
+                             header = "Study", ...) {
+  # match the group structure used when the model was fit
+  if (!is.factor(moderator)) moderator <- as.factor(as.character(moderator))
+  moderator  <- droplevels(moderator)
+  GroupNames <- levels(moderator)
+  nGroups    <- length(GroupNames)
+  groupSizes <- table(moderator)
+
+  # order studies by group so each group's rows are contiguous
+  ord      <- order(moderator)
+  es       <- MA$es[ord]
+  vv       <- MA$var[ord]
+  slab     <- slab[ord]
+
+  # layout constants (same as forestByGroup)
+  spaceBelow <- 2
+  spaceAbove <- 2
+  groupSpace <- spaceBelow + spaceAbove
+  belowGroup <- -1.5
+  topSpace   <- 2
+  nDataPoints <- length(es)
+  totalHeight <- nDataPoints + (nGroups * groupSpace) + topSpace
+
+  # assign plot rows for each group's studies, its label, and its summary polygon
+  rowsVector    <- integer(0)
+  groupLabelRow <- integer(nGroups)
+  groupModelRow <- integer(nGroups)
+  lineNum <- spaceBelow + 1
+  for (i in 1:nGroups) {
+    y <- lineNum + groupSizes[i] - 1
+    rowsVector       <- c(rowsVector, lineNum:y)
+    groupLabelRow[i] <- y + 1
+    groupModelRow[i] <- lineNum + belowGroup
+    lineNum <- y + groupSpace + 1
+  }
+
+  # plot the individual observed studies, grouped by moderator level
+  # (addfit is not relevant here: forest.default draws no model polygon)
+  metafor::forest(x = es, vi = vv, slab = slab, rows = rowsVector,
+                  ylim = c(-2, totalHeight), cex = cex, header = header, ...)
+
+  # add the moderator-level labels (bold italic), as in forestByGroup
+  op <- par(cex = cex, font = 4)
+  usr <- par("usr")
+  text(usr[1], groupLabelRow, pos = 4, GroupNames, xpd = TRUE)
+  par(op)
+
+  # add a Bayesian posterior summary polygon for each group, using the bmr model's
+  # per-group posterior mean and 95% credible interval.
+  # bmr() sanitises the coefficient names (e.g. "a+b" -> "a.b") but keeps them in
+  # the same order as the moderator levels, so reference the summary columns via
+  # bmr$variables[i] while labelling the polygon with the original level GroupNames[i].
+  s    <- bmr$summary
+  vars <- bmr$variables
+  for (i in 1:nGroups) {
+    metafor::addpoly(x = s["mean", vars[i]],
+                     ci.lb = s["95% lower", vars[i]],
+                     ci.ub = s["95% upper", vars[i]],
+                     rows = groupModelRow[i],
+                     mlab = paste0("Bayesian estimate: ", GroupNames[i]),
+                     xpd = TRUE, cex = cex, ...)
+  }
+}
+###### end of forestBmrByGroup() function
+
+
 ##############################################################################
 ################ End of Functions for meta-regression ########################
 

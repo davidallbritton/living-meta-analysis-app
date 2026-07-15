@@ -132,9 +132,12 @@ output$bmrModeratorLabel <- renderText({
 # Plot height grows with the number of studies (does not trigger a model build)
 bmrForestHeight <- reactive(nrow(MA()) * 25 + 250)
 
-# Forest plot: per-group posterior effect estimates with 95% credible intervals
+# Forest plot: studies grouped within each moderator level (like the frequentist
+# forestByGroup plot), with a Bayesian posterior summary polygon per group.
 output$bmrForest <- renderPlot({
-  forestplot(bmrModel(), xlab = "Hedges' g")
+  MA <- MA()
+  moderator <- MA[[input$moderator_variable]]
+  forestBmrByGroup(bmrModel(), MA = MA, moderator = moderator, xlab = "Hedges' g")
 }, height = bmrForestHeight)
 
 # Marginal posterior summary (tau + one column per moderator group)
