@@ -438,10 +438,11 @@ output$robustplot
   ########## End of  Create code_for_plots ###############################
 
   codeForMetaRegression <- metaRegCode()
+  codeForBmr            <- bmrCode()
 
   ####### Wrapping up and saving the code for display and downloading ###########
   # Put together all the R code
-  code_for_R_script <- paste0(code_for_MA, code_for_bma, code_for_plots, codeForMetaRegression)
+  code_for_R_script <- paste0(code_for_MA, code_for_bma, code_for_plots, codeForMetaRegression, codeForBmr)
   
   # Create headers and footers for R markdown file
   
@@ -506,6 +507,6 @@ source("metaRegression_code_generator.R", local = T)
 
 ## adding additional reactives to trigger updating the R code before downloading it
 ## this will replace MA() as the trigger for the observeEvent above
-reactiveTriggers <- reactive(list(MA(), metaRegCode()))
+reactiveTriggers <- reactive(list(MA(), metaRegCode(), bmrCode()))
 
 
