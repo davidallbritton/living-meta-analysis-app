@@ -217,8 +217,11 @@ buildBmrModel <- function(MA, moderatorName, tauprior, scaletau, mupriormean, mu
 # Only observed study effect sizes are plotted (as in forestByGroup); no overall
 # pooled polygon is drawn, because a cell-means meta-regression has a per-group
 # estimate rather than a single overall effect.
+#   efac      : vertical expansion factor for the CI arrow ends and the summary
+#               diamonds (metafor default is 1, which is too tall for the close
+#               row spacing here; 0.3 matches the frequentist forestByGroup call).
 forestBmrByGroup <- function(bmr, MA, moderator, slab = MA$study, cex = 1,
-                             header = "Study", ...) {
+                             header = "Study", efac = 0.3, ...) {
   # match the group structure used when the model was fit
   if (!is.factor(moderator)) moderator <- as.factor(as.character(moderator))
   moderator  <- droplevels(moderator)
@@ -257,7 +260,8 @@ forestBmrByGroup <- function(bmr, MA, moderator, slab = MA$study, cex = 1,
   # plot the individual observed studies, grouped by moderator level
   # (addfit is not relevant here: forest.default draws no model polygon)
   metafor::forest(x = es, vi = vv, slab = slab, rows = rowsVector,
-                  ylim = c(-2, totalHeight), cex = cex, header = header, ...)
+                  ylim = c(-2, totalHeight), cex = cex, header = header,
+                  efac = efac, ...)
 
   # add the moderator-level labels (bold italic), as in forestByGroup
   op <- par(cex = cex, font = 4)
@@ -278,7 +282,7 @@ forestBmrByGroup <- function(bmr, MA, moderator, slab = MA$study, cex = 1,
                      ci.ub = s["95% upper", vars[i]],
                      rows = groupModelRow[i],
                      mlab = paste0("Bayesian estimate: ", GroupNames[i]),
-                     xpd = TRUE, cex = cex, ...)
+                     efac = efac, xpd = TRUE, cex = cex, ...)
   }
 }
 ###### end of forestBmrByGroup() function
