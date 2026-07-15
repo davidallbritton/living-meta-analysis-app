@@ -316,6 +316,33 @@ checkOldModels <- function(listPrevious, MA, tauprior, mupriorsd, scaletau, mupr
   if(isTruthy(return_bma)) return_bma else FALSE
 }
 
+########## Function for checking for previously calculated bmr (Bayesian meta-regression) models ###########
+# Like checkOldModels(), but the cache key also includes the moderator variable name,
+# so that a bmr model is only reused when the data, priors, AND moderator all match.
+# (Bayesian meta-regression models are expensive to build, so we never recompute one we already have.)
+checkOldBmrModels <- function(listPrevious, MA, tauprior, mupriorsd, scaletau, mupriormean, moderatorName) {
+  return_bmr <- FALSE
+  if(length(listPrevious)) {
+    MA <- as.data.frame(MA)
+    MA <-  MA %>% mutate_if(is.factor, as.character)
+    for (i in seq_along(listPrevious)) {
+      ma_previous <- as.data.frame(listPrevious[[i]]$MA)
+      ma_previous <- ma_previous %>% mutate_if(is.factor, as.character)
+      if (identical(ma_previous, MA) &&
+          identical(listPrevious[[i]]$moderatorName, moderatorName) &&
+          identical(listPrevious[[i]]$tauprior, tauprior) &&
+          identical(listPrevious[[i]]$mupriorsd, mupriorsd) &&
+          identical(listPrevious[[i]]$scaletau, scaletau) &&
+          identical(listPrevious[[i]]$mupriormean, mupriormean)
+      )  {
+        return_bmr <- listPrevious[[i]]$bmr
+        break
+      }
+    }
+  }
+  if(isTruthy(return_bmr)) return_bmr else FALSE
+}
+
 ########## Function for checking for previously created BF robust plots ###########
 checkOldPlots <- function(listPrevious, MA, tauprior, mupriorsd, scaletau, robust) {
   return_robustggplot <- FALSE

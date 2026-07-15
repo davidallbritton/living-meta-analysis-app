@@ -92,6 +92,7 @@ server <- function(input, output, session) {
         myrvs$ma_num <- 1
         myrvs$triggerBma <- FALSE
         myrvs$triggerBmaRobust <- FALSE
+        myrvs$triggerBmr <- FALSE
       })
     }
   })
@@ -734,8 +735,9 @@ server <- function(input, output, session) {
   
   # Create MA reactive for all outputs
   MA <- eventReactive(input$recalculateButton, {
-    myrvs$triggerBma <- FALSE  ## reset the trigger for calculating bma()  
-    myrvs$triggerBmaRobust <- FALSE  ## reset the trigger for robustness plots  
+    myrvs$triggerBma <- FALSE  ## reset the trigger for calculating bma()
+    myrvs$triggerBmaRobust <- FALSE  ## reset the trigger for robustness plots
+    myrvs$triggerBmr <- FALSE  ## reset the trigger for Bayesian meta-regression
     # import the reactive version of the data and the relevant column names
     df <- myrvs$df.reactive
     Variable.Factor.Names <- myrvs$Variable.Factor.Names 
@@ -1282,5 +1284,8 @@ server <- function(input, output, session) {
   
   # meta-regression, frequentist
   source("metaRegression_server.R", local = T)
-  
+
+  # meta-regression, Bayesian (bmr() from the bayesmeta package)
+  source("bayesianMetaRegression_server.R", local = T)
+
 }  # end of server

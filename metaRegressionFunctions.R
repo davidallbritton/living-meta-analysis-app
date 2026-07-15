@@ -162,6 +162,46 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
 ###### end of forestByGroup() function
 
 
+##################### Bayesian meta-regression with one categorical moderator
+###### start of buildBmrModel() function
+# Fits a Bayesian meta-regression using bmr() from the bayesmeta package.
+# Uses cell-means coding (~ moderator - 1) so that each regression coefficient
+# is the pooled posterior effect for one level of the moderator, giving a
+# per-group estimate + 95% credible interval that parallels the frequentist
+# subgroup forest plot in forestByGroup().
+#
+# The tau prior is mapped exactly as in the non-moderator bayesmeta() model
+# (see the bma() reactive in server.R) so priors are consistent across tabs.
+# The chosen mu prior (mupriormean / mupriorsd) is applied to every group's
+# coefficient via bmr()'s beta prior.
+buildBmrModel <- function(MA, moderatorName, tauprior, scaletau, mupriormean, mupriorsd) {
+  moderator <- MA[[moderatorName]]
+  if (!is.factor(moderator)) moderator <- as.factor(as.character(moderator))
+  moderator <- droplevels(moderator)   # drop empty subgroups (same fix as forestByGroup())
+
+  # cell-means design matrix: one coefficient per moderator level
+  X <- model.matrix(~ moderator - 1)
+  colnames(X) <- levels(moderator)     # clean names to just the level labels
+  betaMean <- rep(mupriormean, ncol(X))
+  betaSD   <- rep(mupriorsd,   ncol(X))
+
+  if (tauprior == "Half cauchy") {
+    bmr(y = MA$es, sigma = sqrt(MA$var), labels = MA$study, X = X,
+        tau.prior = function(t) dhalfcauchy(t, scale = scaletau),
+        beta.prior.mean = betaMean, beta.prior.sd = betaSD)
+  } else if (tauprior == "Half student t") {
+    bmr(y = MA$es, sigma = sqrt(MA$var), labels = MA$study, X = X,
+        tau.prior = function(t) dhalfnormal(t, scale = scaletau),
+        beta.prior.mean = betaMean, beta.prior.sd = betaSD)
+  } else {
+    bmr(y = MA$es, sigma = sqrt(MA$var), labels = MA$study, X = X,
+        tau.prior = tauprior,
+        beta.prior.mean = betaMean, beta.prior.sd = betaSD)
+  }
+}
+###### end of buildBmrModel() function
+
+
 ##############################################################################
 ################ End of Functions for meta-regression ########################
 
