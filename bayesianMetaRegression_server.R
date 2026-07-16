@@ -24,7 +24,13 @@
 
 
 ## Store previously calculated bmr models so they are never recomputed unnecessarily.
+## Seed the cache from a precalculated file on the server if one exists (mirrors the
+## bma() / robustness-plot precalculated files loaded in server.R), so the default
+## dataset's Bayesian meta-regressions load instantly instead of being rebuilt.
 myrvs$previousBmrModels <- list()
+if (file.exists("data/defaultPrecalculatedBmrModels.RDS")) {
+  myrvs$previousBmrModels <- readRDS("data/defaultPrecalculatedBmrModels.RDS")
+}
 
 ## Trigger controlling when a bmr model may be built (set TRUE only after the
 ## user confirms the modal, or automatically when the request is already cached).
@@ -165,3 +171,40 @@ output$bmrForestUI <- renderUI({
 output$bmrSummary <- renderPrint({
   bmrModel()$summary
 })
+
+
+## ---- Managing "cached" Bayesian meta-regression models ----
+## Mirrors the "Saved Plots and Models" tab handlers for bma() models and
+## robustness plots in server.R, letting the user download the current session's
+## bmr models and re-upload them in a future session so they are never recomputed.
+
+#### observer to clear the saved regression models when the button is pressed
+observeEvent(input$ClearBmrModels, {
+  myrvs$previousBmrModels <- list()
+})
+
+#### section for uploading saved regression models from a file
+#### for reading an .RDS file containing previously calculated bmr models
+observeEvent(input$SavedBmrModelsUp, {
+  # Read the data from the RDS file the user uploaded:
+  fileExtension <- tools::file_ext(input$SavedBmrModelsUp$datapath)
+  output$inputFileErrorBmrUp <- renderUI({  # create error message in case file not uploaded successfully
+    if (!is.null(input$SavedBmrModelsUp)) p(style = "color:red", "***File was not read***")
+  })
+  validate(need(fileExtension == "RDS" | fileExtension == "rds" | fileExtension == "Rds", "Please upload an RDS file"))
+  newrows_bmr <- readRDS(input$SavedBmrModelsUp$datapath)
+  oldrows_bmr <- myrvs$previousBmrModels
+  allrows_bmr <- c(newrows_bmr, oldrows_bmr)
+  myrvs$previousBmrModels <- allrows_bmr
+  output$inputFileErrorBmrUp <- renderUI(NULL) # remove error message if file uploaded successfully
+})
+
+#### For downloading saved regression models (can be uploaded in this format)
+output$rds_file.bmr <- downloadHandler(
+  filename = function() {
+    "bayesian_meta_regression_models.RDS"
+  },
+  content = function(file) {
+    saveRDS(myrvs$previousBmrModels, file)
+  }
+)

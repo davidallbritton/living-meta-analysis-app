@@ -1239,7 +1239,9 @@ server <- function(input, output, session) {
       skipnames4 <- c("ClearModels", "SavedPlotsUp",
                       "mainTabset",
                       "ClearPlots",
-                      "SavedModelsUp"
+                      "SavedModelsUp",
+                      "ClearBmrModels",
+                      "SavedBmrModelsUp"
       )
       skipnames <- c(skipnames1, skipnames2, skipnames3, skipnames4)
       namestolist <- ns[! ns %in% skipnames]

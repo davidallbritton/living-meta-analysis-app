@@ -152,7 +152,16 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                fileInput("SavedPlotsUp", label = "Upload Saved Plots", accept = c(".rds", ".RDS", ".Rds")),
                                #
                                actionButton("ClearPlots", "Delete Saved Plots"),
-                               
+                               #
+                               hr(),
+                               #
+                               p(tags$strong("Bayesian meta-regression models")),
+                               #
+                               downloadButton("rds_file.bmr", "Download Saved Regression Models"),
+                               fileInput("SavedBmrModelsUp", label = "Upload Saved Regression Models", accept = c(".rds", ".RDS", ".Rds")),
+                               #
+                               actionButton("ClearBmrModels", "Delete Saved Regression Models"),
+
                       ),
                       # 
                       hr()
