@@ -294,6 +294,18 @@ getEffectSize <- function(g=NA, g_var=NA, d=NA, d_var=NA, mean_E=NA, mean_C=NA,
 }
 ###########  End of function for calculating g and g_var from user input #############
 
+########## Relabel tau priors in saved-model files from older app versions ###########
+# The half-normal tau prior option was labeled "Half student t" in earlier versions
+# (including the published Allbritton et al. and Wolf et al. apps), although the fitted prior was always
+# dhalfnormal().  Cached model lists saved under the old label are relabeled here so
+# they still match the current "Half normal" cache key when uploaded.
+normalizeTauPriorLabels <- function(listPrevious) {
+  lapply(listPrevious, function(row) {
+    if (identical(row$tauprior, "Half student t")) row$tauprior <- "Half normal"
+    row
+  })
+}
+
 ########## Function for checking for previously calculated bma models ###########
 checkOldModels <- function(listPrevious, MA, tauprior, mupriorsd, scaletau, mupriormean, prevMAsNoFactors) {
   return_bma <- FALSE
