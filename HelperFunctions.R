@@ -541,6 +541,35 @@ choicesWithCounts <- function(df, varName, studyCol = "Paper") {
 }
 
 #######################################################################################
+## applyAllFilters()  [added for the Descriptives tab]
+#######################################################################################
+# Return the rows of df that pass ALL of the current sidebar study-selection filters
+# (Design, Publication.Year, N_Intervention, include/exclude specific studies, and the
+# file-defined selection factors and numerics).  Same per-row PASS-vector logic as
+# dynamicChoicesAllTargets() below, but with no filter excluded, giving the "currently
+# selected" subset LIVE (without waiting for a Recalculate).  Filters whose inputs have
+# not rendered yet (NULL) are skipped, matching the badge logic.
+applyAllFilters <- function(df, input, factorNames, numericNames) {
+  pass <- rep(TRUE, nrow(df))
+  and  <- function(ok) { ok[is.na(ok)] <- FALSE; pass <<- pass & ok }
+  if (!is.null(input$Design))
+    and(as.character(df$Design) %in% input$Design)
+  if (!is.null(input$Publication.Year))
+    and(df$Publication.Year >= input$Publication.Year[1] &
+        df$Publication.Year <= input$Publication.Year[2])
+  if (!is.null(input$N_Intervention))
+    and(df$N_Intervention >= input$N_Intervention[1] &
+        df$N_Intervention <= input$N_Intervention[2])
+  if (!is.null(input$included))
+    and(as.character(df$Paper.and.Exp) %in% input$included)
+  for (vn in factorNames) if (!is.null(input[[vn]]))
+    and(as.character(df[[vn]]) %in% input[[vn]])
+  for (vn in numericNames) { rng <- input[[vn]]
+    if (!is.null(rng)) and(df[[vn]] >= rng[1] & df[[vn]] <= rng[2]) }
+  df[pass, , drop = FALSE]
+}
+
+#######################################################################################
 ## DYNAMIC (filter-aware) count badges  [added 2026-07-14, prototype]
 #######################################################################################
 # dynamicChoicesAllTargets(): for every target checkbox (Design + the factor columns),

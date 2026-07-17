@@ -1404,6 +1404,9 @@ server <- function(input, output, session) {
     }
   )
   
+  # descriptives tab (live summaries of the currently selected data)
+  source("descriptives_server.R", local = T)
+
   # meta-regression, frequentist
   source("metaRegression_server.R", local = T)
 
