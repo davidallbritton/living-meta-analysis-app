@@ -16,16 +16,24 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                 sidebarLayout(
                   sidebarPanel(fluidRow(
                     uiOutput("currentDataFile"),
-                    
-                    tabsetPanel(id = "dataSetupPanel",
-                      tabPanel("Study criteria",    
-                               actionButton("recalculateButton","(Re)Calculate Meta-Analysis", icon("sync"), 
-                                            style = "color: yellow; background-color: green",
-                                            disabled = TRUE
-                                            ),
+                    actionButton("recalculateButton","(Re)Calculate Meta-Analysis", icon("sync"),
+                                 style = "color: yellow; background-color: green; margin-bottom: 10px",
+                                 disabled = TRUE
+                                 ),
+
+                    tabsetPanel(id = "dataSetupPanel", selected = "Study criteria",
+                      tabPanel("Load Data File",
+                               br(),
                                fileInput("DataFileUp", label = "Upload your data file (.csv .xls or .xlsx)", accept = c(".xls", ".xlsx", ".csv")),
                                uiOutput("inputFileError"),
-                               
+                               uiOutput("curatedDataChooser"),
+                               p("Loading a data file replaces the current data.",
+                                 'To verify the change, keep the "Current data" or "Included Studies" tab',
+                                 'open on the right, and press "(Re)Calculate Meta-Analysis"',
+                                 'after loading.')
+                      ),
+                      tabPanel("Study criteria",
+
                                ##########  The study selection panel is created in the server:
                                uiOutput("studyCriteria"),
                                ##########
@@ -211,11 +219,14 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                            
                                            
                                            
+                                           h4("Curated data files:"),
+                                           uiOutput("curatedDataLibrary"),
+
                                            h4("Adding new studies:"),
                                            p("You can add new effect sizes one at a time using the",
                                              '"Add a Study" tab. You can save the updated data file',
                                              "that includes the added studies in the", '"Downloads" tab.'), 
-                                           p('You can also upload an entirely new data file in the "Study criteria" tab.',
+                                           p('You can also upload an entirely new data file in the "Load Data File" tab.',
                                              "This will replace the current data entirely, including anything that was",
                                              "previously input through the", '"Add a Study" tab.',
                                              "The file to upload should be .csv (with UTF-8 encoding if it contains non-ASCII characters), .xls or .xlsx format, and should contain the following columns:"),

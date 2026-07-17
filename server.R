@@ -98,13 +98,71 @@ server <- function(input, output, session) {
   })
   
    
+    ## Read a data file (.csv/.xls/.xlsx) from a path and swap it in as the current
+    ## data set, replacing the existing data and updating the UI.  Shared by the
+    ## user-upload observer below and the curated data file loader.
+    ## Returns TRUE if the data was loaded, FALSE if the file could not be used.
+    loadDataFile <- function(file_path, display_name) {
+      file_extension <- tools::file_ext(file_path)
+      if (file_extension %in% c("xlsx", "xls")) {
+        df <- readxl::read_excel(file_path) %>% as.data.frame()
+      } else {
+        # The .csv should use UTF-8 encoding if there are non-ASCII characters
+        # otherwise they can cause the app to crash.
+        df <- readr::read_csv(file_path, show_col_types = FALSE)  %>% as.data.frame()
+      }
+      #
+      # make sure the numeric columns are of the correct type
+      start_col <- which(names(df) == "Begin.Selection.Numerics")
+      end_col <- which(names(df) == "End.Selection.Numerics")
+      # Check if both columns are found
+      if (length(start_col) == 0 || length(end_col) == 0) {
+        # Instead of stop(), use a Shiny-friendly method to show an error
+        showNotification("Start or end column not found in the dataframe", type = "error")
+        return(FALSE)
+      }
+      # Convert columns from start to end into numeric
+      df[, start_col:end_col] <- lapply(df[, start_col:end_col], function(x) as.numeric(as.character(x)))
+      #
+      # List of column names to potentially convert to numeric
+      columns_to_convert <- c("Publication.Year", "N_Intervention", "N_Control", "N_Total")
+      # Loop through each column name
+      for (col in columns_to_convert) {
+        # Check if the column exists in the dataframe
+        if (col %in% names(df)) {
+          # Convert the column to numeric
+          df[[col]] <- as.numeric(as.character(df[[col]]))
+        }
+      }
+      #
+      # Fix colons in column names
+      df <- removeColons(df)
+      #
+      newrvs <- reformat.df(df)
+      myrvs$df.reactive <- newrvs$df
+      myrvs$df.original <- newrvs$df.original
+      myrvs$df.updated <- myrvs$df.original
+      myrvs$Variable.Factor.Names <- newrvs$Variable.Factor.Names
+      myrvs$Variable.Numeric.Names <- newrvs$Variable.Numeric.Names
+      myrvs$na.warning <- newrvs$na.warning
+      myrvs$nfiles <- myrvs$nfiles + 1
+      myrvs$recalculatedSinceUpload <- 0
+      myrvs$currentInputFile <- display_name
+      myrvs$uiRendered  <- FALSE    # to keep recalculate button inactive until UI loaded
+      # a moderator chosen for the previous data set may not exist (or have enough
+      # groups) in the new one, so switch the moderator off; the moderator radio
+      # buttons themselves are rebuilt from the new data by moderatorSelection_ui
+      updateRadioButtons(session, "includeModerator", selected = "No")
+      TRUE
+    }
+
     ## When the user uploads a data file, replace the existing data and update the UI
     observeEvent(input$DataFileUp, {
       # Read the data from the uploaded file:
       file_path <- input$DataFileUp$datapath
       file_extension <- tools::file_ext(file_path)
       #
-      output$inputFileError <- renderUI({  
+      output$inputFileError <- renderUI({
         if (!is.null(input$DataFileUp)) {
           if (!(file_extension %in% c("xlsx", "xls", "csv"))) {
             p(style = "color:red", "***File format not supported. Must be .xlsx, .xls, or .csv.***")
@@ -114,75 +172,87 @@ server <- function(input, output, session) {
       #
       validate(need(file_extension %in% c("xlsx", "xls", "csv"), "Please upload an Excel (.xlsx/.xls) or CSV (.csv) file"))
       #
-      if (file_extension %in% c("xlsx", "xls")) {
-        df <- readxl::read_excel(file_path) %>% as.data.frame()
-        #
-        # make sure the numeric columns are of the correct type
-        start_col <- which(names(df) == "Begin.Selection.Numerics")
-        end_col <- which(names(df) == "End.Selection.Numerics")
-        # Check if both columns are found
-        if (length(start_col) == 0 || length(end_col) == 0) {
-          # Instead of stop(), use a Shiny-friendly method to show an error
-          showNotification("Start or end column not found in the dataframe", type = "error")
-          return()
-        }
-        # Convert columns from start to end into numeric
-        df[, start_col:end_col] <- lapply(df[, start_col:end_col], function(x) as.numeric(as.character(x)))
-        #
-        # List of column names to potentially convert to numeric
-        columns_to_convert <- c("Publication.Year", "N_Intervention", "N_Control", "N_Total")
-        # Loop through each column name
-        for (col in columns_to_convert) {
-          # Check if the column exists in the dataframe
-          if (col %in% names(df)) {
-            # Convert the column to numeric
-            df[[col]] <- as.numeric(as.character(df[[col]]))
-          }
-        }
-        #
-      } else if (file_extension == "csv") {
-        # The .csv should use UTF-8 encoding if there are non-ASCII characters
-        # otherwise they can cause the app to crash.
-        df <- readr::read_csv(file_path, show_col_types = FALSE)  %>% as.data.frame()
-        # make sure the numeric columns are of the correct type
-        start_col <- which(names(df) == "Begin.Selection.Numerics")
-        end_col <- which(names(df) == "End.Selection.Numerics")
-        # Check if both columns are found
-        if (length(start_col) == 0 || length(end_col) == 0) {
-          # Instead of stop(), use a Shiny-friendly method to show an error
-          showNotification("Start or end column not found in the dataframe", type = "error")
-          return()
-        }
-        # Convert columns from start to end into numeric
-        df[, start_col:end_col] <- lapply(df[, start_col:end_col], function(x) as.numeric(as.character(x)))
-        #
-        # List of column names to potentially convert to numeric
-        columns_to_convert <- c("Publication.Year", "N_Intervention", "N_Control", "N_Total")
-        # Loop through each column name
-        for (col in columns_to_convert) {
-          # Check if the column exists in the dataframe
-          if (col %in% names(df)) {
-            # Convert the column to numeric
-            df[[col]] <- as.numeric(as.character(df[[col]]))
-          }
-        }
+      if (loadDataFile(file_path, input$DataFileUp$name)) {
+        output$inputFileError <- renderUI(NULL) # remove error message if file uploaded successfully
+        # the uploaded file is now the data source, so clear the curated dropdown
+        # (each chooser only shows a file name while it is the current data source)
+        updateSelectInput(session, "curatedDataFile", selected = "")
       }
-      #
-      # Fix colons in column names
-      df <- removeColons(df)    
-      #
-      newrvs <- reformat.df(df)
-      myrvs$df.reactive <- newrvs$df
-      myrvs$df.original <- newrvs$df.original
-      myrvs$df.updated <- myrvs$df.original 
-      myrvs$Variable.Factor.Names <- newrvs$Variable.Factor.Names
-      myrvs$Variable.Numeric.Names <- newrvs$Variable.Numeric.Names
-      myrvs$na.warning <- newrvs$na.warning
-      myrvs$nfiles <- myrvs$nfiles + 1
-      myrvs$recalculatedSinceUpload <- 0
-      myrvs$currentInputFile <- input$DataFileUp$name
-      myrvs$uiRendered  <- FALSE    # to keep recalculate button inactive until UI loaded
-      output$inputFileError <- renderUI(NULL) # remove error message if file uploaded successfully
+    })
+
+    ###### Curated data files (data/curated/) ######
+    ## A curated collection of ready-to-load, maintained data files for living
+    ## meta-analyses, offered in the "Load Data File" tab next to the upload
+    ## control.  Files live in data/curated/ and are only offered if listed in
+    ## data/curated/curated_index.csv (columns: filename, label, date,
+    ## description, citation), which also controls the display order.
+    ## See data/curated/README.md for how to add a file to the collection.
+    curatedIndex <- NULL
+    if (file.exists("data/curated/curated_index.csv")) {
+      curatedIndex <- readr::read_csv("data/curated/curated_index.csv", show_col_types = FALSE) %>% as.data.frame()
+      curatedIndex <- curatedIndex[file.exists(file.path("data/curated", curatedIndex$filename)), , drop = FALSE]
+      if (nrow(curatedIndex) == 0) curatedIndex <- NULL
+    }
+
+    ## Dropdown + load button shown under the upload control in "Load Data File".
+    ## (Rendered in the server so the whole control disappears if there is no index.)
+    output$curatedDataChooser <- renderUI({
+      req(curatedIndex)
+      tagList(
+        hr(),
+        selectInput("curatedDataFile",
+                    label = "Or choose from the curated collection:",
+                    choices = c("Choose a data file" = "", setNames(curatedIndex$filename, curatedIndex$label))),
+        uiOutput("curatedDataDescription"),
+        actionButton("loadCuratedData", "Load curated data file"),
+        hr()
+      )
+    })
+
+    ## Short description of the selected curated file, shown above the load button.
+    output$curatedDataDescription <- renderUI({
+      req(curatedIndex, input$curatedDataFile)
+      chosen <- curatedIndex[curatedIndex$filename == input$curatedDataFile, , drop = FALSE]
+      req(nrow(chosen) == 1)
+      p(style = "font-size:90%",
+        tags$b(chosen$label), br(),
+        paste0("(", chosen$date, ")  ", chosen$description),
+        if (isTruthy(chosen$citation)) tagList(br(), tags$i(chosen$citation)))
+    })
+
+    ## Load the chosen curated file, replacing the current data (same as an upload).
+    observeEvent(input$loadCuratedData, {
+      req(curatedIndex, input$curatedDataFile)
+      chosen <- curatedIndex[curatedIndex$filename == input$curatedDataFile, , drop = FALSE]
+      req(nrow(chosen) == 1)
+      if (loadDataFile(file.path("data/curated", chosen$filename), chosen$label)) {
+        blankStudyPanelBriefly()   # tear down + rebuild the study criteria panel, as for uploads
+        # the curated file is now the data source, so clear the upload control's
+        # file name display (each chooser only shows a file name while it is the
+        # current data source)
+        shinyjs::reset("DataFileUp")
+        showNotification(paste0('Loaded "', chosen$label, '".  Press "(Re)Calculate Meta-Analysis" to analyze it.'),
+                         type = "message", duration = 8)
+      }
+    })
+
+    ## Description of the curated collection, shown in the "Explanation" tab.
+    output$curatedDataLibrary <- renderUI({
+      req(curatedIndex)
+      tagList(
+        p("A curated collection of ready-to-analyze data files is offered in the",
+          '"Load Data File"', "tab, below the file-upload control.",
+          "These are maintained, updated data sets for living meta-analyses;",
+          "loading one replaces the current data just like uploading your own file.",
+          "The collection currently includes:"),
+        tags$ul(
+          lapply(seq_len(nrow(curatedIndex)), function(i) {
+            tags$li(tags$b(curatedIndex$label[i]),
+                    paste0(" (", curatedIndex$date[i], ") — ", curatedIndex$description[i]),
+                    if (isTruthy(curatedIndex$citation[i])) tags$i(paste0(" [", curatedIndex$citation[i], "]")))
+          })
+        )
+      )
     })
   
   observeEvent(input$recalculateButton, {
@@ -214,13 +284,14 @@ server <- function(input, output, session) {
   # teardown and produces the brief blank; the reactive domain is captured so the
   # deferred reactiveVal write is tied to this session.)
   studyPanelHidden <- reactiveVal(FALSE)
-  observeEvent(input$DataFileUp, {
+  blankStudyPanelBriefly <- function() {
     studyPanelHidden(TRUE)                              # blank the panel this flush
     domain <- getDefaultReactiveDomain()
     later::later(function() {                           # ...rebuild it ~0.3s later
       withReactiveDomain(domain, studyPanelHidden(FALSE))
     }, 0.3)
-  })
+  }
+  observeEvent(input$DataFileUp, blankStudyPanelBriefly())
 
   output$studyCriteria <- renderUI({
     if (isTRUE(studyPanelHidden())) return(NULL)   # brief blank while a new file loads
@@ -1338,5 +1409,13 @@ server <- function(input, output, session) {
 
   # meta-regression, Bayesian (bmr() from the bayesmeta package)
   source("bayesianMetaRegression_server.R", local = T)
+
+  # Keep the study-criteria and moderator sidebar panels rendering even while
+  # their tabs are hidden.  Data files are loaded from the "Load Data File" tab,
+  # so with the default suspendWhenHidden=TRUE these panels would not rebuild
+  # their inputs for the new data until their tab was next opened -- leaving the
+  # recalculate button acting on stale inputs (and stale moderator choices).
+  outputOptions(output, "studyCriteria", suspendWhenHidden = FALSE)
+  outputOptions(output, "moderatorSelection_ui", suspendWhenHidden = FALSE)
 
 }  # end of server
