@@ -189,7 +189,7 @@ buildBmrModel <- function(MA, moderatorName, tauprior, scaletau, mupriormean, mu
     bmr(y = MA$es, sigma = sqrt(MA$var), labels = MA$study, X = X,
         tau.prior = function(t) dhalfcauchy(t, scale = scaletau),
         beta.prior.mean = betaMean, beta.prior.sd = betaSD)
-  } else if (tauprior == "Half student t") {
+  } else if (tauprior == "Half normal") {
     bmr(y = MA$es, sigma = sqrt(MA$var), labels = MA$study, X = X,
         tau.prior = function(t) dhalfnormal(t, scale = scaletau),
         beta.prior.mean = betaMean, beta.prior.sd = betaSD)

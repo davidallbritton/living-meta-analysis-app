@@ -45,13 +45,13 @@ server <- function(input, output, session) {
   ###  initialize $previousPlots if the file exists on the server
   myrvs$previousPlots <- list()
   if (file.exists("data/defaultPrecalculatedPlots.RDS")) {
-    myrvs$previousPlots <- readRDS("data/defaultPrecalculatedPlots.RDS")
+    myrvs$previousPlots <- normalizeTauPriorLabels(readRDS("data/defaultPrecalculatedPlots.RDS"))
   }
   
   ###  initialize $previousModels if the file exists on the server
   myrvs$previousModels <- list()
   if (file.exists("data/defaultPrecalculatedModels.RDS")) {
-    myrvs$previousModels <- readRDS("data/defaultPrecalculatedModels.RDS")
+    myrvs$previousModels <- normalizeTauPriorLabels(readRDS("data/defaultPrecalculatedModels.RDS"))
   }
 
   ### a reactive value that gets updated whenever myrvs$previousModels changes:
@@ -895,9 +895,9 @@ server <- function(input, output, session) {
           bma <- bayesmeta(y = MA$es,sigma = sqrt(MA$var), labels = MA$study, 
                            tau.prior = function(t) dhalfcauchy(t, scale = scaletau), 
                            mu.prior = c("mean" = mupriormean, "sd" = mupriorsd))
-        } else if (tauprior == "Half student t") {
-          bma <- bayesmeta(y = MA$es,sigma = sqrt(MA$var), labels = MA$study, 
-                           tau.prior = function(t) dhalfnormal(t, scale = scaletau), 
+        } else if (tauprior == "Half normal") {
+          bma <- bayesmeta(y = MA$es,sigma = sqrt(MA$var), labels = MA$study,
+                           tau.prior = function(t) dhalfnormal(t, scale = scaletau),
                            mu.prior = c("mean" = mupriormean, "sd" = mupriorsd))
         } else {
           bma <- bayesmeta(y = MA$es,sigma = sqrt(MA$var), labels = MA$study, 
@@ -1046,7 +1046,7 @@ server <- function(input, output, session) {
   
   # Bayes factor robustness plot panel
   output$warning2 <- renderPrint({
-      print("WARNING: Plot will not be computed, because an improper τ prior was chosen. Proper τ priors are 'Half student t' and 'Half cauchy'.")
+      print("WARNING: Plot will not be computed, because an improper τ prior was chosen. Proper τ priors are 'Half normal' and 'Half cauchy'.")
   })
   #
   output$robustplot <- renderPlot({
@@ -1063,7 +1063,7 @@ server <- function(input, output, session) {
       robustggplot <- NULL
       if (robust == "Yes" & tauprior == "Half cauchy" & isTruthy(myrvs$triggerBmaRobust)) {
         robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfcauchy(t, scale = scaletau))
-      } else if (robust == "Yes" & tauprior == "Half student t" & isTruthy(myrvs$triggerBmaRobust)) {
+      } else if (robust == "Yes" & tauprior == "Half normal" & isTruthy(myrvs$triggerBmaRobust)) {
         robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfnormal(t, scale = scaletau))
       }
       ## store the new plot in the list of old plots; this function only has a side effect, no return value
@@ -1092,7 +1092,7 @@ server <- function(input, output, session) {
       if (!is.null(input$SavedModelsUp)) p(style = "color:red", "***File was not read***")
     })
     validate(need(fileExtension == "RDS" | fileExtension == "rds" | fileExtension == "Rds" , "Please upload an RDS file"))
-    newrows_bma <- readRDS(input$SavedModelsUp$datapath)
+    newrows_bma <- normalizeTauPriorLabels(readRDS(input$SavedModelsUp$datapath))
     oldrows_bma <- myrvs$previousModels
     allrows_bma <- c(newrows_bma, oldrows_bma)
     myrvs$previousModels <- allrows_bma
@@ -1128,7 +1128,7 @@ server <- function(input, output, session) {
       if (!is.null(input$SavedPlotsUp)) p(style = "color:red", "***File was not read***")
     })
     validate(need(fileExtension == "RDS" | fileExtension == "rds" | fileExtension == "Rds" , "Please upload an RDS file"))
-    newrows_bma <- readRDS(input$SavedPlotsUp$datapath)
+    newrows_bma <- normalizeTauPriorLabels(readRDS(input$SavedPlotsUp$datapath))
     oldrows_bma <- myrvs$previousPlots
     allrows_bma <- c(newrows_bma, oldrows_bma)
     myrvs$previousPlots <- allrows_bma

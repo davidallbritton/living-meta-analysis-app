@@ -284,7 +284,7 @@ createMA.nonReactive <- function(MA, tauprior, mupriorsd, scaletau, mupriormean)
         bma <- bayesmeta(y = MA$es,sigma = sqrt(MA$var), labels = MA$study,
                          tau.prior = function(t) dhalfcauchy(t, scale = scaletau),
                          mu.prior = c("mean" = mupriormean, "sd" = mupriorsd))
-      } else if (tauprior == "Half student t") {
+      } else if (tauprior == "Half normal") {
         bma <- bayesmeta(y = MA$es,sigma = sqrt(MA$var), labels = MA$study,
                          tau.prior = function(t) dhalfnormal(t, scale = scaletau),
                          mu.prior = c("mean" = mupriormean, "sd" = mupriorsd))
@@ -424,7 +424,7 @@ create_robustplot <- function(tauprior, mupriorsd, scaletau){
   robustggplot <- NULL
   if (robust == "Yes" & tauprior == "Half cauchy") {
     robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfcauchy(t, scale = scaletau))
-  } else if (robust == "Yes" & tauprior == "Half student t") {
+  } else if (robust == "Yes" & tauprior == "Half normal") {
     robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfnormal(t, scale = scaletau))
   }
   robustggplot

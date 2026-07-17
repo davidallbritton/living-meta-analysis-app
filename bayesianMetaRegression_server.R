@@ -29,7 +29,7 @@
 ## dataset's Bayesian meta-regressions load instantly instead of being rebuilt.
 myrvs$previousBmrModels <- list()
 if (file.exists("data/defaultPrecalculatedBmrModels.RDS")) {
-  myrvs$previousBmrModels <- readRDS("data/defaultPrecalculatedBmrModels.RDS")
+  myrvs$previousBmrModels <- normalizeTauPriorLabels(readRDS("data/defaultPrecalculatedBmrModels.RDS"))
 }
 
 ## Trigger controlling when a bmr model may be built (set TRUE only after the
@@ -192,7 +192,7 @@ observeEvent(input$SavedBmrModelsUp, {
     if (!is.null(input$SavedBmrModelsUp)) p(style = "color:red", "***File was not read***")
   })
   validate(need(fileExtension == "RDS" | fileExtension == "rds" | fileExtension == "Rds", "Please upload an RDS file"))
-  newrows_bmr <- readRDS(input$SavedBmrModelsUp$datapath)
+  newrows_bmr <- normalizeTauPriorLabels(readRDS(input$SavedBmrModelsUp$datapath))
   oldrows_bmr <- myrvs$previousBmrModels
   allrows_bmr <- c(newrows_bmr, oldrows_bmr)
   myrvs$previousBmrModels <- allrows_bmr
