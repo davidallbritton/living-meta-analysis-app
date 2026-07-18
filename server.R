@@ -1228,8 +1228,9 @@ server <- function(input, output, session) {
         p(),
         downloadButton("currentData.down", "Data as currently in use (primarily for debugging)"),
         p(),
-        downloadButton("listInputs", "List of all selected Study Criteria and Prior Specifications"),
-        p(),
+        downloadButton("listInputs", "All selected Study Criteria and Prior Specifications (.json)"),
+        p(tags$small('Updated: this is now the same re-loadable selection-settings .json file as',
+                     '"Save current selections" on the Load Data File tab (previously a .xlsx listing).')),
         downloadButton("bayesmetaCall", "Function call, parameters, and selected data for the current analysis")
       ) 
     }
@@ -1292,38 +1293,15 @@ server <- function(input, output, session) {
     }
   )
   #
+  # The same selection-settings .json file as "Save current selections" on the
+  # Load Data File tab (selectionsFileName/writeSelectionsJson are defined in
+  # selections_server.R, sourced further down; downloads only fire afterwards).
+  # This download used to be an .xlsx listing of the raw input values
+  # (currentInputSelections.xlsx); the .json replacement records the same
+  # criteria/moderator/prior selections but can also be loaded back into the app.
   output$listInputs <- downloadHandler(
-    filename = function() {
-      "currentInputSelections.xlsx" 
-    },
-    content = function (file) {
-      inputslist <- reactiveValuesToList(input)
-      ns <- names(inputslist)
-      skipnames1 <- c("website","q8","q18","q118", "recalculateButton","q16","q19", "q1","q17", "q20" ,"email1", "q9"  )
-      skipnames2 <- c( "studies_cells_selected" ,  "studies_rows_all"    ,     "studies_rows_selected"  , 
-                       "studies_state"     ,       "studies_search"       ,    "studies_cell_clicked"  ,  
-                       "studies_columns_selected", "studies_rows_current")
-      skipnames3 <- c("currentData.display_state", "currentData.display_cell_clicked",
-                     "currentData.display_cells_selected" ,  "currentData.display_rows_selected",
-                      "currentData.display_rows_all"    ,     "currentData.display_search"   ,       
-                       "currentData.display_rows_current"  ,   "currentData.display_columns_selected", "dataSetupPanel")
-      skipnames4 <- c("ClearModels", "SavedPlotsUp",
-                      "mainTabset",
-                      "ClearPlots",
-                      "SavedModelsUp",
-                      "ClearBmrModels",
-                      "SavedBmrModelsUp"
-      )
-      skipnames <- c(skipnames1, skipnames2, skipnames3, skipnames4)
-      namestolist <- ns[! ns %in% skipnames]
-      orderednames <- c("mupriormean", "mupriorsd", "tauprior", "scaletau", "robust", "DataFileUp", "aggregation", "Design", "Publication.Year","included" )
-      extranames <- namestolist[! namestolist %in% orderednames]
-      allnames <- c(orderednames, extranames)
-      ilist <- inputslist[allnames]
-      ilist <- purrr::discard(ilist, is.list) # just in case any elements are lists and would crash the next line of code
-      ilist2 <- lapply(ilist, function(x) as.data.frame(x))
-      writexl::write_xlsx(ilist2, col_names = F, file)
-    }
+    filename = function() selectionsFileName(),
+    content = function (file) writeSelectionsJson(file)
   )
 
   ##### This section added for frequentist analyses, for large datasets ####
@@ -1406,6 +1384,10 @@ server <- function(input, output, session) {
   
   # descriptives tab (live summaries of the currently selected data)
   source("descriptives_server.R", local = T)
+
+  # Save / load the left-panel selection settings (and apply
+  # data/default_selections.json at startup if this app copy has one)
+  source("selections_server.R", local = T)
 
   # meta-regression, frequentist
   source("metaRegression_server.R", local = T)
