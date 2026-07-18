@@ -5,7 +5,7 @@ account: dallbrit
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 12147060
-bundleId: 12286540
+bundleId: 12287024
 url: https://dallbrit.shinyapps.io/Meta_regression_app/
 version: 1
 asMultiple: FALSE
