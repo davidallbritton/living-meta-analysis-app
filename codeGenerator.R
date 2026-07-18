@@ -225,6 +225,18 @@ createMA.nonReactive <- function(df, Variable.Factor.Names, Variable.Numeric.Nam
     df_sub <- df_sub[df_sub[,varName] <= Variable.Numerics.selected[[varName]][2], ]
   }
 
+  # "Multilevel": no aggregation -- keep every effect-size row; the frequentist
+  # models below then fit a three-level rma.mv (effect sizes nested in papers)
+  if (aggregation == "Multilevel") {
+    MAnr <- as.data.frame(df_sub)
+    MAnr$es  <- MAnr$yi
+    MAnr$var <- MAnr$vi
+    MAnr <- MAnr[order(MAnr$es), ]
+    # metafor requires unique study labels; multi-ES experiments repeat Paper.and.Exp
+    MAnr$study <- make.unique(as.character(MAnr$Paper.and.Exp))
+    return(MAnr)
+  }
+
   # Replace ID with Paper.Number if aggregating over papers
   if (aggregation == "Papers") {
     df_sub$ID <- df_sub$Paper.Number
@@ -321,6 +333,10 @@ createMA.nonReactive <- function(MA, tauprior, mupriorsd, scaletau, mupriormean)
 
 # calculate bma bayesmeta object
 calculate_bma <- "Yes"  ## Change to "no" if you want to skip the slow Bayesian calculations
+if (aggregation == "Multilevel") {
+  calculate_bma <- "No"  # bayesmeta needs the aggregated two-level data; the app
+                         # blocks Bayesian analyses for the Multilevel option too
+}
 if(calculate_bma == "Yes") {
   bma <- createMA.nonReactive(MA, tauprior, mupriorsd, scaletau, mupriormean)
 }
@@ -362,27 +378,39 @@ output$boxplot
 
 ########## frequentist analyses
 
-# Create model for frequentist meta-analysis
-fma <- rma(MA$es, MA$var, slab=MA$study)
-  
+# Create model for frequentist meta-analysis:
+# aggregated data -> two-level rma(); Multilevel -> three-level rma.mv()
+# with effect sizes nested in papers
+if (aggregation == "Multilevel") {
+  fma <- rma.mv(yi = es, V = var, random = ~ 1 | Paper/ID, data = MA, slab = MA$study)
+} else {
+  fma <- rma(MA$es, MA$var, slab=MA$study)
+}
+
 ### Frequentist Forest Plot
 create_freq_forest <- function(fma) {
-  model <- fma 
+  model <- fma
   # Increase bottom margin to make space for the text
   par(mar = c(5, 4, 4, 2) + 0.1)  # Adjust the bottom margin (the first value)
   # Generate the forest plot
   plot <- metafor::forest.rma(x = model, showweights = TRUE, addfit = TRUE,
-                              order = "obs", xlab = "Hedges g", 
-                              addpred = TRUE, 
+                              order = "obs", xlab = "Hedges g",
+                              addpred = TRUE,
                               efac = 0,
                               col = "red",
                               border = "red")
-  # Add Cochrans Q, its p-value, and I² statistic as text
-  # Position the text below the plot
-  mtext(side = 1, line = 4, 
-        text = paste0("Cochrans Q = ", round(model$QE, 2), 
+  # Add Cochrans Q and heterogeneity statistics as text below the plot
+  # (multilevel rma.mv models have no I2; show the variance components instead)
+  hetText <- if (inherits(model, "rma.mv")) {
+    paste0("Sigma2 between papers = ", round(model$sigma2[1], 3),
+           ",  sigma2 within papers = ", round(model$sigma2[2], 3))
+  } else {
+    paste0("I² = ", round(model$I2, 2), "%")
+  }
+  mtext(side = 1, line = 4,
+        text = paste0("Cochrans Q = ", round(model$QE, 2),
                       " (p = ",  format(round(model$QEp, 4), nsmall = 4), ")\n",
-                      "I² = ", round(model$I2, 2), "%"),
+                      hetText),
         adj = 0, cex = 0.8)
   # Return the plot
   plot

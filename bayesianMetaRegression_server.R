@@ -42,6 +42,7 @@ myrvs$triggerBmr <- FALSE
 observe({
   # Reactively depend on MA()
   MA()
+  req(!isMultilevelMA())   # Bayesian analyses need aggregated data (see bmrModel)
   # Only relevant on the Bayesian Meta-Regression tab, with a moderator chosen
   req(input$mainTabset == "bayesian_meta_regression")
   req(input$includeModerator == "Yes")
@@ -79,6 +80,13 @@ observe({
 
 ## The bmr model reactive, used by all Bayesian Meta-Regression outputs.
 bmrModel <- reactive({
+  # bmr() fits the aggregated two-level model only; block it (with an
+  # explanation shown in the Bayesian Meta-Regression outputs) for multilevel data
+  validate(need(!isMultilevelMA(),
+                paste('The Bayesian meta-regression uses the aggregated two-level model and is not',
+                      'available with the "None (multilevel model)" aggregation option.',
+                      'Choose "ID" or "Papers" under "Aggregate over" in the Study criteria panel',
+                      'and press "(Re)Calculate Meta-Analysis".')))
   req(myrvs$triggerBmr)   # only run after user confirmation (or a cache hit)
   isolate({               # so changing priors does not rebuild before "Re-Calculate"
     MA            <- MA()

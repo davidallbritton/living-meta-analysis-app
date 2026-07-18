@@ -5,7 +5,17 @@
 
 ############## a little helper function to add Q-test, I^2, and tau^2 estimate info
 # (from https://www.metafor-project.org/doku.php/plots:forest_plot_with_subgroups)
+# For multilevel rma.mv models (no I^2/tau^2), the two variance components
+# (between papers, within papers) are shown instead.
 mlabfun <- function(text, x) {
+  if (inherits(x, "rma.mv")) {
+    return(list(bquote(paste(.(text),
+                    " (Q = ", .(fmtx(x$QE, digits=2)),
+                    ", df = ", .(x$k - x$p), ", ",
+                    .(fmtp(x$QEp, digits=3, pname="p", add0=TRUE, sep=TRUE, equal=TRUE)), "; ",
+                    sigma[paper]^2, " = ", .(fmtx(x$sigma2[1], digits=2)), ", ",
+                    sigma[ES]^2, " = ", .(fmtx(x$sigma2[2], digits=2)), ")"))))
+  }
   list(bquote(paste(.(text),
                     " (Q = ", .(fmtx(x$QE, digits=2)),
                     ", df = ", .(x$k - x$p), ", ",
@@ -16,18 +26,28 @@ mlabfun <- function(text, x) {
 
 ##################### function to create a forest plot with a categorical moderator
 ###### start of forestByGroup() function
-forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1, 
+forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
                           header="Study",addpred=TRUE, caterpillar=F,
+                          multilevel=FALSE,
          ##                 col="black", border="black",
-                          ...) {  
+                          ...) {
   ## additional arguments that might be useful: xlim, psize, xlab
   ## For caterpillar plot, use caterpillar=TRUE (not slab=NA as you would in forest() )
   ## You can also add any other arguments that forest() allows
   # MA is the dataframe with yi=es, vi=var. Note it is not a model object like x is for forest()
   # moderator is a vector of the same length as MA, such as MA$moderatorFactor
-  
+  # multilevel: fit three-level rma.mv models (effect sizes nested in papers;
+  # MA must then hold the UNaggregated rows with Paper and ID columns)
+
+  # model fitter shared by the overall model and the subgroup models
+  fitOne <- function(d, sl) {
+    if (multilevel) rma.mv(yi = es, V = var, random = ~ 1 | Paper/ID, data = d, slab = sl)
+    else rma(d$es, d$var, slab = sl)
+  }
+  overallLabel  <- if (multilevel) "Multilevel Model for All Studies" else "RE Model for All Studies"
+  subgroupLabel <- if (multilevel) "Multilevel Model for Subgroup"   else "RE Model for Subgroup"
   #
-  fma <- rma(MA$es, MA$var, slab=slab)
+  fma <- fitOne(MA, slab)
   #
   # if the moderator is not a factor, make it one
   if (!is.factor(moderator)) {
@@ -74,10 +94,12 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
     else rowsString <- paste0(rowsString, ")")
     groupLabelRow[i] <- y + 1
     groupModelRow[i] <- lineNum + belowGroup
-    # create a model for each group
+    # create a model for each group (a multilevel subgroup with too few papers
+    # can fail to fit; fall back to the two-level model for that subgroup)
     subMA <- MA[moderator == groupname,]
     subslab <- slab[moderator == groupname]
-    subfma <- rma(subMA$es, subMA$var, slab=subslab)
+    subfma <- tryCatch(fitOne(subMA, subslab),
+                       error = function(e) rma(subMA$es, subMA$var, slab=subslab))
     submodels[[i]] <- subfma
     # update for the next entry
     lineNum <- (y + groupSpace + 1)
@@ -92,7 +114,7 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
   args_list$ylim <- c(-2, totalHeight)
   args_list$order <- moderator
   args_list$rows <- rowsVector
-  args_list$mlab <- mlabfun("RE Model for All Studies", fma)
+  args_list$mlab <- mlabfun(overallLabel, fma)
   args_list$header <- header
   args_list$addpred <- addpred
   if(caterpillar) args_list$slab <- NA
@@ -128,7 +150,7 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
     # Define the base arguments for addpoly
     baseArgs <- list(x=submodels[[i]],
                      row=groupModelRow[i],
-                     mlab=mlabfun("RE Model for Subgroup", submodels[[i]]),
+                     mlab=mlabfun(subgroupLabel, submodels[[i]]),
                      xpd=TRUE,
                      addpred=addpred)
     # Combine the base arguments with the additional arguments
@@ -150,7 +172,11 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
   ####
 
   # add model testing moderator
-  fmaMod <- rma(MA$es, MA$var, mods = ~ moderator)
+  fmaMod <- if (multilevel) {
+    rma.mv(yi = es, V = var, mods = ~ moderator, random = ~ 1 | Paper/ID, data = MA)
+  } else {
+    rma(MA$es, MA$var, mods = ~ moderator)
+  }
   #
   ### add text for the test of subgroup differences
   text(usr[1], belowPlot, pos=4, cex=cex, xpd=TRUE,

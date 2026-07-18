@@ -10,7 +10,10 @@ observe({   #update the meta-regression plot code when a moderator is selected
   moderatorArgText <- paste0('moderator=MA[["', moderatorChosen, '"]]')
   # efac follows the "Symbol size" slider on the frequentist meta-regression tab
   efacFreq <- if (is.null(input$freq_efac)) 0.3 else input$freq_efac
-  plotArgs <- paste0('MA=MA, ', moderatorArgText, ', col="red", border="red", efac=', efacFreq, ', caterpillar=FALSE')
+  # three-level rma.mv models when the "Multilevel" aggregation option is chosen
+  multilevelArg <- if (identical(input$aggregation, "Multilevel")) "TRUE" else "FALSE"
+  plotArgs <- paste0('MA=MA, ', moderatorArgText, ', col="red", border="red", efac=', efacFreq,
+                     ', caterpillar=FALSE, multilevel=', multilevelArg)
 
   metaRegText <- '
   ########## Code for making the meta-regression plot with one categorical moderator

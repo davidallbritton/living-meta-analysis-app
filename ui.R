@@ -310,6 +310,14 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                                tags$li("SMCR - using M1, M2, and SD2 from a within-subject design")
                                              )
                                            ),
+                                           p('Papers often contribute several effect sizes, which the standard two-level models',
+                                             'handle by aggregating them first (the "Aggregate over" setting: ID or Papers).',
+                                             'Alternatively, choosing "None (multilevel model)" keeps every effect size as its',
+                                             'own row and fits a three-level model with effect sizes nested in papers, using',
+                                             'metafor::rma.mv with random = ~ 1 | Paper/ID, for the frequentist analyses',
+                                             '(including meta-regression).  The Bayesian analyses are based on the bayesmeta',
+                                             'package, which fits the two-level model only, so they require one of the',
+                                             'aggregation options.'),
                                            h4("Paper:"),
                                            
                                            ("Allbritton, D., Gómez, P., Angele, B., Vasilev, M., & Perea, M. (2024). Breathing Life Into Meta-Analytic Methods. Journal of Cognition, 7(1): 61, pp. 1–17. DOI:"), 

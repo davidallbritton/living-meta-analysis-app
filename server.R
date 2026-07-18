@@ -317,10 +317,12 @@ server <- function(input, output, session) {
              radioButtons(inputId = "aggregation", label = p("Aggregate over", style="color:#333333",
                                                              tags$style(type = "text/css", "#q18 {vertical-align: top;}"),
                                                              bsButton("q118", label = "", icon = icon("info"), style = "color: #fff; background-color: #337ab7; border-color: #2e6da4", size = "extra-small")),    
-                          choices = c(ID = "ID", Papers = "Papers")),
+                          choices = c(ID = "ID", Papers = "Papers",
+                                      "None (multilevel model)" = "Multilevel")),
              bsPopover(id="q118", title = "Aggregation.",
-                       content = paste0("<p>Aggregate effect sizes over ID (default) or over papers.",
-                                        "<p>Selecting Papers will compute a single aggregated effect size for each paper. Selecting ID will aggregate based on the numbers in the ID column in the data file.  If you want no aggregation, make sure the data file has a unique ID number for each line.",
+                       content = paste0("<p>Aggregate effect sizes over ID (default), aggregate over papers, or use no aggregation with a multilevel model.",
+                                        "<p>Selecting Papers will compute a single aggregated effect size for each paper. Selecting ID will aggregate based on the numbers in the ID column in the data file.",
+                                        "<p>Selecting None (multilevel model) keeps every effect size as its own row and fits a three-level model (effect sizes nested in papers, using metafor rma.mv) for the frequentist analyses.  The Bayesian tabs require aggregated data and will ask you to switch back to ID or Papers.",
                                         "<p>Default: ID."),
                        placement = "right", 
                        trigger = "click",
@@ -891,6 +893,23 @@ server <- function(input, output, session) {
       need(nrow(df_sub) > 0, "That returns zero studies. Please change your selection criteria and Recalculate.")
     )
     #
+    ## "Multilevel": no aggregation -- keep every effect-size row and mark the
+    ## result so the frequentist models fit a three-level rma.mv (effect sizes
+    ## nested in papers) instead of the aggregated two-level rma.
+    ## (Bayesian analyses require the aggregated data and are blocked in this
+    ## mode with an explanatory message; see bma() and bmrModel().)
+    if (input$aggregation == "Multilevel") {
+      MA <- as.data.frame(df_sub)
+      MA$es  <- MA$yi
+      MA$var <- MA$vi
+      MA <- MA[order(MA$es), ]
+      # metafor requires unique study labels; multi-ES experiments repeat Paper.and.Exp
+      MA$study <- make.unique(as.character(MA$Paper.and.Exp))
+      myrvs$ma_num <- myrvs$ma_num + 1
+      attr(MA, "multilevel") <- TRUE
+      return(MA)
+    }
+    #
     # replace ID with Paper.Number if aggregating over papers:
     if (input$aggregation == "Papers") {
       df_sub$ID <- df_sub$Paper.Number
@@ -904,19 +923,25 @@ server <- function(input, output, session) {
                  data   = df_sub,
                  cor = .5,
                  method = "BHHR")
-    ## Merging aggregated ES with original dataframe 
-    MA <- merge(x = aggES, y = df_sub, by.x = "id", by.y = "ID") 
+    ## Merging aggregated ES with original dataframe
+    MA <- merge(x = aggES, y = df_sub, by.x = "id", by.y = "ID")
     MA <- unique(setDT(MA) [sort.list(id)], by = "id")
     MA <- with(MA, MA[order(MA$es)])
     myrvs$ma_num <- myrvs$ma_num + 1
     MA
   })
+
+  ## TRUE when the current MA() came from the "Multilevel" (no aggregation) option
+  isMultilevelMA <- function() isTRUE(attr(MA(), "multilevel"))
   
   
   ## modal to warn when Bayesian model update is requested
   observe({
     # Reactively depend on MA()
     MA()
+    # Bayesian analyses are unavailable for the multilevel (unaggregated) data;
+    # the Bayesian outputs show an explanatory message instead (see bma())
+    req(!isMultilevelMA())
     # Trigger only when specific tabs that require bma() are selected
     req(input$mainTabset %in% bayestabs)   # defined at the top of the server function
     #
@@ -953,6 +978,13 @@ server <- function(input, output, session) {
   # Create bma reactive needed for all outputs
   bma <- reactive({
     #req(MA())           # trigger to update bma; MA() gets updated only when "recalculate" button is pressed
+    # bayesmeta fits the two-level aggregated model only; block it (with an
+    # explanation shown in every Bayesian output) when the data are multilevel
+    validate(need(!isMultilevelMA(),
+                  paste('The Bayesian analyses use the aggregated two-level model and are not available',
+                        'with the "None (multilevel model)" aggregation option.',
+                        'To run them, choose "ID" or "Papers" under "Aggregate over" in the Study criteria',
+                        'panel and press "(Re)Calculate Meta-Analysis".')))
     req(myrvs$triggerBma)  # Ensure this block runs only after user confirmation
     isolate({           # so that changes in priors do not trigger bma() update before "recalculate" button is pressed
       ## Generate bayesmeta-object "bma" depending on tau prior chosen
@@ -1087,6 +1119,7 @@ server <- function(input, output, session) {
   observe({
     # Reactively depend on MA()
     MA()
+    req(!isMultilevelMA())   # Bayesian analyses need aggregated data
     # Trigger only when the robustness tab is selected
     req(input$mainTabset %in% c("bayesian_robustness"))   # for that panel only
     req(input$robust == "Yes")   # only if yes is checked in the priors panal
@@ -1126,6 +1159,10 @@ server <- function(input, output, session) {
   })
   #
   output$robustplot <- renderPlot({
+    validate(need(!isMultilevelMA(),
+                  paste('The robustness check uses the aggregated two-level Bayesian model and is not',
+                        'available with the "None (multilevel model)" aggregation option.',
+                        'Choose "ID" or "Papers" under "Aggregate over" and press "(Re)Calculate Meta-Analysis".')))
     MA <- MA()  #trigger recalculation
     MA_nofactors <- as.data.frame(MA) 
     MA_nofactors <-  MA_nofactors %>% mutate_if(is.factor, as.character)
@@ -1238,7 +1275,9 @@ server <- function(input, output, session) {
         downloadButton("listInputs", "All selected Study Criteria and Prior Specifications (.json)"),
         p(tags$small('Updated: this is now the same re-loadable selection-settings .json file as',
                      '"Save current selections" on the Load Data File tab (previously a .xlsx listing).')),
-        downloadButton("bayesmetaCall", "Function call, parameters, and selected data for the current analysis")
+        # the bayesmeta call download needs the Bayesian model, which requires aggregated data
+        if (!isMultilevelMA())
+          downloadButton("bayesmetaCall", "Function call, parameters, and selected data for the current analysis")
       ) 
     }
     else(p("Must (Re)Calculate first...."))
@@ -1326,11 +1365,18 @@ server <- function(input, output, session) {
 
   ##### This section added for frequentist analyses, for large datasets ####
   #
-  # Create model for frequentist meta-analysis
+  # Create model for frequentist meta-analysis.
+  # Aggregated data (ID/Papers): two-level random-effects rma().
+  # Multilevel (no aggregation): three-level rma.mv() with effect sizes nested
+  # in papers (random = ~ 1 | Paper/ID).
   fma <- reactive({
     MA()  # must reference MA() first so its check for (nrows > 0) happens
     #
-    rma(MA()$es, MA()$var, slab=MA()$study)})
+    if (isMultilevelMA()) {
+      rma.mv(yi = es, V = var, random = ~ 1 | Paper/ID, data = MA(), slab = MA()$study)
+    } else {
+      rma(MA()$es, MA()$var, slab=MA()$study)
+    }})
   
   # Forest plot panel height
   freq_forest_height <- reactive(length(fma()$yi) * 12 + 200)
@@ -1347,12 +1393,18 @@ server <- function(input, output, session) {
                                 efac = 0,
                                 col = "red",
                                 border = "red")
-    # Add Cochran's Q, its p-value, and I² statistic as text
-    # Position the text below the plot
-    mtext(side = 1, line = 4, 
-          text = paste0("Cochran's Q = ", round(model$QE, 2), 
+    # Add Cochran's Q and heterogeneity statistics as text below the plot.
+    # rma.mv (multilevel) has no I2; report its two variance components instead.
+    hetText <- if (inherits(model, "rma.mv")) {
+      paste0("σ² between papers = ", round(model$sigma2[1], 3),
+             ",  σ² within papers = ", round(model$sigma2[2], 3))
+    } else {
+      paste0("I² = ", round(model$I2, 2), "%")
+    }
+    mtext(side = 1, line = 4,
+          text = paste0("Cochran's Q = ", round(model$QE, 2),
                        " (p = ",  format(round(model$QEp, 4), nsmall = 4), ")\n",
-                       "I² = ", round(model$I2, 2), "%"),
+                       hetText),
           adj = 0, cex = 0.8)
     # Return the plot
     plot

@@ -18,7 +18,7 @@ output$moderatorSelection_ui <- renderUI({
     conditionalPanel(
       condition = "input.includeModerator == 'Yes'",
       radioButtons("moderator_variable", "Select one moderator variable",
-                   choices = Variable.Factor.Names)
+                   choices = c("Design", Variable.Factor.Names))
     ))
 })
 
@@ -89,7 +89,9 @@ output$metaRegressionOutputUI <- renderUI({
             col = "red",       # color of the summary polygon
             border = "red",    # color of the summary polygon
             # symbol size (CI ends + diamonds) from the "Symbol size" slider
-            efac = if (is.null(input$freq_efac)) 0.3 else input$freq_efac
+            efac = if (is.null(input$freq_efac)) 0.3 else input$freq_efac,
+            # three-level rma.mv models when the "Multilevel" aggregation option was used
+            multilevel = isMultilevelMA()
           )
           
           if (input$update_x_axis > 0) {
