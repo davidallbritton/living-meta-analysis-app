@@ -208,25 +208,21 @@ crosstabWideTable <- function(crosstab) {
   rbind(wide, totalRow)
 }
 
-## The crosstab itself: rows × columns with totals; for 3- and 4-way tables the
-## leading factors form grouped rows and the last factor supplies the columns
+## The crosstab itself: the leading factor(s) form (grouped) rows, the last factor
+## supplies the columns, with Sum row and column.  All widths (2-4 factors) go
+## through crosstabWideTable(); renderTable() cannot be handed a `table` object
+## directly because it as.data.frame()s it into long format.
 output$crosstabOut <- renderUI({
   ct <- descCrosstab()
   if (is.null(ct)) {
     return(p(em("Choose at least two factors above to build a crosstab.")))
   }
-  if (length(ct$vars) == 2) {
-    tagList(
-      p(paste0(ct$vars[1], " (rows)  ×  ", ct$vars[2], " (columns), with totals:")),
-      renderTable(addmargins(ct$table), rownames = TRUE, digits = 0)
-    )
-  } else {
-    tagList(
-      p(paste0("Crosstab of ", paste(ct$vars, collapse = " × "),
-               " (last factor as columns, with totals):")),
-      renderTable(crosstabWideTable(ct$table), digits = 0)
-    )
-  }
+  nRowVars <- length(ct$vars) - 1
+  tagList(
+    p(paste0(paste(ct$vars[seq_len(nRowVars)], collapse = " × "), " (rows)  ×  ",
+             ct$vars[length(ct$vars)], " (columns), with totals:")),
+    renderTable(crosstabWideTable(ct$table), digits = 0)
+  )
 })
 
 
@@ -262,16 +258,8 @@ output$descriptivesDown <- downloadHandler(
     }
     ct <- descCrosstab()
     if (!is.null(ct)) {
-      if (length(ct$vars) == 2) {
-        am <- addmargins(ct$table)
-        m  <- as.data.frame.matrix(am)
-        names(m) <- colnames(am)   # undo make.names() mangling of level labels
-        m <- cbind(stats::setNames(data.frame(rownames(m)), ct$vars[1]), m)
-        sheetList[["Crosstab"]] <- m
-      } else {
-        # 3- and 4-way: same wide layout as displayed on screen
-        sheetList[["Crosstab"]] <- crosstabWideTable(ct$table)
-      }
+      # same wide layout as displayed on screen, whatever the number of factors
+      sheetList[["Crosstab"]] <- crosstabWideTable(ct$table)
     }
     writexl::write_xlsx(sheetList, file)
   }
