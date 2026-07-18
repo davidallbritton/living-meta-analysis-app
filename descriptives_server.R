@@ -143,10 +143,14 @@ output$descriptivesTables <- renderUI({
                            renderTable(numTable, digits = 2)))
   }
   freqTables <- descFreqTables()
-  for (v in names(freqTables)) {
-    items <- c(items, list(h5(tags$b(paste0("Frequencies:  ", v))),
-                           renderTable(freqTables[[v]], digits = 1)))
-  }
+  # one closure per table via lapply: renderTable() evaluates its data lazily, so a
+  # `for` loop (one shared environment) would show every factor the LAST table only
+  freqItems <- lapply(names(freqTables), function(v) {
+    ft <- freqTables[[v]]
+    list(h5(tags$b(paste0("Frequencies:  ", v))),
+         renderTable(ft, digits = 1))
+  })
+  items <- c(items, unlist(freqItems, recursive = FALSE))
   tagList(items)
 })
 
@@ -160,8 +164,52 @@ output$crosstabChooser <- renderUI({
                                 placeholder = "Choose 2 to 4 factors..."))
 })
 
-## The crosstab itself: a 2-way table with margins, or a flattened (ftable)
-## display for 3- and 4-way tables
+## Flatten a 3- or 4-way crosstab into a wide display table: one column per level
+## of the LAST factor, one row per combination of the other factors (first factor
+## outermost, repeated outer labels blanked, ftable-style), plus Sum row/column.
+crosstabWideTable <- function(crosstab) {
+  vars    <- names(dimnames(crosstab))
+  rowVars <- vars[-length(vars)]
+  colVar  <- vars[length(vars)]
+  long <- as.data.frame(crosstab)
+  # as.data.frame() applies make.names() to the dim names, silently renaming
+  # non-syntactic variables (e.g. "Meta-analysis.Source" -> "Meta.analysis.Source");
+  # restore the true names (columns are in dim order, then the count column)
+  names(long) <- c(vars, "Freq")
+  # show NA levels as "(missing)"; appearance order preserves each dim's level order
+  for (v in vars) {
+    x <- as.character(long[[v]]); x[is.na(x)] <- "(missing)"
+    long[[v]] <- factor(x, levels = unique(x))
+  }
+  long <- long[do.call(order, long[rowVars]), ]   # first factor outermost
+  key  <- function(d) do.call(paste, c(d, list(sep = "\r")))
+  wide <- unique(long[rowVars])
+  colLevels <- levels(long[[colVar]])
+  for (cl in colLevels) {
+    sub <- long[long[[colVar]] == cl, c(rowVars, "Freq")]
+    wide[[cl]] <- sub$Freq[match(key(wide[rowVars]), key(sub[rowVars]))]
+  }
+  wide$Sum <- rowSums(wide[colLevels])
+  wide[rowVars] <- lapply(wide[rowVars], as.character)
+  # blank repeated outer labels (a label repeats only if everything left of it does
+  # too); compute all comparison keys BEFORE any blanking, or the first column's
+  # blanks corrupt the later columns' keys and their label leaks through once
+  if (length(rowVars) > 1) {
+    keys <- lapply(seq_len(length(rowVars) - 1),
+                   function(i) key(wide[rowVars[seq_len(i)]]))
+    for (i in seq_len(length(rowVars) - 1)) {
+      k <- keys[[i]]
+      wide[[rowVars[i]]][c(FALSE, k[-1] == k[-length(k)])] <- ""
+    }
+  }
+  totalRow <- wide[1, , drop = FALSE]
+  totalRow[rowVars] <- ""; totalRow[[rowVars[1]]] <- "Sum"
+  for (cl in c(colLevels, "Sum")) totalRow[[cl]] <- sum(wide[[cl]])
+  rbind(wide, totalRow)
+}
+
+## The crosstab itself: rows × columns with totals; for 3- and 4-way tables the
+## leading factors form grouped rows and the last factor supplies the columns
 output$crosstabOut <- renderUI({
   ct <- descCrosstab()
   if (is.null(ct)) {
@@ -175,8 +223,8 @@ output$crosstabOut <- renderUI({
   } else {
     tagList(
       p(paste0("Crosstab of ", paste(ct$vars, collapse = " × "),
-               " (last factor as columns):")),
-      renderPrint(ftable(ct$table))
+               " (last factor as columns, with totals):")),
+      renderTable(crosstabWideTable(ct$table), digits = 0)
     )
   }
 })
@@ -215,14 +263,14 @@ output$descriptivesDown <- downloadHandler(
     ct <- descCrosstab()
     if (!is.null(ct)) {
       if (length(ct$vars) == 2) {
-        m <- as.data.frame.matrix(addmargins(ct$table))
+        am <- addmargins(ct$table)
+        m  <- as.data.frame.matrix(am)
+        names(m) <- colnames(am)   # undo make.names() mangling of level labels
         m <- cbind(stats::setNames(data.frame(rownames(m)), ct$vars[1]), m)
         sheetList[["Crosstab"]] <- m
       } else {
-        # 3- and 4-way: long format (one row per cell), which suits a spreadsheet
-        longTable <- as.data.frame(ct$table, stringsAsFactors = FALSE)
-        names(longTable)[ncol(longTable)] <- "n ES"
-        sheetList[["Crosstab"]] <- longTable
+        # 3- and 4-way: same wide layout as displayed on screen
+        sheetList[["Crosstab"]] <- crosstabWideTable(ct$table)
       }
     }
     writexl::write_xlsx(sheetList, file)
