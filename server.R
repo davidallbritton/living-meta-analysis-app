@@ -1,7 +1,7 @@
 #######################################################################################
 ################### A General Tool for Living Meta-Analysis #################
 #######################################################################################
-# v.1.1 2026.07.17
+# v.1.2 2026.07.18
 # feature (2026-07-14): selection-factor checkboxes show live "[n ES, k studies]" count badges.
 
 ################### Shiny App SERVER ###################################
@@ -112,15 +112,20 @@ server <- function(input, output, session) {
         df <- readr::read_csv(file_path, show_col_types = FALSE)  %>% as.data.frame()
       }
       #
+      # the four marker columns are required (they bracket the selection variables)
+      markers <- c("Begin.Selection.Factors", "End.Selection.Factors",
+                   "Begin.Selection.Numerics", "End.Selection.Numerics")
+      missingMarkers <- setdiff(markers, names(df))
+      if (length(missingMarkers) > 0) {
+        showNotification(paste0("This data file cannot be used: it is missing the required marker column(s) ",
+                                paste(missingMarkers, collapse = ", "),
+                                '.  See the list of required columns (and the template file) on the "Explanation" tab.'),
+                         type = "error", duration = 20)
+        return(FALSE)
+      }
       # make sure the numeric columns are of the correct type
       start_col <- which(names(df) == "Begin.Selection.Numerics")
       end_col <- which(names(df) == "End.Selection.Numerics")
-      # Check if both columns are found
-      if (length(start_col) == 0 || length(end_col) == 0) {
-        # Instead of stop(), use a Shiny-friendly method to show an error
-        showNotification("Start or end column not found in the dataframe", type = "error")
-        return(FALSE)
-      }
       # Convert columns from start to end into numeric
       df[, start_col:end_col] <- lapply(df[, start_col:end_col], function(x) as.numeric(as.character(x)))
       #
@@ -1226,6 +1231,8 @@ server <- function(input, output, session) {
         p(),
         downloadButton("originalData", "Data as originally uploaded"),
         p(),
+        downloadButton("updatedData.down", "Current data including added studies (re-uploadable .xlsx)"),
+        p(),
         downloadButton("currentData.down", "Data as currently in use (primarily for debugging)"),
         p(),
         downloadButton("listInputs", "All selected Study Criteria and Prior Specifications (.json)"),
@@ -1246,7 +1253,19 @@ server <- function(input, output, session) {
       writexl::write_xlsx(myrvs$df.original, file)
     }
   )
-  #  
+  #
+  # The current data in its original (re-uploadable) format: the loaded data
+  # file plus any rows added through "Add a Study".  Single sheet with the same
+  # columns as the input file, so it can be uploaded again in "Load Data File".
+  output$updatedData.down <- downloadHandler(
+    filename = function() {
+      "currentDataWithAddedStudies.xlsx"
+    },
+    content = function (file) {
+      writexl::write_xlsx(as.data.frame(myrvs$df.updated), file)
+    }
+  )
+  #
   output$currentData.down <- downloadHandler(
     filename = function() {
       "currentData.xlsx" 
