@@ -322,7 +322,7 @@ server <- function(input, output, session) {
              bsPopover(id="q118", title = "Aggregation.",
                        content = paste0("<p>Aggregate effect sizes over ID (default), aggregate over papers, or use no aggregation with a multilevel model.",
                                         "<p>Selecting Papers will compute a single aggregated effect size for each paper. Selecting ID will aggregate based on the numbers in the ID column in the data file.",
-                                        "<p>Selecting None (multilevel model) keeps every effect size as its own row and fits a three-level model (effect sizes nested in papers, using metafor rma.mv) for the frequentist analyses.  The Bayesian tabs require aggregated data and will ask you to switch back to ID or Papers.",
+                                        "<p>Selecting None (multilevel model) keeps every effect size as its own row and fits a three-level CHE model for the frequentist analyses: effect sizes nested in papers (metafor rma.mv), within-paper sampling correlation assumed 0.5 (the same assumption the aggregation options make), and cluster-robust (CR2) confidence intervals.  The Bayesian tabs require aggregated data and will ask you to switch back to ID or Papers.",
                                         "<p>Note: aggregating over Papers blends a paper&#39;s effect sizes across its conditions, so the meta-regression tabs will not accept a moderator that varies within any selected paper.  Use ID or None (multilevel model) for such moderators.",
                                         "<p>Default: ID."),
                        placement = "right", 
@@ -1397,13 +1397,15 @@ server <- function(input, output, session) {
   #
   # Create model for frequentist meta-analysis.
   # Aggregated data (ID/Papers): two-level random-effects rma().
-  # Multilevel (no aggregation): three-level rma.mv() with effect sizes nested
-  # in papers (random = ~ 1 | Paper/ID).
+  # Multilevel (no aggregation): the CHE working model via fitMultilevelCHE()
+  # (metaRegressionFunctions.R) -- three-level rma.mv with effect sizes nested
+  # in papers, within-paper sampling correlation imputed at rho = 0.5, and
+  # cluster-robust (CR2/Satterthwaite) tests and confidence intervals.
   fma <- reactive({
     MA()  # must reference MA() first so its check for (nrows > 0) happens
     #
     if (isMultilevelMA()) {
-      rma.mv(yi = es, V = var, random = ~ 1 | Paper/ID, data = MA(), slab = MA()$study)
+      fitMultilevelCHE(MA())
     } else {
       rma(MA()$es, MA()$var, slab=MA()$study)
     }})
@@ -1427,7 +1429,8 @@ server <- function(input, output, session) {
     # rma.mv (multilevel) has no I2; report its two variance components instead.
     hetText <- if (inherits(model, "rma.mv")) {
       paste0("σ² between papers = ", round(model$sigma2[1], 3),
-             ",  σ² within papers = ", round(model$sigma2[2], 3))
+             ",  σ² within papers = ", round(model$sigma2[2], 3),
+             "   (CHE model; summary CI is cluster-robust)")
     } else {
       paste0("I² = ", round(model$I2, 2), "%")
     }

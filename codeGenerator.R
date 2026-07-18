@@ -379,10 +379,13 @@ output$boxplot
 ########## frequentist analyses
 
 # Create model for frequentist meta-analysis:
-# aggregated data -> two-level rma(); Multilevel -> three-level rma.mv()
-# with effect sizes nested in papers
+# aggregated data -> two-level rma(); Multilevel -> the CHE working model via
+# fitMultilevelCHE() (defined in the downloaded HelperFunctions.R): three-level
+# rma.mv with effect sizes nested in papers, within-paper sampling correlation
+# imputed at rho = 0.5, and cluster-robust (CR2) tests and confidence intervals
+# (requires the clubSandwich package)
 if (aggregation == "Multilevel") {
-  fma <- rma.mv(yi = es, V = var, random = ~ 1 | Paper/ID, data = MA, slab = MA$study)
+  fma <- fitMultilevelCHE(MA)
 } else {
   fma <- rma(MA$es, MA$var, slab=MA$study)
 }
@@ -403,7 +406,8 @@ create_freq_forest <- function(fma) {
   # (multilevel rma.mv models have no I2; show the variance components instead)
   hetText <- if (inherits(model, "rma.mv")) {
     paste0("Sigma2 between papers = ", round(model$sigma2[1], 3),
-           ",  sigma2 within papers = ", round(model$sigma2[2], 3))
+           ",  sigma2 within papers = ", round(model$sigma2[2], 3),
+           "   (CHE model; summary CI is cluster-robust)")
   } else {
     paste0("I² = ", round(model$I2, 2), "%")
   }

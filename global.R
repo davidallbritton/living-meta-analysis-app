@@ -9,6 +9,7 @@ load(file = "data/2023updatedData.Rda")             # loads a dataframe called "
 # Load required packages and source helper functions #----
 library(purrr)
 library(metafor)
+library(clubSandwich)  # cluster-robust (CR2) inference for the multilevel CHE model
 library(readxl)
 library(writexl)
 library(tools)
