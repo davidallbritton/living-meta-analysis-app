@@ -146,7 +146,7 @@ applySelections <- function(sel) {
   }
 
   ## study criteria
-  applyRadio("aggregation", c("ID", "Papers"))
+  applyRadio("aggregation", c("ID", "Papers", "Multilevel"))
   if (!is.null(sel$liveCounts))
     updateCheckboxInput(session, "liveCounts", value = isTRUE(unlist(sel$liveCounts)))
   applyCheckboxGroup("Design", lvlsOf("Design"))
@@ -162,7 +162,7 @@ applySelections <- function(sel) {
 
   ## moderator
   applyRadio("includeModerator", c("No", "Yes"))
-  applyRadio("moderator_variable", fN)
+  applyRadio("moderator_variable", c("Design", fN))
 
   ## priors ("Half student t" was the pre-v1.1 label for the half-normal tau prior)
   if (identical(as.character(unlist(sel$tauprior)), "Half student t")) sel$tauprior <- "Half normal"

@@ -18,7 +18,7 @@ output$moderatorSelection_ui <- renderUI({
     conditionalPanel(
       condition = "input.includeModerator == 'Yes'",
       radioButtons("moderator_variable", "Select one moderator variable",
-                   choices = Variable.Factor.Names),
+                   choices = c("Design", Variable.Factor.Names)),
       uiOutput("moderatorAggWarning")
     ))
 })
@@ -44,8 +44,8 @@ output$moderatorAggWarning <- renderUI({
     tags$b("Warning:"), 'with "Aggregate over: Papers", at least one selected paper has',
     'effect sizes in different', tags$b(v), 'groups.  Aggregating would blend those groups',
     'together within each paper, so the meta-regression tabs will not analyze this',
-    'combination.  Switch "Aggregate over" to ID (in the "Study criteria" tab) to use',
-    'this moderator.')
+    'combination.  Switch "Aggregate over" to ID or "None (multilevel model)" (in the',
+    '"Study criteria" tab) to use this moderator.')
 })
 
 
@@ -112,9 +112,9 @@ output$metaRegressionOutputUI <- renderUI({
         "Aggregation combines each paper's effect sizes into a single value FIRST, so a",
         'subgroup analysis by', tags$b(moderatorName), 'would blend groups within papers and',
         "assign each paper's combined effect size to an arbitrary group."),
-      p('To analyze this moderator, switch "Aggregate over" to ID in the "Study criteria"',
-        'panel and press "(Re)Calculate Meta-Analysis".  (Aggregating over Papers remains',
-        'fine for moderators that are constant within each paper.)')
+      p('To analyze this moderator, switch "Aggregate over" to ID or "None (multilevel model)"',
+        'in the "Study criteria" panel and press "(Re)Calculate Meta-Analysis".  (Aggregating',
+        'over Papers remains fine for moderators that are constant within each paper.)')
     ))
   }
 
@@ -134,7 +134,9 @@ output$metaRegressionOutputUI <- renderUI({
             col = "red",       # color of the summary polygon
             border = "red",    # color of the summary polygon
             # symbol size (CI ends + diamonds) from the "Symbol size" slider
-            efac = if (is.null(input$freq_efac)) 0.3 else input$freq_efac
+            efac = if (is.null(input$freq_efac)) 0.3 else input$freq_efac,
+            # three-level rma.mv models when the "Multilevel" aggregation option was used
+            multilevel = isMultilevelMA()
           )
           
           if (input$update_x_axis > 0) {

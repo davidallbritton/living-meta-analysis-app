@@ -13,13 +13,17 @@ observe({   #update the meta-regression plot code when a moderator is selected
     isolate(metaRegCode(paste(
       "##### Meta-regression skipped: the analysis aggregates effect sizes over Papers,",
       "but the chosen moderator varies within at least one selected paper, so aggregation",
-      "would blend its groups together.  Use ID aggregation to analyze this moderator. #####")))
+      "would blend its groups together.  Use ID or Multilevel aggregation to analyze this",
+      "moderator. #####")))
     return()
   }
   moderatorArgText <- paste0('moderator=MA[["', moderatorChosen, '"]]')
   # efac follows the "Symbol size" slider on the frequentist meta-regression tab
   efacFreq <- if (is.null(input$freq_efac)) 0.3 else input$freq_efac
-  plotArgs <- paste0('MA=MA, ', moderatorArgText, ', col="red", border="red", efac=', efacFreq, ', caterpillar=FALSE')
+  # three-level rma.mv models when the "Multilevel" aggregation option is chosen
+  multilevelArg <- if (identical(input$aggregation, "Multilevel")) "TRUE" else "FALSE"
+  plotArgs <- paste0('MA=MA, ', moderatorArgText, ', col="red", border="red", efac=', efacFreq,
+                     ', caterpillar=FALSE, multilevel=', multilevelArg)
 
   metaRegText <- '
   ########## Code for making the meta-regression plot with one categorical moderator
@@ -52,8 +56,8 @@ observe({   # update the Bayesian meta-regression code when a moderator is selec
     isolate(bmrCode(paste(
       "##### Bayesian meta-regression skipped: the analysis aggregates effect sizes over",
       "Papers, but the chosen moderator varies within at least one selected paper, so",
-      "aggregation would blend its groups together.  Use ID aggregation to analyze this",
-      "moderator. #####")))
+      "aggregation would blend its groups together.  Use ID aggregation (or Multilevel,",
+      "with the frequentist tabs) to analyze this moderator. #####")))
     return()
   }
   # efac follows the "Symbol size" slider on the Bayesian meta-regression tab

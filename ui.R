@@ -310,6 +310,18 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                                tags$li("SMCR - using M1, M2, and SD2 from a within-subject design")
                                              )
                                            ),
+                                           p('Papers often contribute several effect sizes, which the standard two-level models',
+                                             'handle by aggregating them first (the "Aggregate over" setting: ID or Papers).',
+                                             'Alternatively, choosing "None (multilevel model)" keeps every effect size as its',
+                                             'own row and fits the correlated-and-hierarchical-effects (CHE) working model for',
+                                             'the frequentist analyses (including meta-regression): a three-level model with',
+                                             'effect sizes nested in papers (metafor::rma.mv, random = ~ 1 | Paper/ID), the',
+                                             'within-paper sampling correlation imputed at 0.5 (metafor::vcalc; the same',
+                                             'assumption the aggregation options make), and cluster-robust CR2 tests and',
+                                             'confidence intervals with Satterthwaite degrees of freedom (metafor::robust with',
+                                             'the clubSandwich package; Pustejovsky & Tipton, 2022).  The Bayesian analyses are',
+                                             'based on the bayesmeta package, which fits the two-level model only, so they',
+                                             'require one of the aggregation options.'),
                                            h4("Paper:"),
                                            
                                            ("Allbritton, D., Gómez, P., Angele, B., Vasilev, M., & Perea, M. (2024). Breathing Life Into Meta-Analytic Methods. Journal of Cognition, 7(1): 61, pp. 1–17. DOI:"), 
