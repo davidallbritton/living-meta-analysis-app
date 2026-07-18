@@ -570,6 +570,95 @@ applyAllFilters <- function(df, input, factorNames, numericNames) {
 }
 
 #######################################################################################
+## Descriptives table builders  [used by the Descriptives tab AND the downloaded
+## reproducibility code, so they live here rather than in descriptives_server.R]
+#######################################################################################
+
+## Frequency table for one factor: one row per level in `lvls` (typically the
+## levels ticked in the sidebar, so zero counts stay visible), with effect-size
+## and distinct-study counts, plus a "(missing)" row when NA values are present.
+descFreqTable <- function(d, varName, lvls, studyCol = "Paper") {
+  st <- as.character(d[[studyCol]])
+  x  <- as.character(d[[varName]])
+  nES   <- vapply(lvls, function(l) sum(!is.na(x) & x == l), integer(1))
+  nStud <- vapply(lvls, function(l) length(unique(st[!is.na(x) & x == l])), integer(1))
+  freqTable <- data.frame(Level = lvls, `n ES` = nES, `k studies` = nStud,
+                          `% of ES` = if (nrow(d) > 0) 100 * nES / nrow(d) else 0,
+                          check.names = FALSE)
+  if (any(is.na(x))) {
+    freqTable <- rbind(freqTable,
+                       data.frame(Level = "(missing)", `n ES` = sum(is.na(x)),
+                                  `k studies` = length(unique(st[is.na(x)])),
+                                  `% of ES` = 100 * sum(is.na(x)) / nrow(d),
+                                  check.names = FALSE))
+  }
+  freqTable
+}
+
+## Summary statistics for numeric variables: one row per variable.
+descNumericSummaryTable <- function(d, varNames) {
+  do.call(rbind, lapply(varNames, function(v) {
+    x <- suppressWarnings(as.numeric(d[[v]]))
+    n <- sum(!is.na(x))
+    if (n == 0) {
+      data.frame(Variable = v, n = 0L, Mean = NA_real_, SD = NA_real_,
+                 Median = NA_real_, Min = NA_real_, Max = NA_real_,
+                 Missing = sum(is.na(x)), check.names = FALSE)
+    } else {
+      data.frame(Variable = v, n = n,
+                 Mean = mean(x, na.rm = TRUE), SD = sd(x, na.rm = TRUE),
+                 Median = median(x, na.rm = TRUE),
+                 Min = min(x, na.rm = TRUE), Max = max(x, na.rm = TRUE),
+                 Missing = sum(is.na(x)), check.names = FALSE)
+    }
+  }))
+}
+
+## Flatten a 2- to 4-way crosstab into a wide display table: one column per level
+## of the LAST factor, one row per combination of the other factors (first factor
+## outermost, repeated outer labels blanked, ftable-style), plus Sum row/column.
+crosstabWideTable <- function(crosstab) {
+  vars    <- names(dimnames(crosstab))
+  rowVars <- vars[-length(vars)]
+  colVar  <- vars[length(vars)]
+  long <- as.data.frame(crosstab)
+  # as.data.frame() applies make.names() to the dim names, silently renaming
+  # non-syntactic variables (e.g. "Meta-analysis.Source" -> "Meta.analysis.Source");
+  # restore the true names (columns are in dim order, then the count column)
+  names(long) <- c(vars, "Freq")
+  # show NA levels as "(missing)"; appearance order preserves each dim's level order
+  for (v in vars) {
+    x <- as.character(long[[v]]); x[is.na(x)] <- "(missing)"
+    long[[v]] <- factor(x, levels = unique(x))
+  }
+  long <- long[do.call(order, long[rowVars]), ]   # first factor outermost
+  key  <- function(d) do.call(paste, c(d, list(sep = "\r")))
+  wide <- unique(long[rowVars])
+  colLevels <- levels(long[[colVar]])
+  for (cl in colLevels) {
+    sub <- long[long[[colVar]] == cl, c(rowVars, "Freq")]
+    wide[[cl]] <- sub$Freq[match(key(wide[rowVars]), key(sub[rowVars]))]
+  }
+  wide$Sum <- rowSums(wide[colLevels])
+  wide[rowVars] <- lapply(wide[rowVars], as.character)
+  # blank repeated outer labels (a label repeats only if everything left of it does
+  # too); compute all comparison keys BEFORE any blanking, or the first column's
+  # blanks corrupt the later columns' keys and their label leaks through once
+  if (length(rowVars) > 1) {
+    keys <- lapply(seq_len(length(rowVars) - 1),
+                   function(i) key(wide[rowVars[seq_len(i)]]))
+    for (i in seq_len(length(rowVars) - 1)) {
+      k <- keys[[i]]
+      wide[[rowVars[i]]][c(FALSE, k[-1] == k[-length(k)])] <- ""
+    }
+  }
+  totalRow <- wide[1, , drop = FALSE]
+  totalRow[rowVars] <- ""; totalRow[[rowVars[1]]] <- "Sum"
+  for (cl in c(colLevels, "Sum")) totalRow[[cl]] <- sum(wide[[cl]])
+  rbind(wide, totalRow)
+}
+
+#######################################################################################
 ## DYNAMIC (filter-aware) count badges  [added 2026-07-14, prototype]
 #######################################################################################
 # dynamicChoicesAllTargets(): for every target checkbox (Design + the factor columns),
