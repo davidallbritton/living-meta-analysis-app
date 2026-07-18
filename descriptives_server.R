@@ -61,8 +61,22 @@ descNumericSummary <- reactive({
   }))
 })
 
+## Levels of a selection factor that are currently ticked in the sidebar, in the
+## data's level order.  Ticked levels are shown EVERYWHERE (frequency tables and
+## crosstabs) even when other criteria leave them with zero rows -- an informative
+## zero ("a category you meant to include contributes nothing").  Unticked levels
+## are omitted everywhere: their zero is trivially true.  Falls back to all levels
+## while the sidebar checkboxes have not rendered yet.
+descTickedLevels <- function(v) {
+  fullData <- myrvs$df.reactive
+  lvls <- levels(fullData[[v]])
+  if (is.null(lvls)) lvls <- sort(unique(as.character(fullData[[v]])))
+  ticked <- input[[v]]
+  if (is.null(ticked)) lvls else intersect(lvls, ticked)
+}
+
 ## Frequency tables for the ticked factor variables: a named list of data frames
-## (levels come from the full current data set, so filtered-out levels show 0).
+## (rows are the factor's ticked levels, via descTickedLevels()).
 ## Empty list when none are ticked.
 descFreqTables <- reactive({
   chosenF <- input$descFactorsChosen
@@ -70,10 +84,8 @@ descFreqTables <- reactive({
   d <- descSelectedData()
   req(nrow(d) > 0)
   st <- as.character(d$Paper)
-  fullData <- myrvs$df.reactive
   out <- lapply(chosenF, function(v) {
-    lvls <- levels(fullData[[v]])
-    if (is.null(lvls)) lvls <- sort(unique(as.character(fullData[[v]])))
+    lvls <- descTickedLevels(v)
     x <- as.character(d[[v]])
     nES   <- vapply(lvls, function(l) sum(!is.na(x) & x == l), integer(1))
     nStud <- vapply(lvls, function(l) length(unique(st[!is.na(x) & x == l])), integer(1))
@@ -101,7 +113,8 @@ descCrosstab <- reactive({
   if (is.null(vars) || length(vars) < 2) return(NULL)
   d <- descSelectedData()
   req(nrow(d) > 0)
-  dims <- lapply(vars, function(v) factor(as.character(d[[v]])))
+  # ticked levels are kept even when empty (zero rows/columns); unticked dropped
+  dims <- lapply(vars, function(v) factor(as.character(d[[v]]), levels = descTickedLevels(v)))
   names(dims) <- vars
   crosstab <- do.call(table, c(dims, list(useNA = "ifany")))
   list(vars = vars, table = crosstab)
