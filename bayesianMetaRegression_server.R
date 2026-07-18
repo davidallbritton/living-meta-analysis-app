@@ -47,6 +47,9 @@ observe({
   req(input$mainTabset == "bayesian_meta_regression")
   req(input$includeModerator == "Yes")
   req(input$moderator_variable)
+  # blocked combination (Papers aggregation blends this moderator within papers):
+  # no confirm dialog; bmrModel() shows the explanation instead
+  req(!moderatorBlockedByPapersAgg(input$moderator_variable))
   #
   ## check the cache first (same key the bmr reactive uses)
   isolate({
@@ -87,6 +90,14 @@ bmrModel <- reactive({
                       'available with the "None (multilevel model)" aggregation option.',
                       'Choose "ID" or "Papers" under "Aggregate over" in the Study criteria panel',
                       'and press "(Re)Calculate Meta-Analysis".')))
+  # Papers aggregation + a moderator that varies within papers would analyze
+  # blended, arbitrarily labeled composites; refuse with an explanation
+  validate(need(!moderatorBlockedByPapersAgg(input$moderator_variable),
+                paste('Not computed: the analysis aggregates effect sizes over Papers, but at least',
+                      'one selected paper has effect sizes in different groups of this moderator.',
+                      'Aggregation would blend those groups together within each paper.',
+                      'Switch "Aggregate over" to ID or "None (multilevel model)" in the "Study criteria"',
+                      'panel and press "(Re)Calculate Meta-Analysis" to analyze this moderator.')))
   req(myrvs$triggerBmr)   # only run after user confirmation (or a cache hit)
   isolate({               # so changing priors does not rebuild before "Re-Calculate"
     MA            <- MA()

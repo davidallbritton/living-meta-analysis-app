@@ -323,6 +323,7 @@ server <- function(input, output, session) {
                        content = paste0("<p>Aggregate effect sizes over ID (default), aggregate over papers, or use no aggregation with a multilevel model.",
                                         "<p>Selecting Papers will compute a single aggregated effect size for each paper. Selecting ID will aggregate based on the numbers in the ID column in the data file.",
                                         "<p>Selecting None (multilevel model) keeps every effect size as its own row and fits a three-level model (effect sizes nested in papers, using metafor rma.mv) for the frequentist analyses.  The Bayesian tabs require aggregated data and will ask you to switch back to ID or Papers.",
+                                        "<p>Note: aggregating over Papers blends a paper&#39;s effect sizes across its conditions, so the meta-regression tabs will not accept a moderator that varies within any selected paper.  Use ID or None (multilevel model) for such moderators.",
                                         "<p>Default: ID."),
                        placement = "right", 
                        trigger = "click",
@@ -893,6 +894,25 @@ server <- function(input, output, session) {
       need(nrow(df_sub) > 0, "That returns zero studies. Please change your selection criteria and Recalculate.")
     )
     #
+    # Papers aggregation collapses each paper to ONE combined effect size, and the
+    # merge below keeps only the paper's FIRST row for every other column.  A
+    # moderator that varies within a paper is therefore both blended (the composite
+    # mixes its groups) and mislabeled (it gets the arbitrary first-row label), so
+    # the meta-regression tabs refuse such moderators.  Record, for each candidate
+    # moderator, whether it varies within any selected paper -- this must be
+    # checked BEFORE aggregating, because the aggregated table can no longer tell.
+    # (The NULL reset runs in EVERY mode -- including before the Multilevel early
+    # return below -- so stale flags from a previous Papers run cannot linger.)
+    myrvs$moderatorVariesWithinPapers <- NULL
+    if (input$aggregation == "Papers") {
+      modCandidates <- c("Design", Variable.Factor.Names)
+      byPaper <- as.character(df_sub$Paper.Number)
+      myrvs$moderatorVariesWithinPapers <- vapply(modCandidates, function(v) {
+        any(tapply(as.character(df_sub[[v]]), byPaper,
+                   function(x) length(unique(x)) > 1))
+      }, logical(1))
+    }
+    #
     ## "Multilevel": no aggregation -- keep every effect-size row and mark the
     ## result so the frequentist models fit a three-level rma.mv (effect sizes
     ## nested in papers) instead of the aggregated two-level rma.
@@ -933,8 +953,18 @@ server <- function(input, output, session) {
 
   ## TRUE when the current MA() came from the "Multilevel" (no aggregation) option
   isMultilevelMA <- function() isTRUE(attr(MA(), "multilevel"))
-  
-  
+
+  ## TRUE when the last recalculation aggregated over Papers AND the given
+  ## moderator varied within at least one selected paper -- its subgroup analysis
+  ## would then contain blended, arbitrarily labeled composites (see MA() above).
+  ## Used by both meta-regression tabs and their code generators.
+  moderatorBlockedByPapersAgg <- function(moderatorName) {
+    flags <- myrvs$moderatorVariesWithinPapers
+    if (is.null(flags) || is.null(moderatorName)) return(FALSE)
+    isTRUE(unname(flags[moderatorName]))
+  }
+
+
   ## modal to warn when Bayesian model update is requested
   observe({
     # Reactively depend on MA()

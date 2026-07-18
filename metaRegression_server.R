@@ -18,8 +18,34 @@ output$moderatorSelection_ui <- renderUI({
     conditionalPanel(
       condition = "input.includeModerator == 'Yes'",
       radioButtons("moderator_variable", "Select one moderator variable",
-                   choices = c("Design", Variable.Factor.Names))
+                   choices = c("Design", Variable.Factor.Names)),
+      uiOutput("moderatorAggWarning")
     ))
+})
+
+## Live warning under the moderator choices: with "Aggregate over: Papers", a
+## moderator that varies within one of the currently selected papers would be
+## blended within papers by the aggregation, so the meta-regression tabs will
+## refuse it (moderatorBlockedByPapersAgg, checked at recalculation time).
+## This warning uses the LIVE selection so the user sees it immediately, before
+## pressing (Re)Calculate.
+output$moderatorAggWarning <- renderUI({
+  req(isTRUE(input$includeModerator == "Yes"), input$moderator_variable)
+  req(isTRUE(input$aggregation == "Papers"))
+  df <- myrvs$df.reactive
+  req(df)
+  d <- applyAllFilters(df, input, myrvs$Variable.Factor.Names, myrvs$Variable.Numeric.Names)
+  req(nrow(d) > 0)
+  v <- input$moderator_variable
+  varies <- any(tapply(as.character(d[[v]]), as.character(d$Paper.Number),
+                       function(x) length(unique(x)) > 1))
+  req(varies)
+  p(style = "color: #b30000;",
+    tags$b("Warning:"), 'with "Aggregate over: Papers", at least one selected paper has',
+    'effect sizes in different', tags$b(v), 'groups.  Aggregating would blend those groups',
+    'together within each paper, so the meta-regression tabs will not analyze this',
+    'combination.  Switch "Aggregate over" to ID or "None (multilevel model)" (in the',
+    '"Study criteria" tab) to use this moderator.')
 })
 
 
@@ -72,7 +98,26 @@ output$metaRegressionOutputUI <- renderUI({
   } else {
     moderator <- MA[[moderatorName]]
   }
-  
+
+  # Papers aggregation + a moderator that varies within papers: the subgroup
+  # analysis would assign blended composites to arbitrary groups, so refuse it
+  # with an explanation instead of a plot
+  if (isTRUE(input$includeModerator == "Yes") && moderatorBlockedByPapersAgg(moderatorName)) {
+    return(tagList(
+      printButton,
+      h4("Frequentist Meta-Regression: Forest Plot with Subgroups"),
+      p(tags$b("Not available for this combination of settings.")),
+      p('The current analysis aggregates effect sizes over Papers, but at least one selected',
+        'paper contributes effect sizes in different', tags$b(moderatorName), 'groups.',
+        "Aggregation combines each paper's effect sizes into a single value FIRST, so a",
+        'subgroup analysis by', tags$b(moderatorName), 'would blend groups within papers and',
+        "assign each paper's combined effect size to an arbitrary group."),
+      p('To analyze this moderator, switch "Aggregate over" to ID or "None (multilevel model)"',
+        'in the "Study criteria" panel and press "(Re)Calculate Meta-Analysis".  (Aggregating',
+        'over Papers remains fine for moderators that are constant within each paper.)')
+    ))
+  }
+
   tagList(
     printButton,
     h4("Frequentist Meta-Regression: Forest Plot with Subgroups"),
