@@ -321,6 +321,7 @@ server <- function(input, output, session) {
              bsPopover(id="q118", title = "Aggregation.",
                        content = paste0("<p>Aggregate effect sizes over ID (default) or over papers.",
                                         "<p>Selecting Papers will compute a single aggregated effect size for each paper. Selecting ID will aggregate based on the numbers in the ID column in the data file.  If you want no aggregation, make sure the data file has a unique ID number for each line.",
+                                        "<p>Note: aggregating over Papers blends a paper&#39;s effect sizes across its conditions, so the meta-regression tabs will not accept a moderator that varies within any selected paper.  Use ID aggregation for such moderators.",
                                         "<p>Default: ID."),
                        placement = "right", 
                        trigger = "click",
@@ -891,6 +892,23 @@ server <- function(input, output, session) {
       need(nrow(df_sub) > 0, "That returns zero studies. Please change your selection criteria and Recalculate.")
     )
     #
+    # Papers aggregation collapses each paper to ONE combined effect size, and the
+    # merge below keeps only the paper's FIRST row for every other column.  A
+    # moderator that varies within a paper is therefore both blended (the composite
+    # mixes its groups) and mislabeled (it gets the arbitrary first-row label), so
+    # the meta-regression tabs refuse such moderators.  Record, for each candidate
+    # moderator, whether it varies within any selected paper -- this must be
+    # checked BEFORE aggregating, because the aggregated table can no longer tell.
+    myrvs$moderatorVariesWithinPapers <- NULL
+    if (input$aggregation == "Papers") {
+      modCandidates <- c("Design", Variable.Factor.Names)
+      byPaper <- as.character(df_sub$Paper.Number)
+      myrvs$moderatorVariesWithinPapers <- vapply(modCandidates, function(v) {
+        any(tapply(as.character(df_sub[[v]]), byPaper,
+                   function(x) length(unique(x)) > 1))
+      }, logical(1))
+    }
+    #
     # replace ID with Paper.Number if aggregating over papers:
     if (input$aggregation == "Papers") {
       df_sub$ID <- df_sub$Paper.Number
@@ -911,8 +929,18 @@ server <- function(input, output, session) {
     myrvs$ma_num <- myrvs$ma_num + 1
     MA
   })
-  
-  
+
+  ## TRUE when the last recalculation aggregated over Papers AND the given
+  ## moderator varied within at least one selected paper -- its subgroup analysis
+  ## would then contain blended, arbitrarily labeled composites (see MA() above).
+  ## Used by both meta-regression tabs and their code generators.
+  moderatorBlockedByPapersAgg <- function(moderatorName) {
+    flags <- myrvs$moderatorVariesWithinPapers
+    if (is.null(flags) || is.null(moderatorName)) return(FALSE)
+    isTRUE(unname(flags[moderatorName]))
+  }
+
+
   ## modal to warn when Bayesian model update is requested
   observe({
     # Reactively depend on MA()

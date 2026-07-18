@@ -7,6 +7,15 @@ observe({   #update the meta-regression plot code when a moderator is selected
   req(input$includeModerator)
   req(input$includeModerator == "Yes")
   moderatorChosen <- input$moderator_variable
+  # blocked in the app (Papers aggregation blends this moderator within papers):
+  # generate an explanatory comment instead of the analysis
+  if (moderatorBlockedByPapersAgg(moderatorChosen)) {
+    isolate(metaRegCode(paste(
+      "##### Meta-regression skipped: the analysis aggregates effect sizes over Papers,",
+      "but the chosen moderator varies within at least one selected paper, so aggregation",
+      "would blend its groups together.  Use ID aggregation to analyze this moderator. #####")))
+    return()
+  }
   moderatorArgText <- paste0('moderator=MA[["', moderatorChosen, '"]]')
   # efac follows the "Symbol size" slider on the frequentist meta-regression tab
   efacFreq <- if (is.null(input$freq_efac)) 0.3 else input$freq_efac
@@ -38,6 +47,15 @@ observe({   # update the Bayesian meta-regression code when a moderator is selec
   req(input$includeModerator == "Yes")
   moderatorChosen <- input$moderator_variable
   req(moderatorChosen)
+  # blocked in the app (Papers aggregation blends this moderator within papers)
+  if (moderatorBlockedByPapersAgg(moderatorChosen)) {
+    isolate(bmrCode(paste(
+      "##### Bayesian meta-regression skipped: the analysis aggregates effect sizes over",
+      "Papers, but the chosen moderator varies within at least one selected paper, so",
+      "aggregation would blend its groups together.  Use ID aggregation to analyze this",
+      "moderator. #####")))
+    return()
+  }
   # efac follows the "Symbol size" slider on the Bayesian meta-regression tab
   efacBmr <- if (is.null(input$bmrEfac)) 0.3 else input$bmrEfac
 
