@@ -1298,7 +1298,8 @@ server <- function(input, output, session) {
   # selections_server.R, sourced further down; downloads only fire afterwards).
   # This download used to be an .xlsx listing of the raw input values
   # (currentInputSelections.xlsx); the .json replacement records the same
-  # criteria/moderator/prior selections but can also be loaded back into the app.
+  # criteria/moderator/prior selections (plus the Descriptives-tab choices)
+  # and can also be loaded back into the app.
   output$listInputs <- downloadHandler(
     filename = function() selectionsFileName(),
     content = function (file) writeSelectionsJson(file)

@@ -10,6 +10,8 @@
 #     and the include/exclude-specific-studies list
 #   - Moderator Selection: includeModerator, moderator_variable
 #   - Prior specifications: mupriormean, mupriorsd, robust, tauprior, scaletau
+#   - Descriptives tab: the ticked factor/numeric variables and the variables of
+#     every crosstab (a "descriptives" block, applied by descriptives_server.R)
 #
 # The saved file records which data file it was made for.  Loading a file saved for
 # a different data set still applies whatever matches (with a warning) -- that is
@@ -58,6 +60,21 @@ collectSelections <- function() {
   Filter(Negate(is.null), sel)
 }
 
+## current Descriptives-tab choices: the ticked variables and the variables of
+## every complete crosstab.  This block is ALWAYS written (empty when nothing is
+## selected, or when the tab was never opened), so loading a file also clears a
+## Descriptives tab that had selections -- the restore stays exact.
+collectDescriptives <- function() {
+  cts <- lapply(myCrosstabIds(), function(id) input[[paste0("crosstabVars_", id)]])
+  # complete crosstabs only; length >= 2 also keeps every saved crosstab a json
+  # ARRAY (auto_unbox would turn a 1-variable crosstab into a bare string,
+  # making one 2-variable crosstab and two 1-variable ones indistinguishable)
+  cts <- Filter(function(v) length(v) >= 2, cts)
+  list(factors   = as.character(input$descFactorsChosen),
+       numerics  = as.character(input$descNumericsChosen),
+       crosstabs = cts)
+}
+
 
 ## ---- Save: download the current selections as a .json file ----
 
@@ -72,7 +89,8 @@ writeSelectionsJson <- function(file) {
          format   = 1,
          saved    = as.character(Sys.Date()),
          dataFile = currentDataName(),
-         selections = collectSelections()),
+         selections   = collectSelections(),
+         descriptives = collectDescriptives()),
     file, auto_unbox = TRUE, pretty = TRUE, digits = NA)
 }
 
@@ -173,12 +191,16 @@ observe({
   applySelections(sel)
 })
 
-## read + sanity-check a selections file; returns its selections list or NULL
+## read + sanity-check a selections file; returns the parsed file or NULL.
+## Valid = our type marker plus at least one non-empty block (selections or
+## descriptives), so a stray unrelated .json is still rejected.
 readSelectionsFile <- function(path) {
   parsed <- tryCatch(jsonlite::fromJSON(path, simplifyVector = TRUE),
                      error = function(e) NULL)
-  if (is.null(parsed) || !identical(parsed$type, "selection-settings") ||
-      !is.list(parsed$selections) || !length(parsed$selections)) return(NULL)
+  if (is.null(parsed) || !identical(parsed$type, "selection-settings")) return(NULL)
+  hasSel  <- is.list(parsed$selections)   && length(parsed$selections)   > 0
+  hasDesc <- is.list(parsed$descriptives) && length(Filter(length, parsed$descriptives)) > 0
+  if (!hasSel && !hasDesc) return(NULL)
   parsed
 }
 
@@ -196,7 +218,9 @@ observeEvent(input$SelectionsUp, {
                                    'please review the Study criteria panel.'),
                              parsed$dataFile, currentDataName()),
                      type = "warning", duration = 15)
-  pendingSelections(parsed$selections)
+  if (length(parsed$selections)) pendingSelections(parsed$selections)
+  # files saved before the descriptives block existed simply lack it: leave the tab alone
+  if (!is.null(parsed$descriptives)) pendingDescriptives(parsed$descriptives)
 })
 
 ## at startup, auto-apply data/default_selections.json (if this app copy has one)
@@ -213,5 +237,6 @@ observeEvent(myrvs$df.reactive, once = TRUE, {
   }
   showNotification("Applying this app copy's default selections (data/default_selections.json).",
                    type = "message", duration = 8)
-  pendingSelections(parsed$selections)
+  if (length(parsed$selections)) pendingSelections(parsed$selections)
+  if (!is.null(parsed$descriptives)) pendingDescriptives(parsed$descriptives)
 })

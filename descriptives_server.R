@@ -206,12 +206,16 @@ output$crosstabChooser <- renderUI({
   units <- lapply(seq_along(ids), function(i) {
     id <- ids[i]
     inputId <- paste0("crosstabVars_", id)
+    # a freshly restored crosstab (from a selection-settings file) takes its
+    # variables from crosstabInitialSel until its own input has reported a value
+    sel0 <- isolate(input[[inputId]])
+    if (is.null(sel0)) sel0 <- isolate(crosstabInitialSel())[[as.character(id)]]
     tagList(
       fluidRow(
         column(9, selectizeInput(inputId,
                                  sprintf("Crosstab %d:", i),
                                  choices = choices,
-                                 selected = isolate(input[[inputId]]),
+                                 selected = sel0,
                                  multiple = TRUE,
                                  options = list(maxItems = 4,
                                                 placeholder = "Choose 2 to 4 variables..."))),
@@ -232,6 +236,63 @@ output$crosstabChooser <- renderUI({
     units,
     actionButton("addCrosstab", "Add another crosstab")
   )
+})
+
+
+## ---- Restoring saved Descriptives choices (from a selection-settings file) ----
+##
+## pendingDescriptives holds the "descriptives" block of a loaded selection-
+## settings file (set by selections_server.R) until this tab's choosers are live
+## in the browser -- they only render when the Descriptives tab is first opened,
+## so the wait can span tab switches.  input$addCrosstab existing (the action
+## button reports its initial 0 once bound) implies the choosers are rendered
+## and bound, so the update messages below will not be lost.
+pendingDescriptives <- reactiveVal(NULL)
+
+## initial variable choices for restored crosstab pickers, keyed by crosstab id
+## (as character); consulted by the chooser renderUI while a picker's own input
+## has not reported a value yet.  Replaced wholesale on each restore.
+crosstabInitialSel <- reactiveVal(list())
+
+## the saved crosstabs block comes back from JSON in several shapes: a list of
+## character vectors (mixed widths), a matrix (all crosstabs the same width),
+## a bare vector (a single crosstab), or NULL/empty
+normalizeCrosstabList <- function(cts) {
+  if (is.null(cts) || !length(cts)) return(list())
+  if (is.matrix(cts))
+    return(lapply(seq_len(nrow(cts)), function(i) as.character(cts[i, ])))
+  if (!is.list(cts)) return(list(as.character(cts)))
+  lapply(cts, function(v) as.character(unlist(v)))
+}
+
+observe({
+  pd <- pendingDescriptives()
+  req(pd, !is.null(input$addCrosstab))     # wait until the choosers are live
+  pendingDescriptives(NULL)
+  # ticked variables (saved names not offered for the current data are dropped)
+  updateCheckboxGroupInput(session, "descFactorsChosen",
+    selected = intersect(descFactorVars(), as.character(unlist(pd$factors))))
+  updateCheckboxGroupInput(session, "descNumericsChosen",
+    selected = intersect(descNumericVars(), as.character(unlist(pd$numerics))))
+  # replace the whole crosstab set with FRESH ids: a fresh picker has no
+  # lingering input value, so the chooser renderUI takes its selection from
+  # crosstabInitialSel and nothing from the pre-restore state leaks through
+  ctList <- normalizeCrosstabList(pd$crosstabs)
+  initSel <- list()
+  newIds  <- integer(0)
+  for (vars in ctList) {
+    id <- nextCrosstabId(); nextCrosstabId(id + 1L)
+    makeCrosstabUnit(id)
+    initSel[[as.character(id)]] <- vars
+    newIds <- c(newIds, id)
+  }
+  if (!length(newIds)) {                   # nothing saved: back to one empty picker
+    id <- nextCrosstabId(); nextCrosstabId(id + 1L)
+    makeCrosstabUnit(id)
+    newIds <- id
+  }
+  crosstabInitialSel(initSel)
+  myCrosstabIds(newIds)
 })
 
 
