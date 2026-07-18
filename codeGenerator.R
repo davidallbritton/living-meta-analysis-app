@@ -108,8 +108,31 @@ if(check_for_bad_chars(df)) {
 ## Generate non-reactive R code to create MA object and export the code to a file
 #
 observeEvent(reactiveTriggers(), {  # was just MA(), but needs additional reactive triggers, therefore updated to this
-  # Initialize the code with the static content from above
-  code_for_MA <- paste0(initialCode)
+  ## Data provenance comment for the top of the generated script.  Deliberately a
+  ## note about the STARTING file only: the session's data may since have been
+  ## extended via "Add a Study", so we never claim the analyzed data equals that
+  ## file -- the "current data" download is the authoritative copy.
+  dataSourceName <- if (is.null(myrvs$currentInputFile)) {
+    "the app default data set (Vasilev et al. 2018 plus 2023 updates)"
+  } else {
+    myrvs$currentInputFile
+  }
+  addedRows <- if (!is.null(myrvs$df.updated) && !is.null(myrvs$df.original)) {
+    nrow(myrvs$df.updated) - nrow(myrvs$df.original)
+  } else 0
+  provenanceNote <- sprintf('
+## Data provenance: the app session that generated this code STARTED from:
+##     %s
+%s## The exact data that was analyzed (including any additions) can be saved from
+## the app ("Downloads" tab -> current data file); set input_file below to that
+## file to reproduce the session exactly.
+', dataSourceName,
+    if (addedRows > 0) {
+      sprintf('## NOTE: %d effect size(s) were then added via the "Add a Study" tab, so the\n## analyzed data is NOT identical to that starting file.\n', addedRows)
+    } else "")
+
+  # Initialize the code with the provenance note plus the static content from above
+  code_for_MA <- paste0(provenanceNote, initialCode)
   #
   ##########
   ## Generate the code for the required selection fields based on current inputs
@@ -374,6 +397,9 @@ output$freq_funnel <- funnel(fma, xlab = "Observed outcome")
 
 
 ######### bayesian analyses:
+# (skipped entirely when calculate_bma was set to "No" above, since they all
+#  need the bma object)
+if (calculate_bma == "Yes") {
 
 # Forest Plot panel
 output$forest <-  forestplot.bayesmeta(bma, xlab = "Hedges g")
@@ -416,6 +442,8 @@ print("Joint posterior density")
 output$joint <- plot.bayesmeta(bma, which=2, main = "Joint posterior density of heterogeneity Tau and effect mu")
 print("Tau prior distribution")
 output$taupriorplot
+
+}  # end of bayesian analyses (calculate_bma guard)
 
 # Bayes factor robustness plot panel
 #
