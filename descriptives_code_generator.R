@@ -7,8 +7,10 @@ descriptivesCode <- reactiveVal("##### Nothing selected in the Descriptives tab;
 observe({   # update the descriptives code whenever the Descriptives tab choices change
   chosenF  <- input$descFactorsChosen
   chosenN  <- input$descNumericsChosen
-  ctVars   <- input$crosstabVars
-  if (!length(chosenF) && !length(chosenN) && length(ctVars) < 2) {
+  # the variable choices of every current crosstab (complete ones only)
+  ctList   <- lapply(myCrosstabIds(), function(id) input[[paste0("crosstabVars_", id)]])
+  ctList   <- Filter(function(v) length(v) >= 2, ctList)
+  if (!length(chosenF) && !length(chosenN) && !length(ctList)) {
     isolate(descriptivesCode(
       "##### Nothing selected in the Descriptives tab; no descriptive statistics code generated ########"))
     return()
@@ -18,22 +20,27 @@ observe({   # update the descriptives code whenever the Descriptives tab choices
     if (!length(x)) "character(0)"
     else paste0("c(", paste(escapeAndDQuote(enc2utf8(x)), collapse = ",\n                       "), ")")
   }
+  asListOfVectors <- function(xs) {
+    if (!length(xs)) "list()"
+    else paste0("list(\n  ", paste(vapply(xs, asVector, character(1)),
+                                   collapse = ",\n  "), ")")
+  }
 
   ## the recorded choices (dynamic part)
   choicesText <- sprintf('
 ########## Descriptive statistics for the currently selected data ##########
 #   Reproduces the "Descriptives" tab: summaries of the selected effect-size
 #   rows (all selection criteria applied, BEFORE effect-size aggregation).
-#   descFreqTable(), descNumericSummaryTable(), and crosstabWideTable() are
-#   defined in the downloaded HelperFunctions.R file.
-#   Factor levels ticked in the selection criteria always appear (zero counts
-#   included); unticked levels are omitted.
+#   descFreqTable(), descNumericSummaryTable(), crosstabWideTable(), and
+#   crosstabMeansWideTable() are defined in the downloaded HelperFunctions.R
+#   file.  Factor levels ticked in the selection criteria always appear (zero
+#   counts included); unticked levels are omitted.
 
-## variables chosen in the Descriptives tab:
+## variables chosen in the Descriptives tab (one vector per crosstab):
 descFactorsChosen  <- %s
 descNumericsChosen <- %s
-crosstabVars       <- %s
-', asVector(chosenF), asVector(chosenN), asVector(ctVars))
+crosstabList       <- %s
+', asVector(chosenF), asVector(chosenN), asListOfVectors(ctList))
 
   ## the computation (static part; reuses the selection variables recorded above
   ## for the MA object: Variable.Factors.selected, Design, Publication.Year, etc.)
@@ -80,12 +87,26 @@ for (v in descFactorsChosen) {
   cat("\\nFrequencies: ", v, "\\n")
   print(descFreqTable(selectedData, v, lvls = tickedLevelsFor(v)), row.names = FALSE)
 }
-if (length(crosstabVars) >= 2) {
-  cat("\\nCrosstab of ", paste(crosstabVars, collapse = " x "), " (n ES, last factor as columns):\\n")
-  dims <- lapply(crosstabVars, function(v) factor(as.character(selectedData[[v]]),
-                                                  levels = tickedLevelsFor(v)))
-  names(dims) <- crosstabVars
-  print(crosstabWideTable(do.call(table, c(dims, list(useNA = "ifany")))), row.names = FALSE)
+## crosstabs: factors form the dimensions (cells are effect-size counts); if a
+## numeric variable is included, its cell means are shown as "mean (n)" instead
+numericCandidates <- c("Publication.Year", "N_Intervention", Variable.Numeric.Names)
+for (ctVars in crosstabList) {
+  numVar  <- intersect(ctVars, numericCandidates)
+  facVars <- setdiff(ctVars, numVar)
+  if (length(numVar) > 1 || length(facVars) < 1) next   # invalid in the app too; skip
+  lvlsList <- lapply(facVars, tickedLevelsFor); names(lvlsList) <- facVars
+  if (length(numVar) == 1) {
+    cat("\\nCell means of ", numVar, " by ", paste(facVars, collapse = " x "),
+        ", as mean (n ES):\\n", sep = "")
+    print(crosstabMeansWideTable(selectedData, facVars, numVar, lvlsList), row.names = FALSE)
+  } else {
+    cat("\\nCrosstab of ", paste(facVars, collapse = " x "),
+        " (n ES, last factor as columns):\\n", sep = "")
+    dims <- lapply(facVars, function(v) factor(as.character(selectedData[[v]]),
+                                               levels = lvlsList[[v]]))
+    names(dims) <- facVars
+    print(crosstabWideTable(do.call(table, c(dims, list(useNA = "ifany")))), row.names = FALSE)
+  }
 }
 '
 

@@ -347,7 +347,6 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  uiOutput("descriptivesTables"),
                                  hr(),
                                  uiOutput("crosstabChooser"),
-                                 uiOutput("crosstabOut"),
                                  hr(),
                                  downloadButton("descriptivesDown", "Download these tables (.xlsx)"), br(), br()
                         ),

@@ -10,9 +10,11 @@
 # everything here updates immediately as the selection changes, with no Recalculate.
 #
 # The user ticks variables for individual descriptives (factors -> frequency tables
-# with ES and study counts; numerics -> summary statistics), and can cross-tabulate
-# 2 to 4 of the factor variables.  Variable choices use the same labels (plain column
-# names) as the sidebar selection panel.
+# with ES and study counts; numerics -> summary statistics), and can build any
+# number of crosstabs ("Add another crosstab"), each over 2 to 4 variables.  A
+# crosstab of factors shows effect-size counts; including ONE numeric variable
+# switches its cells to that variable's means, shown as "mean (n)".  Variable
+# choices use the same labels (plain column names) as the sidebar selection panel.
 #
 # The tables are computed in reactives (descNumericSummary / descFreqTables /
 # descCrosstab) shared by the on-screen display and the .xlsx download handler,
@@ -76,21 +78,42 @@ descFreqTables <- reactive({
   out
 })
 
-## Crosstab of the 2-4 chosen factors (cell counts are effect sizes).
-## NULL until at least two factors are chosen.  Returns a list:
-##   vars  : the chosen variable names
-##   table : the table object (2-way: with margins added for display)
-descCrosstab <- reactive({
-  vars <- input$crosstabVars
+## Build one crosstab from its chosen variables (2-4 of them).  Factors form the
+## dimensions; if ONE numeric variable is included, cells show its mean as
+## "mean (n)" instead of effect-size counts.  Returns NULL when fewer than two
+## variables are chosen, a character validation message when the choice is
+## invalid, or list(title, table = <wide data frame>, digits).
+descCrosstabBuild <- function(vars) {
   if (is.null(vars) || length(vars) < 2) return(NULL)
+  numVars <- intersect(vars, descNumericVars())
+  facVars <- setdiff(vars, numVars)          # keeps the chosen order
+  if (length(numVars) > 1)
+    return(paste("Choose at most one numeric variable per crosstab (its cell",
+                 "means are shown); the other variables must be factors."))
   d <- descSelectedData()
-  req(nrow(d) > 0)
+  if (nrow(d) == 0) return("The current selection contains no data.")
   # ticked levels are kept even when empty (zero rows/columns); unticked dropped
-  dims <- lapply(vars, function(v) factor(as.character(d[[v]]), levels = descTickedLevels(v)))
-  names(dims) <- vars
-  crosstab <- do.call(table, c(dims, list(useNA = "ifany")))
-  list(vars = vars, table = crosstab)
-})
+  lvlsList <- lapply(facVars, descTickedLevels); names(lvlsList) <- facVars
+  if (length(numVars) == 1) {
+    title <- if (length(facVars) == 1)
+      sprintf("Mean %s (n effect sizes) by %s:", numVars, facVars)
+    else
+      sprintf("Mean %s (n effect sizes):  %s (rows)  ×  %s (columns), with marginal means:",
+              numVars, paste(facVars[-length(facVars)], collapse = " × "),
+              facVars[length(facVars)])
+    list(title = title,
+         table = crosstabMeansWideTable(d, facVars, numVars, lvlsList),
+         digits = 2)
+  } else {
+    dims <- lapply(facVars, function(v) factor(as.character(d[[v]]), levels = lvlsList[[v]]))
+    names(dims) <- facVars
+    crosstab <- do.call(table, c(dims, list(useNA = "ifany")))
+    title <- sprintf("Effect-size counts:  %s (rows)  ×  %s (columns), with totals:",
+                     paste(facVars[-length(facVars)], collapse = " × "),
+                     facVars[length(facVars)])
+    list(title = title, table = crosstabWideTable(crosstab), digits = 0)
+  }
+}
 
 
 ## ---- Outputs for the Descriptives tab ----
@@ -139,30 +162,75 @@ output$descriptivesTables <- renderUI({
   tagList(items)
 })
 
-## Crosstab chooser (factors only; counts of effect sizes need categories, so
-## numeric selection variables are not offered here)
-output$crosstabChooser <- renderUI({
-  selectizeInput("crosstabVars",
-                 "Cross-tabulate 2 to 4 factors (cell counts are effect sizes):",
-                 choices = descFactorVars(), multiple = TRUE,
-                 options = list(maxItems = 4,
-                                placeholder = "Choose 2 to 4 factors..."))
+## ---- Crosstabs: as many as the user likes ("Add another crosstab") ----
+##
+## Each crosstab is identified by an id that lives in myCrosstabIds; its variable
+## picker is input[[crosstabVars_<id>]] and its table is output[[crosstabOut_<id>]].
+## Ids are never reused; removing a crosstab just drops its id (its stale input
+## value is harmless because everything iterates over the current ids only).
+myCrosstabIds  <- reactiveVal(1L)
+nextCrosstabId <- reactiveVal(2L)
+
+## per-id pieces that must be created exactly once: the table output and the
+## Remove-button observer
+makeCrosstabUnit <- function(id) {
+  output[[paste0("crosstabOut_", id)]] <- renderUI({
+    ct <- descCrosstabBuild(input[[paste0("crosstabVars_", id)]])
+    if (is.null(ct)) {
+      return(p(em("Choose at least two variables above to build this crosstab.")))
+    }
+    if (is.character(ct)) return(p(em(ct)))
+    tagList(p(ct$title), renderTable(ct$table, digits = ct$digits))
+  })
+  observeEvent(input[[paste0("removeCrosstab_", id)]], {
+    myCrosstabIds(setdiff(myCrosstabIds(), id))
+  })
+}
+makeCrosstabUnit(1L)
+
+observeEvent(input$addCrosstab, {
+  id <- nextCrosstabId()
+  makeCrosstabUnit(id)
+  myCrosstabIds(c(myCrosstabIds(), id))
+  nextCrosstabId(id + 1L)
 })
 
-## The crosstab itself: the leading factor(s) form (grouped) rows, the last factor
-## supplies the columns, with Sum row and column.  All widths (2-4 factors) go
-## through crosstabWideTable(); renderTable() cannot be handed a `table` object
-## directly because it as.data.frame()s it into long format.
-output$crosstabOut <- renderUI({
-  ct <- descCrosstab()
-  if (is.null(ct)) {
-    return(p(em("Choose at least two factors above to build a crosstab.")))
-  }
-  nRowVars <- length(ct$vars) - 1
+## The whole crosstab section: one picker + table per current id, then the Add
+## button.  Re-renders when a crosstab is added/removed or the data set changes;
+## isolate() keeps each picker's current selection across those re-renders
+## (selectize itself drops any selected variable that no longer exists).
+output$crosstabChooser <- renderUI({
+  ids <- myCrosstabIds()
+  choices <- list("Factors (table dimensions)" = descFactorVars(),
+                  "Numeric (cell means)"       = descNumericVars())
+  units <- lapply(seq_along(ids), function(i) {
+    id <- ids[i]
+    inputId <- paste0("crosstabVars_", id)
+    tagList(
+      fluidRow(
+        column(9, selectizeInput(inputId,
+                                 sprintf("Crosstab %d:", i),
+                                 choices = choices,
+                                 selected = isolate(input[[inputId]]),
+                                 multiple = TRUE,
+                                 options = list(maxItems = 4,
+                                                placeholder = "Choose 2 to 4 variables..."))),
+        column(3, if (length(ids) > 1)
+          actionButton(paste0("removeCrosstab_", id), "Remove",
+                       style = "margin-top: 25px;"))
+      ),
+      uiOutput(paste0("crosstabOut_", id)),
+      br()
+    )
+  })
   tagList(
-    p(paste0(paste(ct$vars[seq_len(nRowVars)], collapse = " × "), " (rows)  ×  ",
-             ct$vars[length(ct$vars)], " (columns), with totals:")),
-    renderTable(crosstabWideTable(ct$table), digits = 0)
+    p(tags$b("Crosstabs."),
+      'Cross-tabulate 2 to 4 variables; the last factor chosen supplies the',
+      'columns.  With factors only, cells are effect-size counts (with Sum',
+      'row/column).  Include one numeric variable to show its cell means',
+      'instead, as "mean (n)", with marginal means in an "All" row/column.'),
+    units,
+    actionButton("addCrosstab", "Add another crosstab")
   )
 })
 
@@ -197,10 +265,14 @@ output$descriptivesDown <- downloadHandler(
     for (v in names(freqTables)) {
       sheetList[[descSheetName(v, prefix = "freq ")]] <- freqTables[[v]]
     }
-    ct <- descCrosstab()
-    if (!is.null(ct)) {
-      # same wide layout as displayed on screen, whatever the number of factors
-      sheetList[["Crosstab"]] <- crosstabWideTable(ct$table)
+    # one sheet per complete crosstab, same wide layout as displayed on screen
+    ctNum <- 0
+    for (id in myCrosstabIds()) {
+      vars <- input[[paste0("crosstabVars_", id)]]
+      ct <- descCrosstabBuild(vars)
+      if (is.null(ct) || is.character(ct)) next   # incomplete or invalid: skip
+      ctNum <- ctNum + 1
+      sheetList[[descSheetName(paste(c("Crosstab", ctNum, vars), collapse = " "))]] <- ct$table
     }
     writexl::write_xlsx(sheetList, file)
   }

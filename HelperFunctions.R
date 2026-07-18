@@ -614,9 +614,45 @@ descNumericSummaryTable <- function(d, varNames) {
   }))
 }
 
-## Flatten a 2- to 4-way crosstab into a wide display table: one column per level
-## of the LAST factor, one row per combination of the other factors (first factor
-## outermost, repeated outer labels blanked, ftable-style), plus Sum row/column.
+## ---- Crosstab wide-table builders --------------------------------------------
+## Both crosstab flavors (effect-size counts; cell means of a numeric variable)
+## share the same wide display layout: one column per level of the LAST factor,
+## one row per combination of the other factors (first factor outermost,
+## repeated outer labels blanked, ftable-style).
+
+## row-identity key for matching/comparing row-factor combinations
+.ctKey <- function(d) do.call(paste, c(d, list(sep = "\r")))
+
+## order `long` by the row factors and spread `valueCol` across the levels of
+## `colVar` (long must hold the complete level grid, as both as.data.frame(table)
+## and as.data.frame.table(tapply result) produce)
+.ctPivot <- function(long, rowVars, colVar, valueCol) {
+  long <- long[do.call(order, long[rowVars]), ]   # first factor outermost
+  wide <- unique(long[rowVars])
+  for (cl in levels(long[[colVar]])) {
+    sub <- long[long[[colVar]] == cl, c(rowVars, valueCol)]
+    wide[[cl]] <- sub[[valueCol]][match(.ctKey(wide[rowVars]), .ctKey(sub[rowVars]))]
+  }
+  wide
+}
+
+## blank repeated outer row labels (a label repeats only if everything left of it
+## does too); compute all comparison keys BEFORE any blanking, or the first
+## column's blanks corrupt the later columns' keys and their label leaks through
+## once.  The rowVars columns must already be character.
+.ctBlankRepeats <- function(wide, rowVars) {
+  if (length(rowVars) < 2) return(wide)
+  keys <- lapply(seq_len(length(rowVars) - 1),
+                 function(i) .ctKey(wide[rowVars[seq_len(i)]]))
+  for (i in seq_len(length(rowVars) - 1)) {
+    k <- keys[[i]]
+    wide[[rowVars[i]]][c(FALSE, k[-1] == k[-length(k)])] <- ""
+  }
+  wide
+}
+
+## Flatten a 2- to 4-way COUNT crosstab (a `table` object) into the wide display
+## layout, plus Sum row and column.
 crosstabWideTable <- function(crosstab) {
   vars    <- names(dimnames(crosstab))
   rowVars <- vars[-length(vars)]
@@ -631,31 +667,73 @@ crosstabWideTable <- function(crosstab) {
     x <- as.character(long[[v]]); x[is.na(x)] <- "(missing)"
     long[[v]] <- factor(x, levels = unique(x))
   }
-  long <- long[do.call(order, long[rowVars]), ]   # first factor outermost
-  key  <- function(d) do.call(paste, c(d, list(sep = "\r")))
-  wide <- unique(long[rowVars])
+  wide <- .ctPivot(long, rowVars, colVar, "Freq")
   colLevels <- levels(long[[colVar]])
-  for (cl in colLevels) {
-    sub <- long[long[[colVar]] == cl, c(rowVars, "Freq")]
-    wide[[cl]] <- sub$Freq[match(key(wide[rowVars]), key(sub[rowVars]))]
-  }
   wide$Sum <- rowSums(wide[colLevels])
   wide[rowVars] <- lapply(wide[rowVars], as.character)
-  # blank repeated outer labels (a label repeats only if everything left of it does
-  # too); compute all comparison keys BEFORE any blanking, or the first column's
-  # blanks corrupt the later columns' keys and their label leaks through once
-  if (length(rowVars) > 1) {
-    keys <- lapply(seq_len(length(rowVars) - 1),
-                   function(i) key(wide[rowVars[seq_len(i)]]))
-    for (i in seq_len(length(rowVars) - 1)) {
-      k <- keys[[i]]
-      wide[[rowVars[i]]][c(FALSE, k[-1] == k[-length(k)])] <- ""
-    }
-  }
+  wide <- .ctBlankRepeats(wide, rowVars)
   totalRow <- wide[1, , drop = FALSE]
   totalRow[rowVars] <- ""; totalRow[[rowVars[1]]] <- "Sum"
   for (cl in c(colLevels, "Sum")) totalRow[[cl]] <- sum(wide[[cl]])
   rbind(wide, totalRow)
+}
+
+## Crosstab of cell MEANS: the 1-3 `factorVars` form the table exactly as in
+## crosstabWideTable() (last factor supplies the columns when there are two or
+## more), but each cell shows the mean of `numericVar` over that cell's
+## effect-size rows as "mean (n)", where n counts the rows with a non-missing
+## numeric value (empty cells stay blank).  The "All" row/column holds marginal
+## means computed from the raw rows -- NOT means of the cell means -- so cells
+## of unequal size are weighted correctly.  `lvlsList` names each factor's
+## displayed levels (typically the ticked sidebar levels); rows with NA factor
+## values appear as "(missing)".
+crosstabMeansWideTable <- function(d, factorVars, numericVar, lvlsList, digits = 2) {
+  x <- suppressWarnings(as.numeric(d[[numericVar]]))
+  dims <- lapply(factorVars, function(v) {
+    ch <- as.character(d[[v]])
+    lv <- lvlsList[[v]]
+    if (anyNA(ch)) { ch[is.na(ch)] <- "(missing)"; lv <- c(lv, "(missing)") }
+    factor(ch, levels = lv)
+  })
+  names(dims) <- factorVars
+  fmtCells <- function(m, n) {
+    n[is.na(n)] <- 0L
+    ifelse(n > 0, sprintf(paste0("%.", digits, "f (%d)"), m, n), "")
+  }
+  # formatted "mean (n)" for every level combination of a subset of the factors
+  cellsFor <- function(dimSubset) {
+    m <- tapply(x, dimSubset, mean, na.rm = TRUE)
+    n <- tapply(x, dimSubset, function(z) sum(!is.na(z)))
+    long <- as.data.frame.table(m, responseName = "Mean")
+    names(long)[seq_along(dimSubset)] <- names(dimSubset)  # undo make.names()
+    long$Cell <- fmtCells(long$Mean, as.data.frame.table(n)$Freq)
+    long
+  }
+  grandCell <- fmtCells(mean(x, na.rm = TRUE), sum(!is.na(x)))
+  if (length(factorVars) == 1) {          # one factor: means down a single column
+    long <- cellsFor(dims)
+    out <- data.frame(as.character(long[[factorVars]]), long$Cell,
+                      stringsAsFactors = FALSE)
+    names(out) <- c(factorVars, "Mean (n)")
+    allRow <- out[1, , drop = FALSE]
+    allRow[[factorVars]] <- "All"; allRow[["Mean (n)"]] <- grandCell
+    return(rbind(out, allRow))
+  }
+  rowVars <- factorVars[-length(factorVars)]
+  colVar  <- factorVars[length(factorVars)]
+  long <- cellsFor(dims)
+  wide <- .ctPivot(long, rowVars, colVar, "Cell")
+  colLevels <- levels(long[[colVar]])
+  rowLong <- cellsFor(dims[rowVars])      # "All" column: columns pooled per row
+  wide$All <- rowLong$Cell[match(.ctKey(wide[rowVars]), .ctKey(rowLong[rowVars]))]
+  wide[rowVars] <- lapply(wide[rowVars], as.character)
+  wide <- .ctBlankRepeats(wide, rowVars)
+  colLong <- cellsFor(dims[colVar])       # "All" row: rows pooled per column
+  allRow <- wide[1, , drop = FALSE]
+  allRow[rowVars] <- ""; allRow[[rowVars[1]]] <- "All"
+  allRow[colLevels] <- as.list(colLong$Cell[match(colLevels, as.character(colLong[[colVar]]))])
+  allRow$All <- grandCell
+  rbind(wide, allRow)
 }
 
 #######################################################################################
