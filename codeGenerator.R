@@ -283,10 +283,12 @@ scaletau    <-  %s
 mupriormean <-  %s
 #
                 ',
-                    paste(dQuote(input$tauprior), collapse = ", "),
-                    paste(dQuote(input$mupriorsd), collapse = ", "),
-                    paste(dQuote(input$scaletau), collapse = ", "),
-                    paste(dQuote(input$mupriormean), collapse = ", ")
+                    # the RECALCULATION-TIME snapshot: the priors the displayed
+                    # Bayesian models actually used (not the live input values)
+                    paste(dQuote(myrvs$bayesSnapshot$tauprior), collapse = ", "),
+                    paste(dQuote(myrvs$bayesSnapshot$mupriorsd), collapse = ", "),
+                    paste(dQuote(myrvs$bayesSnapshot$scaletau), collapse = ", "),
+                    paste(dQuote(myrvs$bayesSnapshot$mupriormean), collapse = ", ")
         )
 
   code_for_bma <- paste0(someCode)   # start a new block of code

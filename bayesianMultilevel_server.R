@@ -1,0 +1,217 @@
+#######################################################################################
+################### A General Tool for Living Meta-Analysis #################
+#######################################################################################
+# v.1.2 2026.07.18
+#
+################### Bayesian Multilevel panels (server) ###############################
+#
+# TWO tabs share this machinery, so the overall and moderator analyses can both
+# be fitted, viewed, and kept cached at the same time:
+#   * "Bayesian Multilevel"            -- the overall three-level model
+#   * "Bayesian Multilevel Regression" -- the same model with cell-means coding
+#     for the moderator chosen in "Moderator Selection" (per-group posteriors)
+# Model, priors, compilation strategy, and output builders live in
+# bayesianMultilevelFunctions.R (sourced from global.R).
+#
+# SETTINGS SNAPSHOT: both tabs work from myrvs$bayesSnapshot -- the prior and
+# moderator settings captured by MA() when "(Re)Calculate Meta-Analysis" was
+# pressed.  Changing priors or the moderator therefore has NO effect on these
+# tabs until the next recalculation (the app's documented convention); it can
+# neither silently swap in a cached model nor pop a confirmation dialog
+# mid-session.
+#
+# Requirements enforced with explanatory messages:
+#   * "Aggregate over" must be "None (multilevel model)",
+#   * the snapshotted tau prior must be Half cauchy or Half normal, and the mu
+#     prior mean and SD must both be filled in (Stan needs proper priors),
+#   * the Regression tab additionally needs a moderator selected (at
+#     recalculation time).
+#
+# Computational-cost handling mirrors bma()/bmr(): each tab only builds its
+# model while it is open, a NEW (uncached) model needs a confirmation (the
+# modal also warns about the one-time Stan compilation), and every fit is
+# cached in myrvs$previousBmlModels (seeded from the shared process-wide
+# defaultBmlSeed; downloadable in "Saved Plots and Models").
+#
+# This file is sourced (local = T) from server.R.
+######################################################################################
+
+
+## session cache, seeded from the process-wide seed loaded in global.R
+## (shared across sessions via copy-on-write, like the other model caches);
+## entries are keyed by data + priors + moderatorName ("" = overall model),
+## so both tabs' models live side by side in the one cache
+myrvs$previousBmlModels <- defaultBmlSeed
+
+## triggers (TRUE only after the user confirms the modal, or on a cache hit);
+## both are reset by MA() on every recalculation
+myrvs$triggerBml <- FALSE
+myrvs$triggerBmlReg <- FALSE
+
+## Is the snapshot usable for the Stan model?  NULL if yes, else a message.
+bmlPriorProblem <- function(snap) {
+  if (is.null(snap)) return("Press \"(Re)Calculate Meta-Analysis\" first.")
+  if (!isTruthy(snap$tauprior) || !snap$tauprior %in% bmlSupportedTauPriors)
+    return(paste("The Bayesian multilevel model supports only the proper tau priors",
+                 '"Half cauchy" and "Half normal" (with their scale).',
+                 'Choose one in the "Prior specifications" tab and press',
+                 '"(Re)Calculate Meta-Analysis".'))
+  if (is.null(snap$mupriormean) || is.na(snap$mupriormean) ||
+      is.null(snap$mupriorsd)   || is.na(snap$mupriorsd))
+    return(paste("The Bayesian multilevel model needs a proper µ prior:",
+                 'fill in both the µ prior mean and SD in the "Prior specifications"',
+                 'tab and press "(Re)Calculate Meta-Analysis".'))
+  NULL
+}
+
+## cache lookup for a snapshot + moderator choice (moderatorName "" = overall)
+bmlCached <- function(MA, snap, moderatorName) {
+  checkOldBmlModels(myrvs$previousBmlModels, MA = MA, tauprior = snap$tauprior,
+                    mupriorsd = snap$mupriorsd, scaletau = snap$scaletau,
+                    mupriormean = snap$mupriormean, moderatorName = moderatorName)
+}
+
+## fit (or retrieve) the model for a snapshot + moderator choice, caching new fits
+bmlFitOrCache <- function(MA, snap, moderatorName) {
+  old_bml <- bmlCached(MA, snap, moderatorName)
+  if (isTruthy(old_bml)) return(old_bml)
+  d <- bmlData(MA, moderatorName = if (nzchar(moderatorName)) moderatorName else NULL)
+  newbml <- fitBayesianMultilevel(d, tauprior = snap$tauprior, scaletau = snap$scaletau,
+                                  mupriormean = snap$mupriormean, mupriorsd = snap$mupriorsd)
+  newrow <- list(MA = MA, tauprior = snap$tauprior, mupriorsd = snap$mupriorsd,
+                 scaletau = snap$scaletau, mupriormean = snap$mupriormean,
+                 moderatorName = moderatorName, bml = newbml)
+  myrvs$previousBmlModels[length(myrvs$previousBmlModels) + 1] <- list(newrow)
+  newbml
+}
+
+## confirmation modal shared by both tabs.  Sets the trigger FALSE first for a
+## NEW (uncached) request: assigning the same value to a reactiveValues entry
+## does not invalidate dependents, so without the reset a still-TRUE trigger
+## would leave a stale model on display after the settings changed.
+bmlConfirmModal <- function(triggerName) {
+  myrvs[[triggerName]] <- FALSE
+  shinyalert(
+    title = paste("Are you sure you want to fit this new Bayesian multilevel model?",
+                  "Sampling takes a little while, and the FIRST multilevel fit in a",
+                  "session also compiles the model (about 1-2 minutes extra).",
+                  "Later fits skip the compilation."),
+    type = "warning",
+    showCancelButton = TRUE,
+    confirmButtonText = "Yes, continue!",
+    cancelButtonText = "No, not right now.",
+    callbackR = function(value) {
+      myrvs[[triggerName]] <- value
+    }
+  )
+}
+
+
+## ---- overall model ("Bayesian Multilevel" tab) ----
+
+observe({
+  MA()
+  req(isMultilevelMA())
+  req(input$mainTabset == "bayesian_multilevel")
+  snap <- myrvs$bayesSnapshot          # reactive dep: changes only at recalculation
+  req(is.null(bmlPriorProblem(snap)))
+  isolate(old_bml <- bmlCached(MA(), snap, ""))
+  if (!isTruthy(old_bml)) bmlConfirmModal("triggerBml")
+  else myrvs$triggerBml <- TRUE
+})
+
+bmlModel <- reactive({
+  validate(need(isMultilevelMA(),
+                paste('The Bayesian multilevel model uses the UNaggregated effect sizes.',
+                      'Choose "None (multilevel model)" under "Aggregate over" in the',
+                      '"Study criteria" panel and press "(Re)Calculate Meta-Analysis".')))
+  snap <- myrvs$bayesSnapshot
+  validate(need(is.null(bmlPriorProblem(snap)), bmlPriorProblem(snap)))
+  req(myrvs$triggerBml)
+  isolate(bmlFitOrCache(MA(), snap, ""))
+})
+
+output$bmlContent <- renderUI({
+  fit <- bmlModel()
+  nPapers <- length(unique(as.character(isolate(MA())$Paper)))
+  tagList(
+    p(tags$b("Overall model (no moderator), using the priors as of the last recalculation.")),
+    p(tags$small(bmlDiagnosticsText(fit))),
+    h4("Posterior summary:"),
+    renderTable(bmlSummaryTable(fit), digits = 3),
+    h4("Per-paper posterior estimates (95% CrI):"),
+    renderPlot(bmlForestPlot(fit), height = max(400, nPapers * 14 + 120)),
+    h4("Posterior densities:"),
+    renderPlot(bmlDensityPlot(fit), height = 350),
+    br()
+  )
+})
+
+
+## ---- moderator model ("Bayesian Multilevel Regression" tab) ----
+
+observe({
+  MA()
+  req(isMultilevelMA())
+  req(input$mainTabset == "bayesian_multilevel_regression")
+  snap <- myrvs$bayesSnapshot          # reactive dep: changes only at recalculation
+  req(is.null(bmlPriorProblem(snap)))
+  req(nzchar(snap$moderatorName))    # needs a moderator (as of recalculation)
+  isolate(old_bml <- bmlCached(MA(), snap, snap$moderatorName))
+  if (!isTruthy(old_bml)) bmlConfirmModal("triggerBmlReg")
+  else myrvs$triggerBmlReg <- TRUE
+})
+
+bmlRegModel <- reactive({
+  validate(need(isMultilevelMA(),
+                paste('The Bayesian multilevel regression uses the UNaggregated effect sizes.',
+                      'Choose "None (multilevel model)" under "Aggregate over" in the',
+                      '"Study criteria" panel and press "(Re)Calculate Meta-Analysis".')))
+  snap <- myrvs$bayesSnapshot
+  validate(need(is.null(bmlPriorProblem(snap)), bmlPriorProblem(snap)))
+  validate(need(nzchar(snap$moderatorName),
+                paste('No moderator was selected at the last recalculation.',
+                      'Choose "Yes" and a moderator in the "Moderator Selection" tab,',
+                      'then press "(Re)Calculate Meta-Analysis".')))
+  req(myrvs$triggerBmlReg)
+  isolate(bmlFitOrCache(MA(), snap, snap$moderatorName))
+})
+
+output$bmlRegContent <- renderUI({
+  fit <- bmlRegModel()
+  moderatorName <- isolate(myrvs$bayesSnapshot$moderatorName)
+  tagList(
+    p(tags$b(paste0("Moderator: ", moderatorName,
+                    " (per-group posterior means), using the settings as of the last recalculation."))),
+    p(tags$small(bmlDiagnosticsText(fit))),
+    h4("Posterior summary:"),
+    renderTable(bmlSummaryTable(fit), digits = 3),
+    h4("Per-group posterior means (95% CrI):"),
+    renderPlot(bmlForestPlot(fit), height = 300),
+    h4("Posterior densities:"),
+    renderPlot(bmlDensityPlot(fit), height = 350),
+    br()
+  )
+})
+
+
+## ---- download / upload / clear for the Saved Plots and Models tab ----
+## (one cache holds both tabs' models, so a single set of controls covers both)
+
+output$rds_file.bml <- downloadHandler(
+  filename = function() {
+    "bayesian_multilevel_models.RDS"
+  },
+  content = function(file) {
+    saveRDS(myrvs$previousBmlModels, file)
+  }
+)
+
+observeEvent(input$SavedBmlModelsUp, {
+  newrows_bml <- normalizeTauPriorLabels(readRDS(input$SavedBmlModelsUp$datapath))
+  myrvs$previousBmlModels <- c(myrvs$previousBmlModels, newrows_bml)
+})
+
+observeEvent(input$ClearBmlModels, {
+  myrvs$previousBmlModels <- list()
+})

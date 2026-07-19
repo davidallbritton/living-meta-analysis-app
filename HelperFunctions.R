@@ -307,6 +307,13 @@ normalizeTauPriorLabels <- function(listPrevious) {
 }
 
 ########## Function for checking for previously calculated bma models ###########
+## Numeric prior values may arrive as integer or double depending on how the
+## browser serialized the input (0 vs 0.0), and saved-model files contain both
+## typings for the same setting; compare them by VALUE, not type (a bare
+## identical() would refuse to match 0L against 0 and force a needless refit).
+## NULL and NA compare equal to themselves (both map through as.numeric()).
+samePriorValue <- function(a, b) identical(as.numeric(a), as.numeric(b))
+
 checkOldModels <- function(listPrevious, MA, tauprior, mupriorsd, scaletau, mupriormean, prevMAsNoFactors) {
   return_bma <- FALSE
   if(length(listPrevious)) {
@@ -314,11 +321,11 @@ checkOldModels <- function(listPrevious, MA, tauprior, mupriorsd, scaletau, mupr
     MA <-  MA %>% mutate_if(is.factor, as.character)
     for (i in seq_along(listPrevious)) {
       ma_previous <- as.data.frame(prevMAsNoFactors[[i]]) 
-      if (identical(ma_previous, MA) && 
-          identical(listPrevious[[i]]$tauprior, tauprior) && 
-          identical(listPrevious[[i]]$mupriorsd, mupriorsd) && 
-          identical(listPrevious[[i]]$scaletau, scaletau) && 
-          identical(listPrevious[[i]]$mupriormean, mupriormean)
+      if (identical(ma_previous, MA) &&
+          identical(listPrevious[[i]]$tauprior, tauprior) &&
+          samePriorValue(listPrevious[[i]]$mupriorsd, mupriorsd) &&
+          samePriorValue(listPrevious[[i]]$scaletau, scaletau) &&
+          samePriorValue(listPrevious[[i]]$mupriormean, mupriormean)
       )  {
         return_bma <- listPrevious[[i]]$bma
         break
@@ -343,9 +350,9 @@ checkOldBmrModels <- function(listPrevious, MA, tauprior, mupriorsd, scaletau, m
       if (identical(ma_previous, MA) &&
           identical(listPrevious[[i]]$moderatorName, moderatorName) &&
           identical(listPrevious[[i]]$tauprior, tauprior) &&
-          identical(listPrevious[[i]]$mupriorsd, mupriorsd) &&
-          identical(listPrevious[[i]]$scaletau, scaletau) &&
-          identical(listPrevious[[i]]$mupriormean, mupriormean)
+          samePriorValue(listPrevious[[i]]$mupriorsd, mupriorsd) &&
+          samePriorValue(listPrevious[[i]]$scaletau, scaletau) &&
+          samePriorValue(listPrevious[[i]]$mupriormean, mupriormean)
       )  {
         return_bmr <- listPrevious[[i]]$bmr
         break
@@ -363,9 +370,9 @@ checkOldPlots <- function(listPrevious, MA, tauprior, mupriorsd, scaletau, robus
     MA <-  MA %>% mutate_if(is.factor, as.character)
     for (i in seq_along(listPrevious)) {
       ma_previous <- listPrevious[[i]]$MA 
-      if (identical(ma_previous, MA) && 
-          identical(listPrevious[[i]]$mupriorsd , mupriorsd) && 
-          identical(listPrevious[[i]]$scaletau , scaletau) && 
+      if (identical(ma_previous, MA) &&
+          samePriorValue(listPrevious[[i]]$mupriorsd, mupriorsd) &&
+          samePriorValue(listPrevious[[i]]$scaletau, scaletau) &&
           identical(listPrevious[[i]]$robust , robust)
           )  {
         return_robustggplot <- listPrevious[[i]]$robustggplot

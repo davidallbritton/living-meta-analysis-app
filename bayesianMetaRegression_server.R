@@ -44,26 +44,33 @@ observe({
   req(!isMultilevelMA())   # Bayesian analyses need aggregated data (see bmrModel)
   # Only relevant on the Bayesian Meta-Regression tab, with a moderator chosen
   req(input$mainTabset == "bayesian_meta_regression")
-  req(input$includeModerator == "Yes")
-  req(input$moderator_variable)
+  # settings come from the RECALCULATION-TIME snapshot (set in MA()): changing
+  # the moderator or priors has no effect here until "(Re)Calculate" is pressed
+  snap <- myrvs$bayesSnapshot
+  req(!is.null(snap), nzchar(snap$moderatorName))
   # blocked combination (Papers aggregation blends this moderator within papers):
   # no confirm dialog; bmrModel() shows the explanation instead
-  req(!moderatorBlockedByPapersAgg(input$moderator_variable))
+  req(!moderatorBlockedByPapersAgg(snap$moderatorName))
   #
   ## check the cache first (same key the bmr reactive uses)
   isolate({
     MA            <- MA()
-    moderatorName <- input$moderator_variable
-    tauprior      <- input$tauprior
-    mupriorsd     <- input$mupriorsd
-    scaletau      <- input$scaletau
-    mupriormean   <- input$mupriormean
+    moderatorName <- snap$moderatorName
+    tauprior      <- snap$tauprior
+    mupriorsd     <- snap$mupriorsd
+    scaletau      <- snap$scaletau
+    mupriormean   <- snap$mupriormean
     old_bmr <- checkOldBmrModels(myrvs$previousBmrModels, MA = MA, tauprior = tauprior,
                                  mupriorsd = mupriorsd, scaletau = scaletau,
                                  mupriormean = mupriormean, moderatorName = moderatorName)
   })
   #
   if (!isTruthy(old_bmr)) {   # only warn if this model is not already cached
+    # block stale results until the user confirms: a trigger that is already TRUE
+    # would stay TRUE on confirmation (same-value reactiveValues writes do not
+    # invalidate), leaving the previous model on display after a moderator or
+    # prior change without a recalculation
+    myrvs$triggerBmr <- FALSE
     shinyalert(
       title = "Are you sure you want to do this new Bayesian meta-regression?  It could take a long time.",
       type = "warning",
@@ -87,25 +94,27 @@ bmrModel <- reactive({
   validate(need(!isMultilevelMA(),
                 paste('The Bayesian meta-regression uses the aggregated two-level model and is not',
                       'available with the "None (multilevel model)" aggregation option.',
-                      'Choose "ID" or "Papers" under "Aggregate over" in the Study criteria panel',
-                      'and press "(Re)Calculate Meta-Analysis".')))
+                      'For per-group posterior means from the multilevel data, select a moderator and',
+                      'use the "Bayesian Multilevel Regression" tab; or choose "ID" or "Papers" under',
+                      '"Aggregate over" and press "(Re)Calculate Meta-Analysis" to use this tab.')))
   # Papers aggregation + a moderator that varies within papers would analyze
   # blended, arbitrarily labeled composites; refuse with an explanation
-  validate(need(!moderatorBlockedByPapersAgg(input$moderator_variable),
+  validate(need(!moderatorBlockedByPapersAgg(myrvs$bayesSnapshot$moderatorName),
                 paste('Not computed: the analysis aggregates effect sizes over Papers, but at least',
                       'one selected paper has effect sizes in different groups of this moderator.',
                       'Aggregation would blend those groups together within each paper.',
                       'Switch "Aggregate over" to ID or "None (multilevel model)" in the "Study criteria"',
                       'panel and press "(Re)Calculate Meta-Analysis" to analyze this moderator.')))
   req(myrvs$triggerBmr)   # only run after user confirmation (or a cache hit)
-  isolate({               # so changing priors does not rebuild before "Re-Calculate"
+  isolate({               # settings come from the RECALCULATION-TIME snapshot (set in MA())
+    snap          <- myrvs$bayesSnapshot
     MA            <- MA()
-    moderatorName <- input$moderator_variable
-    tauprior      <- input$tauprior
-    mupriorsd     <- input$mupriorsd
-    scaletau      <- input$scaletau
-    mupriormean   <- input$mupriormean
-    req(moderatorName)
+    moderatorName <- snap$moderatorName
+    tauprior      <- snap$tauprior
+    mupriorsd     <- snap$mupriorsd
+    scaletau      <- snap$scaletau
+    mupriormean   <- snap$mupriormean
+    req(nzchar(moderatorName))
 
     # figure out how many non-empty groups we actually have
     moderator <- MA[[moderatorName]]
@@ -150,7 +159,9 @@ updateBmrModels <- function(MA, moderatorName, tauprior, mupriorsd, scaletau, mu
 ## ---- Outputs for the Bayesian Meta-Regression tab ----
 
 output$bmrModeratorLabel <- renderText({
-  paste("Moderator variable is:  ", input$moderator_variable)
+  # the snapshotted moderator: the one the displayed model actually uses
+  req(myrvs$bayesSnapshot, nzchar(myrvs$bayesSnapshot$moderatorName))
+  paste("Moderator variable is:  ", myrvs$bayesSnapshot$moderatorName)
 })
 
 # Plot height defaults to grow with the number of studies, but the user can

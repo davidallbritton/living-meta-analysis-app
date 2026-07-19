@@ -316,7 +316,7 @@ server <- function(input, output, session) {
              bsPopover(id="q118", title = "Aggregation.",
                        content = paste0("<p>Aggregate effect sizes over ID (default), aggregate over papers, or use no aggregation with a multilevel model.",
                                         "<p>Selecting Papers will compute a single aggregated effect size for each paper. Selecting ID will aggregate based on the numbers in the ID column in the data file.",
-                                        "<p>Selecting None (multilevel model) keeps every effect size as its own row and fits a three-level CHE model for the frequentist analyses: effect sizes nested in papers (metafor rma.mv), within-paper sampling correlation assumed 0.5 (the same assumption the aggregation options make), and cluster-robust (CR2) confidence intervals.  The Bayesian tabs require aggregated data and will ask you to switch back to ID or Papers.",
+                                        "<p>Selecting None (multilevel model) keeps every effect size as its own row and fits a three-level CHE model for the frequentist analyses: effect sizes nested in papers (metafor rma.mv), within-paper sampling correlation assumed 0.5 (the same assumption the aggregation options make), and cluster-robust (CR2) confidence intervals.  For a Bayesian analysis in this mode, use the Bayesian Multilevel tab; the bayesmeta-based tabs require aggregated data.",
                                         "<p>Note: aggregating over Papers blends a paper&#39;s effect sizes across its conditions, so the meta-regression tabs will not accept a moderator that varies within any selected paper.  Use ID or None (multilevel model) for such moderators.",
                                         "<p>Default: ID."),
                        placement = "right", 
@@ -860,6 +860,21 @@ server <- function(input, output, session) {
     myrvs$triggerBma <- FALSE  ## reset the trigger for calculating bma()
     myrvs$triggerBmaRobust <- FALSE  ## reset the trigger for robustness plots
     myrvs$triggerBmr <- FALSE  ## reset the trigger for Bayesian meta-regression
+    myrvs$triggerBml <- FALSE     ## reset the triggers for the Bayesian multilevel tabs
+    myrvs$triggerBmlReg <- FALSE
+    ## snapshot of the settings ALL Bayesian analyses use (bma, robustness
+    ## priors, bmr, and the Bayesian Multilevel tabs): they work from these
+    ## RECALCULATION-TIME values, so changing priors or the moderator has no
+    ## effect on any Bayesian tab until "(Re)Calculate" is pressed (the
+    ## documented convention for analysis settings).  The robustness Yes/No
+    ## toggle deliberately stays live (it is a compute on/off switch, not a
+    ## model setting); only its priors come from this snapshot.
+    myrvs$bayesSnapshot <- list(
+      tauprior = input$tauprior, scaletau = input$scaletau,
+      mupriormean = input$mupriormean, mupriorsd = input$mupriorsd,
+      moderatorName = if (isTRUE(input$includeModerator == "Yes") &&
+                          isTruthy(input$moderator_variable)) input$moderator_variable else ""
+    )
     # import the reactive version of the data and the relevant column names
     df <- myrvs$df.reactive
     Variable.Factor.Names <- myrvs$Variable.Factor.Names 
@@ -968,23 +983,32 @@ server <- function(input, output, session) {
     req(!isMultilevelMA())
     # Trigger only when specific tabs that require bma() are selected
     req(input$mainTabset %in% bayestabs)   # defined at the top of the server function
+    # prior settings come from the RECALCULATION-TIME snapshot (set in MA()):
+    # changing priors has no effect on the Bayesian tabs until "(Re)Calculate"
+    snap <- myrvs$bayesSnapshot
+    req(!is.null(snap))
     #
     ##  repeating code from bma() that checks for cached bma models:
     isolate({    old_bma <- FALSE
-    # copy reactive values for use in this block.  Use as arguments to functions.
+    # copy the snapshot values for use in this block.  Use as arguments to functions.
     MA          <-  MA()
-    tauprior    <-  input$tauprior
-    mupriorsd   <-  input$mupriorsd
-    scaletau    <-  input$scaletau
-    mupriormean <-  input$mupriormean
+    tauprior    <-  snap$tauprior
+    mupriorsd   <-  snap$mupriorsd
+    scaletau    <-  snap$scaletau
+    mupriormean <-  snap$mupriormean
     # end of reactive values that are copied.
     old_bma <- checkOldModels(myrvs$previousModels, MA=MA, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, mupriormean=mupriormean, prevMAsNoFactors = previousMAsNoFactors$MAs)
     })
     ##
     #
     if(!isTruthy(old_bma))  { # skip the shinyalert if that bma is already cached
+      # block stale results until the user confirms: without this reset, a trigger
+      # that is already TRUE would stay TRUE on confirmation (assigning the same
+      # value to a reactiveValues entry does not invalidate), leaving the previous
+      # model on display after the settings changed
+      myrvs$triggerBma <- FALSE
       #
-      # Display the shinyalert  
+      # Display the shinyalert
       shinyalert(
         title = "Are you sure you want to do this new Bayesian analysis?  It could take a long time.",
         type = "warning",
@@ -1005,20 +1029,22 @@ server <- function(input, output, session) {
     # bayesmeta fits the two-level aggregated model only; block it (with an
     # explanation shown in every Bayesian output) when the data are multilevel
     validate(need(!isMultilevelMA(),
-                  paste('The Bayesian analyses use the aggregated two-level model and are not available',
+                  paste('This tab uses the aggregated two-level bayesmeta model and is not available',
                         'with the "None (multilevel model)" aggregation option.',
-                        'To run them, choose "ID" or "Papers" under "Aggregate over" in the Study criteria',
-                        'panel and press "(Re)Calculate Meta-Analysis".')))
+                        'For a Bayesian analysis of the multilevel data, use the "Bayesian Multilevel" tab;',
+                        'or choose "ID" or "Papers" under "Aggregate over" in the Study criteria',
+                        'panel and press "(Re)Calculate Meta-Analysis" to use this tab.')))
     req(myrvs$triggerBma)  # Ensure this block runs only after user confirmation
     isolate({           # so that changes in priors do not trigger bma() update before "recalculate" button is pressed
       ## Generate bayesmeta-object "bma" depending on tau prior chosen
       old_bma <- FALSE
-      # copy reactive values for use in this block.  Use as arguments to functions.
+      # settings come from the RECALCULATION-TIME snapshot (set in MA())
+      snap        <-  myrvs$bayesSnapshot
       MA          <-  MA()
-      tauprior    <-  input$tauprior
-      mupriorsd   <-  input$mupriorsd
-      scaletau    <-  input$scaletau
-      mupriormean <-  input$mupriormean
+      tauprior    <-  snap$tauprior
+      mupriorsd   <-  snap$mupriorsd
+      scaletau    <-  snap$scaletau
+      mupriormean <-  snap$mupriormean
       # end of reactive values that are copied.
       old_bma <- checkOldModels(myrvs$previousModels, MA=MA, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, mupriormean=mupriormean, prevMAsNoFactors = previousMAsNoFactors$MAs)
       if(isTruthy(old_bma)) bma <- old_bma  # retrieve previously calculated bma model
@@ -1129,7 +1155,9 @@ server <- function(input, output, session) {
 
   # Additional plots panel
   output$evupdate <- renderPlot({
-    priorposteriorlikelihood.ggplot(bma(), lowerbound = 0 - (input$mupriormean + 1) * 1.5, upperbound = 0 + (input$mupriormean + 1) * 1.5)
+    # axis bounds use the snapshotted mu prior mean, matching the displayed model
+    mpm <- myrvs$bayesSnapshot$mupriormean
+    priorposteriorlikelihood.ggplot(bma(), lowerbound = 0 - (mpm + 1) * 1.5, upperbound = 0 + (mpm + 1) * 1.5)
   }, width = 800)
   output$joint <- renderPlot({
     plot.bayesmeta(bma(), which=2, main = "")
@@ -1146,20 +1174,26 @@ server <- function(input, output, session) {
     req(!isMultilevelMA())   # Bayesian analyses need aggregated data
     # Trigger only when the robustness tab is selected
     req(input$mainTabset %in% c("bayesian_robustness"))   # for that panel only
-    req(input$robust == "Yes")   # only if yes is checked in the priors panal
+    req(input$robust == "Yes")   # only if yes is checked in the priors panal (this toggle stays LIVE)
+    # prior settings come from the RECALCULATION-TIME snapshot (see the bma modal)
+    snap <- myrvs$bayesSnapshot
+    req(!is.null(snap))
     #
     ##  repeating code  that checks for cached robustness plots:
     isolate({    old_plot <- FALSE
-    # copy reactive values for use in this block.  Use as arguments to functions.
+    # copy the snapshot values for use in this block.  Use as arguments to functions.
     MA <- MA()
     MA_nofactors <- as.data.frame(MA)
     MA_nofactors <-  MA_nofactors %>% mutate_if(is.factor, as.character)
     robust <- input$robust
-    tauprior <- input$tauprior
-    mupriorsd <- input$mupriorsd
-    scaletau <- input$scaletau
+    tauprior <- snap$tauprior
+    mupriorsd <- snap$mupriorsd
+    scaletau <- snap$scaletau
     old_plot <- checkOldPlots(myrvs$previousPlots, MA=MA_nofactors, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, robust=robust)
     if(!isTruthy(old_plot))  { # skip the shinyalert if that plot is already cached
+      # block stale results until the user confirms (see the matching reset in the
+      # bma modal above)
+      myrvs$triggerBmaRobust <- FALSE
       #
       # Display the shinyalert
       shinyalert(
@@ -1188,12 +1222,13 @@ server <- function(input, output, session) {
                         'available with the "None (multilevel model)" aggregation option.',
                         'Choose "ID" or "Papers" under "Aggregate over" and press "(Re)Calculate Meta-Analysis".')))
     MA <- MA()  #trigger recalculation
-    MA_nofactors <- as.data.frame(MA) 
+    MA_nofactors <- as.data.frame(MA)
     MA_nofactors <-  MA_nofactors %>% mutate_if(is.factor, as.character)
-    robust <- input$robust
-    tauprior <- input$tauprior
-    mupriorsd <- input$mupriorsd
-    scaletau <- input$scaletau
+    snap <- myrvs$bayesSnapshot   # priors as of the last recalculation
+    robust <- input$robust        # the on/off toggle stays live
+    tauprior <- snap$tauprior
+    mupriorsd <- snap$mupriorsd
+    scaletau <- snap$scaletau
     old_plot <- checkOldPlots(myrvs$previousPlots, MA=MA_nofactors, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, robust=robust)
     if(isTruthy(old_plot)) robustggplot <- old_plot  # retrieve previously calculated plot
     else {
@@ -1357,10 +1392,12 @@ server <- function(input, output, session) {
       Bayesmeta.Summary <- select(Bayesmeta.Summary, statistic, tau, mu, theta)
       Bayesmeta.Call <- capture.output(bma()$call) %>% paste(collapse = "") %>% as.data.frame() 
         names(Bayesmeta.Call) <- "bayesmeta analysis command"
-      mupriormean <- req(as.data.frame(input$mupriormean))
-      mupriorsd <- req(as.data.frame(input$mupriorsd))
-      tauprior <- req(as.data.frame(input$tauprior))
-      scaletau <- req(as.data.frame(input$scaletau))
+      # record the snapshotted settings the displayed bma model actually used
+      snap <- req(myrvs$bayesSnapshot)
+      mupriormean <- req(as.data.frame(snap$mupriormean))
+      mupriorsd <- req(as.data.frame(snap$mupriorsd))
+      tauprior <- req(as.data.frame(snap$tauprior))
+      scaletau <- req(as.data.frame(snap$scaletau))
       robust <- req(as.data.frame(input$robust))
       sheetList <- list(Bayesmeta.Summary = Bayesmeta.Summary, 
                         Bayesmeta.Call = Bayesmeta.Call, 
@@ -1487,6 +1524,9 @@ server <- function(input, output, session) {
   # Save / load the left-panel selection settings (and apply
   # data/default_selections.json at startup if this app copy has one)
   source("selections_server.R", local = T)
+
+  # Bayesian multilevel (three-level, brms) tab
+  source("bayesianMultilevel_server.R", local = T)
 
   # meta-regression, frequentist
   source("metaRegression_server.R", local = T)

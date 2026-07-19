@@ -40,6 +40,7 @@ options(useFancyQuotes = F)
 source("HelperFunctions.R")
 source("effect_sizes.R")
 source("metaRegressionFunctions.R")
+source("bayesianMultilevelFunctions.R")   # brms three-level model + compiled-template store
 
 
 ################## Precalculated model/plot caches (loaded ONCE per R process) ###
@@ -56,6 +57,7 @@ loadSeedRDS <- function(path) {
 defaultModelsSeed <- loadSeedRDS("data/defaultPrecalculatedModels.RDS")
 defaultPlotsSeed  <- loadSeedRDS("data/defaultPrecalculatedPlots.RDS")
 defaultBmrSeed    <- loadSeedRDS("data/defaultPrecalculatedBmrModels.RDS")
+defaultBmlSeed    <- loadSeedRDS("data/defaultPrecalculatedBmlModels.RDS")
 
 
 

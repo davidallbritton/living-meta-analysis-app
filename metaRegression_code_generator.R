@@ -47,10 +47,10 @@ observe({   #update the meta-regression plot code when a moderator is selected
 bmrCode <- reactiveVal("##### No moderator chosen; no Bayesian meta-regression done ########")
 
 observe({   # update the Bayesian meta-regression code when a moderator is selected
-  req(input$includeModerator)
-  req(input$includeModerator == "Yes")
-  moderatorChosen <- input$moderator_variable
-  req(moderatorChosen)
+  # the bmr model uses the RECALCULATION-TIME moderator (see bayesSnapshot in
+  # MA()), so the generated code records that one, matching the displayed model
+  moderatorChosen <- myrvs$bayesSnapshot$moderatorName
+  req(isTruthy(moderatorChosen), nzchar(moderatorChosen))
   # blocked in the app (Papers aggregation blends this moderator within papers)
   if (moderatorBlockedByPapersAgg(moderatorChosen)) {
     isolate(bmrCode(paste(
