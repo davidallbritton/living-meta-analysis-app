@@ -42,6 +42,22 @@ source("effect_sizes.R")
 source("metaRegressionFunctions.R")
 
 
+################## Precalculated model/plot caches (loaded ONCE per R process) ###
+# Each session seeds its myrvs$previous* caches from these shared lists (see
+# server.R and bayesianMetaRegression_server.R).  Because R lists copy on write,
+# every session shares the same underlying model objects in memory: appending a
+# session's newly computed models copies only the list of pointers, never the
+# multi-MB cached entries themselves.  This keeps the memory cost of the
+# preloaded models constant per R process, no matter how many sessions connect
+# (previously each session called readRDS() itself, holding its own full copy).
+loadSeedRDS <- function(path) {
+  if (file.exists(path)) normalizeTauPriorLabels(readRDS(path)) else list()
+}
+defaultModelsSeed <- loadSeedRDS("data/defaultPrecalculatedModels.RDS")
+defaultPlotsSeed  <- loadSeedRDS("data/defaultPrecalculatedPlots.RDS")
+defaultBmrSeed    <- loadSeedRDS("data/defaultPrecalculatedBmrModels.RDS")
+
+
 
 ################## Constants #######################################################
 printButton <- HTML('<p  style="text-align:right; font-size: 8px;"><button  onClick="window.print()">PRINT</button></p>')

@@ -42,17 +42,11 @@ server <- function(input, output, session) {
   ## initialize reactive value to indicate whether the app has finished loading
   myrvs$uiRendered  <- FALSE
   
-  ###  initialize $previousPlots if the file exists on the server
-  myrvs$previousPlots <- list()
-  if (file.exists("data/defaultPrecalculatedPlots.RDS")) {
-    myrvs$previousPlots <- normalizeTauPriorLabels(readRDS("data/defaultPrecalculatedPlots.RDS"))
-  }
-  
-  ###  initialize $previousModels if the file exists on the server
-  myrvs$previousModels <- list()
-  if (file.exists("data/defaultPrecalculatedModels.RDS")) {
-    myrvs$previousModels <- normalizeTauPriorLabels(readRDS("data/defaultPrecalculatedModels.RDS"))
-  }
+  ###  initialize $previousPlots and $previousModels from the process-wide seed
+  ###  caches loaded once in global.R (shared across sessions via copy-on-write;
+  ###  this session's own additions never modify the shared seed)
+  myrvs$previousPlots <- defaultPlotsSeed
+  myrvs$previousModels <- defaultModelsSeed
 
   ### a reactive value that gets updated whenever myrvs$previousModels changes:
   #   This version of MA() without factor variables is necessary because

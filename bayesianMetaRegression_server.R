@@ -24,13 +24,12 @@
 
 
 ## Store previously calculated bmr models so they are never recomputed unnecessarily.
-## Seed the cache from a precalculated file on the server if one exists (mirrors the
-## bma() / robustness-plot precalculated files loaded in server.R), so the default
-## dataset's Bayesian meta-regressions load instantly instead of being rebuilt.
-myrvs$previousBmrModels <- list()
-if (file.exists("data/defaultPrecalculatedBmrModels.RDS")) {
-  myrvs$previousBmrModels <- normalizeTauPriorLabels(readRDS("data/defaultPrecalculatedBmrModels.RDS"))
-}
+## Seeded from the process-wide cache loaded once in global.R (mirrors the bma() /
+## robustness-plot seeds in server.R), so the default dataset's Bayesian
+## meta-regressions load instantly instead of being rebuilt.  The seed entries are
+## shared across sessions via copy-on-write; this session's additions never modify
+## the shared seed.
+myrvs$previousBmrModels <- defaultBmrSeed
 
 ## Trigger controlling when a bmr model may be built (set TRUE only after the
 ## user confirms the modal, or automatically when the request is already cached).
