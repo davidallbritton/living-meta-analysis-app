@@ -88,6 +88,12 @@ observe({
 
 ## The bmr model reactive, used by all Bayesian Meta-Regression outputs.
 bmrModel <- reactive({
+  # a moderator must have been selected AT RECALCULATION TIME; explain instead of
+  # leaving the outputs on a silent spinner (mirrors bmlRegModel)
+  validate(need(!is.null(myrvs$bayesSnapshot) && nzchar(myrvs$bayesSnapshot$moderatorName),
+                paste('No moderator was selected at the last recalculation.',
+                      'Choose "Yes" and a moderator in the "Moderator Selection" tab,',
+                      'then press "(Re)Calculate Meta-Analysis".')))
   # Papers aggregation + a moderator that varies within papers would analyze
   # blended, arbitrarily labeled composites; refuse with an explanation
   validate(need(!moderatorBlockedByPapersAgg(myrvs$bayesSnapshot$moderatorName),

@@ -5,7 +5,7 @@ account: dallbrit
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 9503283
-bundleId: 12287066
+bundleId: 12290961
 url: https://dallbrit.shinyapps.io/meta_latest_development_version/
 asMultiple: FALSE
 asStatic: FALSE

@@ -78,8 +78,19 @@ bmlFitOrCache <- function(MA, snap, moderatorName) {
   old_bml <- bmlCached(MA, snap, moderatorName)
   if (isTruthy(old_bml)) return(old_bml)
   d <- bmlData(MA, moderatorName = if (nzchar(moderatorName)) moderatorName else NULL)
-  newbml <- fitBayesianMultilevel(d, tauprior = snap$tauprior, scaletau = snap$scaletau,
-                                  mupriormean = snap$mupriormean, mupriorsd = snap$mupriorsd)
+  # Stan compilation/sampling can fail on hosted servers (no C++ toolchain or
+  # not enough memory); degrade to an explanatory message instead of a raw error
+  newbml <- tryCatch(
+    fitBayesianMultilevel(d, tauprior = snap$tauprior, scaletau = snap$scaletau,
+                          mupriormean = snap$mupriormean, mupriorsd = snap$mupriorsd),
+    error = function(e) e)
+  if (inherits(newbml, "error")) {
+    validate(need(FALSE, paste0(
+      "The Bayesian multilevel model could not be fit on this server (",
+      conditionMessage(newbml), ").  Stan model compilation often fails on hosted ",
+      "servers with limited memory; running the app locally supports these tabs.  ",
+      "The frequentist multilevel tabs are unaffected.")))
+  }
   newrow <- list(MA = MA, tauprior = snap$tauprior, mupriorsd = snap$mupriorsd,
                  scaletau = snap$scaletau, mupriormean = snap$mupriormean,
                  moderatorName = moderatorName, bml = newbml)
