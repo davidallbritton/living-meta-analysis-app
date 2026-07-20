@@ -20,8 +20,10 @@
 # neither silently swap in a cached model nor pop a confirmation dialog
 # mid-session.
 #
-# Requirements enforced with explanatory messages:
-#   * "Aggregate over" must be "None (multilevel model)",
+# These tabs are ALWAYS available (they read the unaggregated dataset MAml(),
+# which every recalculation builds alongside the aggregated one -- the
+# "Aggregate over" radio does not affect them).  Requirements enforced with
+# explanatory messages:
 #   * the snapshotted tau prior must be Half cauchy or Half normal, and the mu
 #     prior mean and SD must both be filled in (Stan needs proper priors),
 #   * the Regression tab additionally needs a moderator selected (at
@@ -110,30 +112,25 @@ bmlConfirmModal <- function(triggerName) {
 ## ---- overall model ("Bayesian Multilevel" tab) ----
 
 observe({
-  MA()
-  req(isMultilevelMA())
+  MAml()   # reactive dep: re-check after each recalculation
   req(input$mainTabset == "bayesian_multilevel")
   snap <- myrvs$bayesSnapshot          # reactive dep: changes only at recalculation
   req(is.null(bmlPriorProblem(snap)))
-  isolate(old_bml <- bmlCached(MA(), snap, ""))
+  isolate(old_bml <- bmlCached(MAml(), snap, ""))
   if (!isTruthy(old_bml)) bmlConfirmModal("triggerBml")
   else myrvs$triggerBml <- TRUE
 })
 
 bmlModel <- reactive({
-  validate(need(isMultilevelMA(),
-                paste('The Bayesian multilevel model uses the UNaggregated effect sizes.',
-                      'Choose "None (multilevel model)" under "Aggregate over" in the',
-                      '"Study criteria" panel and press "(Re)Calculate Meta-Analysis".')))
   snap <- myrvs$bayesSnapshot
   validate(need(is.null(bmlPriorProblem(snap)), bmlPriorProblem(snap)))
   req(myrvs$triggerBml)
-  isolate(bmlFitOrCache(MA(), snap, ""))
+  isolate(bmlFitOrCache(MAml(), snap, ""))
 })
 
 output$bmlContent <- renderUI({
   fit <- bmlModel()
-  nPapers <- length(unique(as.character(isolate(MA())$Paper)))
+  nPapers <- length(unique(as.character(isolate(MAml())$Paper)))
   tagList(
     p(tags$b("Overall model (no moderator), using the priors as of the last recalculation.")),
     p(tags$small(bmlDiagnosticsText(fit))),
@@ -151,22 +148,17 @@ output$bmlContent <- renderUI({
 ## ---- moderator model ("Bayesian Multilevel Regression" tab) ----
 
 observe({
-  MA()
-  req(isMultilevelMA())
+  MAml()   # reactive dep: re-check after each recalculation
   req(input$mainTabset == "bayesian_multilevel_regression")
   snap <- myrvs$bayesSnapshot          # reactive dep: changes only at recalculation
   req(is.null(bmlPriorProblem(snap)))
   req(nzchar(snap$moderatorName))    # needs a moderator (as of recalculation)
-  isolate(old_bml <- bmlCached(MA(), snap, snap$moderatorName))
+  isolate(old_bml <- bmlCached(MAml(), snap, snap$moderatorName))
   if (!isTruthy(old_bml)) bmlConfirmModal("triggerBmlReg")
   else myrvs$triggerBmlReg <- TRUE
 })
 
 bmlRegModel <- reactive({
-  validate(need(isMultilevelMA(),
-                paste('The Bayesian multilevel regression uses the UNaggregated effect sizes.',
-                      'Choose "None (multilevel model)" under "Aggregate over" in the',
-                      '"Study criteria" panel and press "(Re)Calculate Meta-Analysis".')))
   snap <- myrvs$bayesSnapshot
   validate(need(is.null(bmlPriorProblem(snap)), bmlPriorProblem(snap)))
   validate(need(nzchar(snap$moderatorName),
@@ -174,7 +166,7 @@ bmlRegModel <- reactive({
                       'Choose "Yes" and a moderator in the "Moderator Selection" tab,',
                       'then press "(Re)Calculate Meta-Analysis".')))
   req(myrvs$triggerBmlReg)
-  isolate(bmlFitOrCache(MA(), snap, snap$moderatorName))
+  isolate(bmlFitOrCache(MAml(), snap, snap$moderatorName))
 })
 
 output$bmlRegContent <- renderUI({

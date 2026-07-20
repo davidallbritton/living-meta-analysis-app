@@ -533,7 +533,7 @@ if (calculate_bma == "Yes") {   # needs proper bayesmeta priors and aggregated d
 #   (about 1-2 minutes); later fits reuse the compiled model.
 #   Requires the brms package, a Half cauchy or Half normal tau prior, and a
 #   proper (filled-in) mu prior.
-calculate_brms <- if (aggregation == "Multilevel") "Yes" else "No"  ## set to "Yes" to (also) run these
+calculate_brms <- "No"   ## set to "Yes" to run the (slow) Bayesian multilevel models
 bmlModeratorName <- %s    ## moderator for the multilevel regression ("" = none chosen)
 if (run_multilevel == "Yes" && calculate_brms == "Yes") {
   properMuPrior <- length(mupriormean) == 1 && !is.na(mupriormean) &&

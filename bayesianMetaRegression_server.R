@@ -41,7 +41,6 @@ myrvs$triggerBmr <- FALSE
 observe({
   # Reactively depend on MA()
   MA()
-  req(!isMultilevelMA())   # Bayesian analyses need aggregated data (see bmrModel)
   # Only relevant on the Bayesian Meta-Regression tab, with a moderator chosen
   req(input$mainTabset == "bayesian_meta_regression")
   # settings come from the RECALCULATION-TIME snapshot (set in MA()): changing
@@ -89,22 +88,15 @@ observe({
 
 ## The bmr model reactive, used by all Bayesian Meta-Regression outputs.
 bmrModel <- reactive({
-  # bmr() fits the aggregated two-level model only; block it (with an
-  # explanation shown in the Bayesian Meta-Regression outputs) for multilevel data
-  validate(need(!isMultilevelMA(),
-                paste('The Bayesian meta-regression uses the aggregated two-level model and is not',
-                      'available with the "None (multilevel model)" aggregation option.',
-                      'For per-group posterior means from the multilevel data, select a moderator and',
-                      'use the "Bayesian Multilevel Regression" tab; or choose "ID" or "Papers" under',
-                      '"Aggregate over" and press "(Re)Calculate Meta-Analysis" to use this tab.')))
   # Papers aggregation + a moderator that varies within papers would analyze
   # blended, arbitrarily labeled composites; refuse with an explanation
   validate(need(!moderatorBlockedByPapersAgg(myrvs$bayesSnapshot$moderatorName),
                 paste('Not computed: the analysis aggregates effect sizes over Papers, but at least',
                       'one selected paper has effect sizes in different groups of this moderator.',
                       'Aggregation would blend those groups together within each paper.',
-                      'Switch "Aggregate over" to ID or "None (multilevel model)" in the "Study criteria"',
-                      'panel and press "(Re)Calculate Meta-Analysis" to analyze this moderator.')))
+                      'Switch "Aggregate over" to ID in the "Study criteria" panel and press',
+                      '"(Re)Calculate Meta-Analysis", or use the "Bayesian Multilevel Regression"',
+                      'tab (which never aggregates), to analyze this moderator.')))
   req(myrvs$triggerBmr)   # only run after user confirmation (or a cache hit)
   isolate({               # settings come from the RECALCULATION-TIME snapshot (set in MA())
     snap          <- myrvs$bayesSnapshot

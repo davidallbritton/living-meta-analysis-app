@@ -146,7 +146,14 @@ applySelections <- function(sel) {
   }
 
   ## study criteria
-  applyRadio("aggregation", c("ID", "Papers", "Multilevel"))
+  ## ("Multilevel" was a radio option in older saved files; the multilevel
+  ## analyses now always run in their own tabs, so map it to ID)
+  if (identical(as.character(unlist(sel$aggregation)), "Multilevel")) {
+    sel$aggregation <- "ID"
+    notes <- c(notes, paste('aggregation "Multilevel" (older file) mapped to ID;',
+                            'the multilevel tabs are now always available'))
+  }
+  applyRadio("aggregation", c("ID", "Papers"))
   if (!is.null(sel$liveCounts))
     updateCheckboxInput(session, "liveCounts", value = isTRUE(unlist(sel$liveCounts)))
   applyCheckboxGroup("Design", lvlsOf("Design"))

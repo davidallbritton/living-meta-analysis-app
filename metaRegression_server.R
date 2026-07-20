@@ -43,9 +43,9 @@ output$moderatorAggWarning <- renderUI({
   p(style = "color: #b30000;",
     tags$b("Warning:"), 'with "Aggregate over: Papers", at least one selected paper has',
     'effect sizes in different', tags$b(v), 'groups.  Aggregating would blend those groups',
-    'together within each paper, so the meta-regression tabs will not analyze this',
-    'combination.  Switch "Aggregate over" to ID or "None (multilevel model)" (in the',
-    '"Study criteria" tab) to use this moderator.')
+    'together within each paper, so the AGGREGATED meta-regression tabs will not analyze',
+    'this combination.  Switch "Aggregate over" to ID (in the "Study criteria" tab), or',
+    'use the multilevel regression tabs, which never aggregate.')
 })
 
 
@@ -112,9 +112,10 @@ output$metaRegressionOutputUI <- renderUI({
         "Aggregation combines each paper's effect sizes into a single value FIRST, so a",
         'subgroup analysis by', tags$b(moderatorName), 'would blend groups within papers and',
         "assign each paper's combined effect size to an arbitrary group."),
-      p('To analyze this moderator, switch "Aggregate over" to ID or "None (multilevel model)"',
-        'in the "Study criteria" panel and press "(Re)Calculate Meta-Analysis".  (Aggregating',
-        'over Papers remains fine for moderators that are constant within each paper.)')
+      p('To analyze this moderator, switch "Aggregate over" to ID in the "Study criteria"',
+        'panel and press "(Re)Calculate Meta-Analysis", or use the "Frequentist Multilevel',
+        'Regression" tab (which never aggregates).  (Aggregating over Papers remains fine',
+        'for moderators that are constant within each paper.)')
     ))
   }
 
@@ -135,8 +136,7 @@ output$metaRegressionOutputUI <- renderUI({
             border = "red",    # color of the summary polygon
             # symbol size (CI ends + diamonds) from the "Symbol size" slider
             efac = if (is.null(input$freq_efac)) 0.3 else input$freq_efac,
-            # three-level rma.mv models when the "Multilevel" aggregation option was used
-            multilevel = isMultilevelMA()
+            multilevel = FALSE   # this tab is the standard two-level version
           )
           
           if (input$update_x_axis > 0) {
@@ -188,3 +188,36 @@ output$metaRegressionOutputUI <- renderUI({
   )   # end of tagList
 })
 
+
+
+######### "Frequentist Multilevel Regression" tab: the same grouped forest plot,
+######### fit as three-level CHE models on the UNaggregated data (MAml()).
+######### Always available (the aggregation setting does not affect it); the
+######### moderator choice applies live, like the standard tab above.
+freq_forest_height_mlreg <- reactive(nrow(MAml()) * 12 + 400)
+output$metaRegressionMlOutputUI <- renderUI({
+  MAmlData <- MAml()
+  moderatorName <- input$moderator_variable
+  tagList(
+    printButton,
+    h4("Frequentist Multilevel Meta-Regression: Forest Plot with Subgroups"),
+    p("Three-level CHE models (effect sizes nested in papers, cluster-robust",
+      "inference) on the UNaggregated data.  Will only be computed if 'Yes' is",
+      "selected for 'Include Moderator' and a categorical moderator is selected",
+      "in the 'Moderator Selection' tab (left panel)."),
+    conditionalPanel(
+      condition = "input.includeModerator == 'Yes'",
+      tagList(
+        renderText(paste("Moderator variable is:  ", moderatorName)),
+        renderPlot({
+          req(moderatorName)
+          forestByGroup(MA = MAmlData, moderator = MAmlData[[moderatorName]],
+                        col = "red", border = "red",
+                        efac = if (is.null(input$freq_efac)) 0.3 else input$freq_efac,
+                        multilevel = TRUE)
+        },
+        height = freq_forest_height_mlreg())
+      )
+    )
+  )
+})
