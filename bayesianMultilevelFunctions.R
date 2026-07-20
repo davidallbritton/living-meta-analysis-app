@@ -35,7 +35,12 @@ bmlTemplates <- new.env(parent = emptyenv())
 ## sampling settings used for every fit (kept in one place; also reported in the
 ## UI).  4 x (4000 - 1000) = 12000 kept draws: with 8000 the default data sat at
 ## ESS ~270 / Rhat ~1.015 (borderline); 12000 gives ESS ~700 / Rhat ~1.003.
-bmlSettings <- list(chains = 4, iter = 4000, warmup = 1000, cores = 2,
+## cores: sequential chains on shinyapps.io (forked parallel workers double the
+## peak memory and, when the OOM killer takes one, die with the cryptic
+## "Error in sink(type = \"output\"): invalid connection" seen in the server
+## logs); locally two cores are safe and faster
+bmlSettings <- list(chains = 4, iter = 4000, warmup = 1000,
+                    cores = if (Sys.getenv("R_CONFIG_ACTIVE") == "shinyapps") 1 else 2,
                     adapt_delta = 0.99, seed = 4242)
 
 ## the two supported tau-prior families
