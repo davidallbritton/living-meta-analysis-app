@@ -460,37 +460,6 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  uiOutput("metaRegressionMlOutputUI")
                                  ),
 
-                        tabPanel("Bayesian Meta-Regression", value = "bayesian_meta_regression",
-                                 printButton,
-                                 h4("Bayesian Meta-Regression"),
-                                 p("A Bayesian meta-regression with one categorical moderator, fit with",
-                                   "bmr() from the bayesmeta package. Each group's pooled effect is estimated",
-                                   "with a 95% credible interval, using the same τ (tau) and μ (mu) priors",
-                                   "chosen in the sidebar 'Prior specifications' tab."),
-                                 p("Will only be computed if 'Yes' is selected for 'Include Moderator' and a",
-                                   "categorical moderator is selected in the 'Moderator Selection' tab,",
-                                   'followed by a press of "(Re)Calculate Meta-Analysis".'),
-                                 p("NOTE: Like the other Bayesian analyses, this model can take a long time to",
-                                   "build, so it is only computed after you confirm. Once built, it is cached",
-                                   "and will not be recomputed for the same data, priors, and moderator."),
-                                 conditionalPanel(
-                                   condition = "input.includeModerator == 'Yes'",
-                                   textOutput("bmrModeratorLabel"),
-                                   h4("Forest plot (per-group posterior estimates):"),
-                                   uiOutput("bmrForestUI"), br(),
-                                   fluidRow(
-                                     column(4, sliderInput("bmrEfac", "Symbol size (efac):",
-                                                           min = 0.1, max = 2.0, value = 0.3, step = 0.05)),
-                                     column(4, numericInput("bmrForestHeightInput", "Plot height (pixels):",
-                                                            value = 1000, min = 200, step = 50))
-                                   ),
-                                   h4("Marginal posterior summary:"),
-                                   p("τ (tau): posterior heterogeneity. Each remaining column is a moderator",
-                                     "group's posterior effect (mode, median, mean, sd, and 95% credible interval)."),
-                                   verbatimTextOutput("bmrSummary") %>% withSpinner(type = 6, color = "#3498DB")
-                                 )
-                                 ),
-
                         tabPanel("Bayesian Forest plot",  value = "bayesian_forest_plot",
                                  printButton, 
                                  h4("Forest plot with 95% credible intervals:"),
@@ -555,6 +524,37 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  p("Ultrawide: user selected standard deviation + 2"),
                                  p("Interpretations of Bayes factors are based on Jeffreys (1961) with slight modifications by Lee and Wagenmakers (2013) and should be considered with caution."))
                                  ),
+                        tabPanel("Bayesian Meta-Regression", value = "bayesian_meta_regression",
+                                 printButton,
+                                 h4("Bayesian Meta-Regression"),
+                                 p("A Bayesian meta-regression with one categorical moderator, fit with",
+                                   "bmr() from the bayesmeta package. Each group's pooled effect is estimated",
+                                   "with a 95% credible interval, using the same τ (tau) and μ (mu) priors",
+                                   "chosen in the sidebar 'Prior specifications' tab."),
+                                 p("Will only be computed if 'Yes' is selected for 'Include Moderator' and a",
+                                   "categorical moderator is selected in the 'Moderator Selection' tab,",
+                                   'followed by a press of "(Re)Calculate Meta-Analysis".'),
+                                 p("NOTE: Like the other Bayesian analyses, this model can take a long time to",
+                                   "build, so it is only computed after you confirm. Once built, it is cached",
+                                   "and will not be recomputed for the same data, priors, and moderator."),
+                                 conditionalPanel(
+                                   condition = "input.includeModerator == 'Yes'",
+                                   textOutput("bmrModeratorLabel"),
+                                   h4("Forest plot (per-group posterior estimates):"),
+                                   uiOutput("bmrForestUI"), br(),
+                                   fluidRow(
+                                     column(4, sliderInput("bmrEfac", "Symbol size (efac):",
+                                                           min = 0.1, max = 2.0, value = 0.3, step = 0.05)),
+                                     column(4, numericInput("bmrForestHeightInput", "Plot height (pixels):",
+                                                            value = 1000, min = 200, step = 50))
+                                   ),
+                                   h4("Marginal posterior summary:"),
+                                   p("τ (tau): posterior heterogeneity. Each remaining column is a moderator",
+                                     "group's posterior effect (mode, median, mean, sd, and 95% credible interval)."),
+                                   verbatimTextOutput("bmrSummary") %>% withSpinner(type = 6, color = "#3498DB")
+                                 )
+                                 ),
+
                         tabPanel("Bayesian Multilevel", value = "bayesian_multilevel",
                                  printButton,
                                  h4("Bayesian Multilevel Meta-Analysis (effect sizes nested in papers)"),
