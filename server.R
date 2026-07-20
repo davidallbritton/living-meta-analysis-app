@@ -868,9 +868,21 @@ server <- function(input, output, session) {
     ## documented convention for analysis settings).  The robustness Yes/No
     ## toggle deliberately stays live (it is a compute on/off switch, not a
     ## model setting); only its priors come from this snapshot.
+    ## rhoCHE is the assumed within-paper correlation between SAMPLING ERRORS: it
+    ## feeds the aggregation (agg cor=), the frequentist CHE model (vcalc rho=) and
+    ## the Bayesian multilevel models (fcor V), so one screen never mixes two
+    ## values.  It is NOT a prior, but it lives in this snapshot because it is an
+    ## analysis setting and must follow the same
+    ## nothing-changes-until-(Re)Calculate convention.  The %||% fallback keeps
+    ## selections files written before this input existed loadable.
     myrvs$bayesSnapshot <- list(
       tauprior = input$tauprior, scaletau = input$scaletau,
       mupriormean = input$mupriormean, mupriorsd = input$mupriorsd,
+      rhoCHE = if (isTruthy(input$rhoCHE)) input$rhoCHE else 0.5,
+      ## escape hatch: drop the correlated-errors correction in the BAYESIAN
+      ## multilevel models only (they are the slow ones).  Statistically wrong --
+      ## see the warning banner the bml tabs show when it is on.
+      skipCHE = isTRUE(input$skipCHE == "Yes"),
       moderatorName = if (isTRUE(input$includeModerator == "Yes") &&
                           isTruthy(input$moderator_variable)) input$moderator_variable else ""
     )
@@ -941,11 +953,15 @@ server <- function(input, output, session) {
     }
     #
     ## Aggregate effect sizes
+    ## cor = the assumed within-paper sampling correlation (sidebar slider,
+    ## default 0.5).  Read from input rather than myrvs$bayesSnapshot: this runs
+    ## inside the same eventReactive that writes the snapshot, so depending on the
+    ## snapshot here would depend on write order within the reactive.
     aggES <- agg(id     = ID,
                  es     = yi,
                  var    = vi,
                  data   = df_sub,
-                 cor = .5,
+                 cor = if (isTruthy(input$rhoCHE)) input$rhoCHE else 0.5,
                  method = "BHHR")
     ## Merging aggregated ES with original dataframe
     MA <- merge(x = aggES, y = df_sub, by.x = "id", by.y = "ID")
@@ -1417,10 +1433,11 @@ server <- function(input, output, session) {
   # The multilevel frequentist model, from the UNaggregated data: the CHE
   # working model via fitMultilevelCHE() (metaRegressionFunctions.R) --
   # three-level rma.mv with effect sizes nested in papers, within-paper
-  # sampling correlation imputed at rho = 0.5, and cluster-robust
-  # (CR2/Satterthwaite) tests and confidence intervals.
+  # sampling correlation imputed at the sidebar rho (default 0.5), and
+  # cluster-robust (CR2/Satterthwaite) tests and confidence intervals.
   fmaMl <- reactive({
-    fitMultilevelCHE(MAml())
+    snap <- req(myrvs$bayesSnapshot)   # rho as of the last recalculation
+    fitMultilevelCHE(MAml(), rho = snap$rhoCHE)
   })
   
   # Forest plot panel height

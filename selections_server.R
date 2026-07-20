@@ -10,6 +10,7 @@
 #     and the include/exclude-specific-studies list
 #   - Moderator Selection: includeModerator, moderator_variable
 #   - Prior specifications: mupriormean, mupriorsd, robust, tauprior, scaletau
+#   - Dependence (rho): rhoCHE, skipCHE
 #   - Descriptives tab: the ticked factor/numeric variables and the variables of
 #     every crosstab (a "descriptives" block, applied by descriptives_server.R)
 #
@@ -48,7 +49,8 @@ selectionInputIds <- function() {
     myrvs$Variable.Numeric.Names, myrvs$Variable.Factor.Names,
     "included",
     "includeModerator", "moderator_variable",
-    "mupriormean", "mupriorsd", "robust", "tauprior", "scaletau")
+    "mupriormean", "mupriorsd", "robust", "tauprior", "scaletau",
+    "rhoCHE", "skipCHE")
 }
 
 ## current values of all selection inputs (inputs that have not rendered yet are
@@ -144,6 +146,12 @@ applySelections <- function(sel) {
     if (length(saved) == 1 && !is.na(saved))
       updateNumericInput(session, id, value = saved)
   }
+  ## single-value slider (applySlider above is for two-ended range sliders)
+  applyOneSlider <- function(id) {
+    saved <- suppressWarnings(as.numeric(unlist(sel[[id]])))
+    if (length(saved) == 1 && !is.na(saved))
+      updateSliderInput(session, id, value = saved)  # the slider clamps to its range
+  }
 
   ## study criteria
   ## ("Multilevel" was a radio option in older saved files; the multilevel
@@ -179,6 +187,11 @@ applySelections <- function(sel) {
   applyRadio("tauprior", c("Half cauchy", "Half normal", "uniform", "sqrt", "Jeffreys",
                            "BergerDeely", "conventional", "DuMouchel", "shrinkage", "I2"))
   applyNumeric("scaletau")
+
+  ## dependence: within-paper sampling correlation (absent from files saved before
+  ## this input existed -- applyOneSlider then simply leaves the 0.5 default)
+  applyOneSlider("rhoCHE")
+  applyRadio("skipCHE", c("No", "Yes"))
 
   if (length(notes))
     showNotification(paste("Some saved selections could not be applied --",

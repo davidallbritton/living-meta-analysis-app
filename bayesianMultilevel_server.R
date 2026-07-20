@@ -70,7 +70,8 @@ bmlPriorProblem <- function(snap) {
 bmlCached <- function(MA, snap, moderatorName) {
   checkOldBmlModels(myrvs$previousBmlModels, MA = MA, tauprior = snap$tauprior,
                     mupriorsd = snap$mupriorsd, scaletau = snap$scaletau,
-                    mupriormean = snap$mupriormean, moderatorName = moderatorName)
+                    mupriormean = snap$mupriormean, moderatorName = moderatorName,
+                    rho = snap$rhoCHE, che = !isTRUE(snap$skipCHE))
 }
 
 ## fit (or retrieve) the model for a snapshot + moderator choice, caching new fits
@@ -82,7 +83,10 @@ bmlFitOrCache <- function(MA, snap, moderatorName) {
   # not enough memory); degrade to an explanatory message instead of a raw error
   newbml <- tryCatch(
     fitBayesianMultilevel(d, tauprior = snap$tauprior, scaletau = snap$scaletau,
-                          mupriormean = snap$mupriormean, mupriorsd = snap$mupriorsd),
+                          mupriormean = snap$mupriormean, mupriorsd = snap$mupriorsd,
+                          ## CHE on by default, matching the frequentist
+                          ## multilevel tabs; the sidebar escape hatch turns it off
+                          rho = snap$rhoCHE, che = !isTRUE(snap$skipCHE)),
     error = function(e) e)
   if (inherits(newbml, "error")) {
     validate(need(FALSE, paste0(
@@ -93,7 +97,8 @@ bmlFitOrCache <- function(MA, snap, moderatorName) {
   }
   newrow <- list(MA = MA, tauprior = snap$tauprior, mupriorsd = snap$mupriorsd,
                  scaletau = snap$scaletau, mupriormean = snap$mupriormean,
-                 moderatorName = moderatorName, bml = newbml)
+                 moderatorName = moderatorName, rho = snap$rhoCHE,
+                 che = !isTRUE(snap$skipCHE), bml = newbml)
   myrvs$previousBmlModels[length(myrvs$previousBmlModels) + 1] <- list(newrow)
   newbml
 }
@@ -146,9 +151,33 @@ output$bmlForestOut <- renderPlot({
 }, height = function() max(400, length(unique(as.character(MAml()$Paper))) * 14 + 120))
 output$bmlDensOut <- renderPlot({ bmlDensityPlot(bmlModel()) }, height = 350)
 
+## Prominent in-tab warning when the escape hatch is on.  The sidebar popover is
+## easy to miss, and a too-narrow credible interval looks perfectly normal, so the
+## caveat has to travel with the results themselves (it also lands in printouts).
+bmlSkipWarning <- function(snap) {
+  if (!isTRUE(snap$skipCHE)) return(NULL)
+  div(style = paste("border: 2px solid #c0392b; background-color: #fdecea;",
+                    "padding: 10px; margin-bottom: 12px;"),
+      p(tags$b(style = "color:#c0392b;",
+               "Preliminary result -- the correlated-errors correction was skipped."),
+        style = "margin-bottom: 6px;"),
+      p(tags$small(
+        "These models assume that effect sizes from the same paper have independent",
+        "sampling errors.  Where a paper contributes several effect sizes from the same",
+        "participants -- several outcome measures on one sample, repeated post-tests, or",
+        "several treatment groups compared against one shared control -- that assumption",
+        "is wrong, and the credible intervals below are",
+        tags$b("too narrow"), ". The pooled estimate can shift substantially as well.",
+        "Use this only for a quick look; re-run with the correction (sidebar:",
+        tags$em("Dependence (\u03c1)"), ") on a local machine, or download the generated",
+        "script from the Downloads tab, before reporting these numbers."),
+        style = "margin-bottom: 0;"))
+}
+
 output$bmlContent <- renderUI({
   fit <- bmlModel()
   tagList(
+    bmlSkipWarning(myrvs$bayesSnapshot),
     p(tags$b("Overall model (no moderator), using the priors as of the last recalculation.")),
     p(tags$small(bmlDiagnosticsText(fit))),
     h4("Posterior summary:"),
@@ -193,6 +222,7 @@ output$bmlRegContent <- renderUI({
   fit <- bmlRegModel()
   moderatorName <- isolate(myrvs$bayesSnapshot$moderatorName)
   tagList(
+    bmlSkipWarning(myrvs$bayesSnapshot),
     p(tags$b(paste0("Moderator: ", moderatorName,
                     " (per-group posterior means), using the settings as of the last recalculation."))),
     p(tags$small(bmlDiagnosticsText(fit))),

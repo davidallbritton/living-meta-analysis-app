@@ -4,9 +4,12 @@
 ################ Multilevel (CHE) model fitter ###############################
 # Fits the correlated-and-hierarchical-effects (CHE) working model for a set of
 # UNaggregated effect-size rows (Pustejovsky & Tipton, 2022):
-#   * within-paper sampling errors are assumed correlated at rho = 0.5 -- the
-#     same assumption the ID/Papers aggregation makes via agg(..., cor = .5)
-#     (imputed with metafor::vcalc, since the true correlations are unknown);
+#   * within-paper sampling errors are assumed correlated at `rho` -- the same
+#     assumption the ID/Papers aggregation makes via agg(..., cor = rho)
+#     (imputed with metafor::vcalc, since the true correlations are unknown).
+#     rho is essentially never reported by primary studies, so it is a working
+#     assumption, not an estimate: the app defaults it to the conventional 0.5
+#     and exposes it as a sidebar slider for sensitivity analysis;
 #   * random effects ~ 1 | Paper/ID estimate between-paper and within-paper
 #     heterogeneity (a three-level model);
 #   * coefficient tests and confidence intervals are cluster-robust (CR2 with
@@ -56,7 +59,7 @@ mlabfun <- function(text, x) {
 ###### start of forestByGroup() function
 forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
                           header="Study",addpred=TRUE, caterpillar=F,
-                          multilevel=FALSE,
+                          multilevel=FALSE, rho=0.5,
          ##                 col="black", border="black",
                           ...) {
   ## additional arguments that might be useful: xlim, psize, xlab
@@ -66,10 +69,11 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
   # moderator is a vector of the same length as MA, such as MA$moderatorFactor
   # multilevel: fit three-level rma.mv models (effect sizes nested in papers;
   # MA must then hold the UNaggregated rows with Paper and ID columns)
+  # rho: assumed within-paper sampling correlation, used only when multilevel
 
   # model fitter shared by the overall model and the subgroup models
   fitOne <- function(d, sl) {
-    if (multilevel) fitMultilevelCHE(d, sl)     # CHE + cluster-robust inference
+    if (multilevel) fitMultilevelCHE(d, sl, rho = rho)   # CHE + cluster-robust inference
     else rma(d$es, d$var, slab = sl)
   }
   overallLabel  <- if (multilevel) "Multilevel Model for All Studies" else "RE Model for All Studies"
@@ -202,7 +206,7 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
   # add model testing moderator (multilevel: CHE model, so QM/QMp below are the
   # cluster-robust Wald test of the subgroup differences)
   fmaMod <- if (multilevel) {
-    fitMultilevelCHE(MA, mods = ~ moderator)
+    fitMultilevelCHE(MA, mods = ~ moderator, rho = rho)
   } else {
     rma(MA$es, MA$var, mods = ~ moderator)
   }

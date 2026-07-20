@@ -146,6 +146,16 @@ Publication.Year <- c(%s, %s)
 N_Intervention <- c(%s, %s)
 included <- %s
 aggregation <- '%s'
+## Assumed within-paper correlation between the SAMPLING ERRORS of different
+## effect sizes from one paper (the app's Dependence slider).  Used by the
+## aggregation, the frequentist CHE model and the Bayesian multilevel models.
+## Primary studies essentially never report it, so it is a working assumption;
+## 0.5 is conventional.  Vary it to check how sensitive the results are.
+rhoCHE <- %s
+## Escape hatch used in the app for the BAYESIAN multilevel models only: TRUE
+## drops the correlated-errors correction (fast but statistically wrong -- the
+## credible intervals come out too narrow).  Set to FALSE to do it properly.
+skipCHE <- %s
 #",
                                 paste("c(", paste(escapeAndDQuote(myrvs$Variable.Factor.Names), collapse = ",\n "), ")", sep=""),
                                 paste("c(", paste(escapeAndDQuote(myrvs$Variable.Numeric.Names), collapse = ",\n "), ")", sep=""),
@@ -153,7 +163,10 @@ aggregation <- '%s'
                                 input$Publication.Year[1], input$Publication.Year[2],
                                 input$N_Intervention[1],  input$N_Intervention[2],
                                 paste("c(", paste(escapeAndDQuote(enc2utf8(input$included)), collapse = ",\n "), ")", sep=""),
-                                input$aggregation
+                                input$aggregation,
+                                format(if (isTruthy(myrvs$bayesSnapshot$rhoCHE))
+                                         myrvs$bayesSnapshot$rhoCHE else 0.5),
+                                if (isTRUE(myrvs$bayesSnapshot$skipCHE)) "TRUE" else "FALSE"
 
   )
   # Add that to the string that contains the non-reactive R code that will be output
@@ -269,11 +282,11 @@ aggregationAggregated <- if (aggregation == "Multilevel") "ID" else aggregation
 MA_aggregated <- createMA.nonReactive(df, Variable.Factor.Names, Variable.Numeric.Names,
                            Variable.Factors.selected, Variable.Numerics.selected,
                            Design, Publication.Year, N_Intervention,
-                           included, aggregationAggregated)
+                           included, aggregationAggregated, cor = rhoCHE)
 MA_multilevel <- createMA.nonReactive(df, Variable.Factor.Names, Variable.Numeric.Names,
                            Variable.Factors.selected, Variable.Numerics.selected,
                            Design, Publication.Year, N_Intervention,
-                           included, "Multilevel")
+                           included, "Multilevel", cor = rhoCHE)
 ## MA = the dataset matching the mode chosen in the app (used by the boxplot)
 MA <- if (aggregation == "Multilevel") MA_multilevel else MA_aggregated
 
@@ -435,10 +448,10 @@ if (run_aggregated == "Yes") {
 ######### frequentist analyses: multilevel CHE model (unaggregated data) #########
 # fitMultilevelCHE() (in the downloaded HelperFunctions.R): three-level rma.mv
 # with effect sizes nested in papers, within-paper sampling correlation imputed
-# at rho = 0.5, and cluster-robust (CR2) tests and confidence intervals
+# at rhoCHE (set above), and cluster-robust (CR2) tests and confidence intervals
 # (requires the clubSandwich package)
 if (run_multilevel == "Yes") {
-  fma_multilevel <- fitMultilevelCHE(MA_multilevel)
+  fma_multilevel <- fitMultilevelCHE(MA_multilevel, rho = rhoCHE)
   output$freq_forest_multilevel <- create_freq_forest(fma_multilevel)
   output$freq_funnel_multilevel <- funnel(fma_multilevel, xlab = "Observed outcome")
 }
@@ -526,7 +539,8 @@ if (calculate_bma == "Yes") {   # needs proper bayesmeta priors and aggregated d
 
 ######### Bayesian multilevel analyses (brms / Stan; UNaggregated data) #########
 #   The Bayesian analogue of the multilevel CHE model: a three-level model with
-#   effect sizes nested in papers, fit with the brms package.  The functions
+#   effect sizes nested in papers AND their within-paper sampling errors
+#   correlated at rhoCHE (brms fcor()), fit with the brms package.  The functions
 #   (fitBayesianMultilevel, bmlData, bmlSummaryTable, bmlDiagnosticsText,
 #   bmlForestPlot, bmlDensityPlot) are in the downloaded HelperFunctions.R file.
 #   NOTE: slow -- the FIRST fit in an R session also compiles the Stan model
@@ -542,7 +556,7 @@ if (run_multilevel == "Yes" && calculate_brms == "Yes") {
     ## overall model
     bml <- fitBayesianMultilevel(bmlData(MA_multilevel), tauprior = tauprior,
                                  scaletau = scaletau, mupriormean = mupriormean,
-                                 mupriorsd = mupriorsd)
+                                 mupriorsd = mupriorsd, rho = rhoCHE, che = !skipCHE)
     cat(bmlDiagnosticsText(bml), "\\n")
     print(bmlSummaryTable(bml))
     print(bmlForestPlot(bml))
@@ -551,7 +565,8 @@ if (run_multilevel == "Yes" && calculate_brms == "Yes") {
     if (nzchar(bmlModeratorName)) {
       bmlReg <- fitBayesianMultilevel(bmlData(MA_multilevel, moderatorName = bmlModeratorName),
                                       tauprior = tauprior, scaletau = scaletau,
-                                      mupriormean = mupriormean, mupriorsd = mupriorsd)
+                                      mupriormean = mupriormean, mupriorsd = mupriorsd,
+                                      rho = rhoCHE, che = !skipCHE)
       cat(bmlDiagnosticsText(bmlReg), "\\n")
       print(bmlSummaryTable(bmlReg))
       print(bmlForestPlot(bmlReg))

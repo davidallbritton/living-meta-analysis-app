@@ -216,7 +216,10 @@ output$metaRegressionMlOutputUI <- renderUI({
           forestByGroup(MA = MAmlData, moderator = MAmlData[[moderatorName]],
                         col = "red", border = "red",
                         efac = if (is.null(input$freq_efac)) 0.3 else input$freq_efac,
-                        multilevel = TRUE)
+                        multilevel = TRUE,
+                        # assumed within-paper sampling correlation, as of the
+                        # last (Re)Calculate
+                        rho = req(myrvs$bayesSnapshot)$rhoCHE)
         },
         height = freq_forest_height_mlreg())
       )

@@ -61,16 +61,63 @@ bmlData <- function(MA, moderatorName = NULL) {
   d
 }
 
+## Known sampling covariance matrix V for the CHE (correlated-effects) model:
+## the known variances on the diagonal, and rho * sqrt(v_i * v_j) off-diagonal for
+## pairs of effect sizes from the SAME paper (0 across papers).  This is the same
+## metafor::vcalc() call fitMultilevelCHE() makes, so the frequentist and Bayesian
+## multilevel models use an identical V by construction.
+##
+## rho is a working assumption (primary studies essentially never report it), so
+## the app exposes it as a slider defaulting to the conventional 0.5.
+##
+## Stan needs a positive-definite V.  At rho = 0.5 this holds comfortably even for
+## papers contributing many effect sizes, but large rho with a large within-paper
+## block can push V singular, so nudge with Matrix::nearPD when needed and record
+## that on the result as attribute "nudged" for the UI to report.
+bmlV <- function(d, rho = 0.5) {
+  V <- metafor::vcalc(vi = d$var, cluster = d$Paper, obs = seq_len(nrow(d)), rho = rho)
+  ## vcalc() returns a classed "vcovmat"; brms wants a plain numeric matrix
+  V <- matrix(as.numeric(V), nrow = nrow(d), ncol = nrow(d))
+  ev <- min(eigen(V, symmetric = TRUE, only.values = TRUE)$values)
+  nudged <- FALSE
+  if (ev <= .Machine$double.eps^0.5) {
+    if (!requireNamespace("Matrix", quietly = TRUE))
+      stop("The sampling covariance matrix is not positive definite and the Matrix ",
+           "package is not available to correct it.  Try a smaller ρ.")
+    V <- as.matrix(Matrix::nearPD(V, ensureSymmetry = TRUE)$mat)
+    nudged <- TRUE
+  }
+  attr(V, "nudged") <- nudged
+  attr(V, "minEigen") <- ev
+  V
+}
+
 ## Fit (or refit from the compiled template) the Bayesian multilevel model.
 ## d must come from bmlData().  Returns a brmsfit.
-fitBayesianMultilevel <- function(d, tauprior, scaletau, mupriormean, mupriorsd) {
+##
+## che = TRUE (the app's only production path, matching the always-CHE frequentist
+## multilevel tab) models the within-paper correlation of SAMPLING ERRORS via
+## brms fcor() with the known covariance V from bmlV().  Two constraints come with
+## that construction: se() and fcor() are mutually exclusive, so the known
+## variances move from se(sqrt(var)) into the diagonal of V; and sigma must be
+## fixed to 1, or the model would estimate a free scale on top of the known V and
+## be unidentified against the ID-level random effect.
+## che = FALSE keeps the older diagonal-V model (independent sampling errors); it
+## is retained for the test suite, and is reachable in the app by setting rho = 0.
+fitBayesianMultilevel <- function(d, tauprior, scaletau, mupriormean, mupriorsd,
+                                  rho = 0.5, che = TRUE) {
   if (!requireNamespace("brms", quietly = TRUE))
     stop("The brms package is required for the Bayesian multilevel model.")
   if (!tauprior %in% bmlSupportedTauPriors)
     stop("Unsupported tau prior for the Bayesian multilevel model: ", tauprior)
 
   hasModerator <- "moderator" %in% names(d)
-  templateKey  <- paste(tauprior, if (hasModerator) "moderator" else "base")
+  ## the CHE and diagonal models are different Stan programs and must not share a
+  ## compiled template.  This does not increase the production template count:
+  ## with CHE always on, the "che" variants replace the "diag" ones (at most 4
+  ## per process, as before); "diag" is compiled only by the tests.
+  templateKey  <- paste(tauprior, if (hasModerator) "moderator" else "base",
+                        if (che) "che" else "diag")
 
   ## prior constants enter as DATA, so all values share one compiled model
   sv <- brms::stanvar(x = as.numeric(mupriormean), name = "prior_mu_mean") +
@@ -84,32 +131,51 @@ fitBayesianMultilevel <- function(d, tauprior, scaletau, mupriormean, mupriorsd)
   priors <- c(brms::set_prior("normal(prior_mu_mean, prior_mu_sd)",
                               class = if (hasModerator) "b" else "Intercept"),
               brms::set_prior(tauPriorString, class = "sd"))
-  formulaText <- if (hasModerator)
-    "es | se(sqrt(var)) ~ 0 + moderator + (1 | Paper) + (1 | ID)"
+  rhs <- if (hasModerator) "0 + moderator" else "1"
+  ## CHE: known variances live in V, sigma fixed to 1 (see the header comment)
+  formulaText <- if (che)
+    paste("es ~", rhs, "+ (1 | Paper) + (1 | ID) + fcor(V)")
   else
-    "es | se(sqrt(var)) ~ 1 + (1 | Paper) + (1 | ID)"
+    paste("es | se(sqrt(var)) ~", rhs, "+ (1 | Paper) + (1 | ID)")
+  if (che) {
+    priors <- c(priors, brms::set_prior("constant(1)", class = "sigma"))
+    V <- bmlV(d, rho = rho)
+    ## brms takes the known covariance through data2, not data
+    extraArgs <- list(data2 = list(V = V), family = stats::gaussian())
+  } else {
+    V <- NULL
+    extraArgs <- list()
+  }
 
   template <- bmlTemplates[[templateKey]]
   fit <- if (is.null(template)) {
-    brms::brm(stats::as.formula(formulaText), data = d, prior = priors, stanvars = sv,
+    do.call(brms::brm, c(list(
+              stats::as.formula(formulaText), data = d, prior = priors, stanvars = sv,
               chains = bmlSettings$chains, iter = bmlSettings$iter,
               warmup = bmlSettings$warmup, cores = bmlSettings$cores,
               control = list(adapt_delta = bmlSettings$adapt_delta),
-              seed = bmlSettings$seed, refresh = 0, silent = 2)
+              seed = bmlSettings$seed, refresh = 0, silent = 2), extraArgs))
   } else {
-    update(template, newdata = d, stanvars = sv,
+    ## V's dimension changes with the selection, but N is Stan *data*, so the
+    ## compiled template is reused without recompiling (verified by benchmark)
+    do.call(stats::update, c(list(
+           template, newdata = d, stanvars = sv,
            chains = bmlSettings$chains, iter = bmlSettings$iter,
            warmup = bmlSettings$warmup, cores = bmlSettings$cores,
-           seed = bmlSettings$seed, refresh = 0, silent = 2)
+           seed = bmlSettings$seed, refresh = 0, silent = 2),
+           if (che) list(data2 = list(V = V)) else list()))
   }
   if (is.null(template)) bmlTemplates[[templateKey]] <- fit
   fit
 }
 
 ## Cache lookup, mirroring checkOldBmrModels(): platform-safe comparison of the
-## MA data (factors as characters) plus all prior settings and the moderator.
+## MA data (factors as characters) plus all prior settings, rho and the moderator.
+## rho is compared with samePriorValue() rather than identical() for the same
+## reason the priors are: saved caches hold integer and double spellings of the
+## same number, and identical() silently misses those and forces a slow refit.
 checkOldBmlModels <- function(listPrevious, MA, tauprior, mupriorsd, scaletau,
-                              mupriormean, moderatorName) {
+                              mupriormean, moderatorName, rho = 0.5, che = TRUE) {
   return_bml <- FALSE
   if (length(listPrevious)) {
     MA <- as.data.frame(MA)
@@ -122,7 +188,14 @@ checkOldBmlModels <- function(listPrevious, MA, tauprior, mupriorsd, scaletau,
           identical(listPrevious[[i]]$tauprior, tauprior) &&
           samePriorValue(listPrevious[[i]]$mupriorsd, mupriorsd) &&
           samePriorValue(listPrevious[[i]]$scaletau, scaletau) &&
-          samePriorValue(listPrevious[[i]]$mupriormean, mupriormean)
+          samePriorValue(listPrevious[[i]]$mupriormean, mupriormean) &&
+          ## entries cached before rho existed are treated as the 0.5 default
+          ## (written out rather than using %||%, which is base R only from 4.4)
+          samePriorValue(if (is.null(listPrevious[[i]]$rho)) 0.5
+                         else listPrevious[[i]]$rho, rho) &&
+          ## a CHE fit and a diagonal fit are different models, never interchangeable
+          identical(if (is.null(listPrevious[[i]]$che)) TRUE
+                    else isTRUE(listPrevious[[i]]$che), isTRUE(che))
       ) {
         return_bml <- listPrevious[[i]]$bml
         break
