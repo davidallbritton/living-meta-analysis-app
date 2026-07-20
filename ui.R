@@ -442,7 +442,9 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                    '(CR2) confidence intervals.  Updated when "(Re)Calculate Meta-Analysis"',
                                    'is pressed.'),
                                  h4("Forest plot:"),
-                                 plotOutput("freq_forest_ml") %>% withSpinner(type = 6, color = "#3498DB"),
+                                 # height = "auto": the container tracks the renderPlot height,
+                                 # so the funnel plot below starts after the (tall) forest
+                                 plotOutput("freq_forest_ml", height = "auto") %>% withSpinner(type = 6, color = "#3498DB"),
                                  h4("Funnel plot:"),
                                  p("Funnel plot to assess publication bias."),
                                  plotOutput("freq_funnel_ml") %>% withSpinner(type = 6, color = "#3498DB")

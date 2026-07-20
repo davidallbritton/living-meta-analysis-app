@@ -128,18 +128,24 @@ bmlModel <- reactive({
   isolate(bmlFitOrCache(MAml(), snap, ""))
 })
 
+## the plots are named outputs with height = "auto" containers, so the tall
+## per-paper forest cannot overlap the content below it
+output$bmlForestOut <- renderPlot({
+  bmlForestPlot(bmlModel())
+}, height = function() max(400, length(unique(as.character(MAml()$Paper))) * 14 + 120))
+output$bmlDensOut <- renderPlot({ bmlDensityPlot(bmlModel()) }, height = 350)
+
 output$bmlContent <- renderUI({
   fit <- bmlModel()
-  nPapers <- length(unique(as.character(isolate(MAml())$Paper)))
   tagList(
     p(tags$b("Overall model (no moderator), using the priors as of the last recalculation.")),
     p(tags$small(bmlDiagnosticsText(fit))),
     h4("Posterior summary:"),
     renderTable(bmlSummaryTable(fit), digits = 3),
     h4("Per-paper posterior estimates (95% CrI):"),
-    renderPlot(bmlForestPlot(fit), height = max(400, nPapers * 14 + 120)),
+    plotOutput("bmlForestOut", height = "auto"),
     h4("Posterior densities:"),
-    renderPlot(bmlDensityPlot(fit), height = 350),
+    plotOutput("bmlDensOut", height = "350px"),
     br()
   )
 })
@@ -169,6 +175,9 @@ bmlRegModel <- reactive({
   isolate(bmlFitOrCache(MAml(), snap, snap$moderatorName))
 })
 
+output$bmlRegForestOut <- renderPlot({ bmlForestPlot(bmlRegModel()) }, height = 300)
+output$bmlRegDensOut <- renderPlot({ bmlDensityPlot(bmlRegModel()) }, height = 350)
+
 output$bmlRegContent <- renderUI({
   fit <- bmlRegModel()
   moderatorName <- isolate(myrvs$bayesSnapshot$moderatorName)
@@ -179,9 +188,9 @@ output$bmlRegContent <- renderUI({
     h4("Posterior summary:"),
     renderTable(bmlSummaryTable(fit), digits = 3),
     h4("Per-group posterior means (95% CrI):"),
-    renderPlot(bmlForestPlot(fit), height = 300),
+    plotOutput("bmlRegForestOut", height = "300px"),
     h4("Posterior densities:"),
-    renderPlot(bmlDensityPlot(fit), height = 350),
+    plotOutput("bmlRegDensOut", height = "350px"),
     br()
   )
 })
