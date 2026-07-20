@@ -71,3 +71,13 @@ first_shiny_meta_paper_doi <- "https://doi.org/10.1111/psyp.13933"
 first_shiny_meta_paper_app <- "https://vinzentwolf.shinyapps.io/taVNSHRVmeta"
 noise_meta_paper_full <- "Vasilev, M. R., Kirkby, J. A., & Angele, B. (2018). Auditory distraction during reading: A Bayesian meta-analysis of a continuing controversy. Perspectives on Psychological Science, 13(5), 567-597."
 noise_meta_paper <- "Vasilev, et al. (2018)"
+
+################## Stan compilation flags on shinyapps.io ##########################
+# g++ compiling a Stan model with the default "-g -O2" flags is OOM-killed even on
+# 4 GB instances (server logs 2026-07-20: oom events during make).  Compile with
+# -O1 and no debug symbols there instead: far lower compiler memory, slightly
+# slower sampling.  Local machines keep the defaults.
+if (Sys.getenv("R_CONFIG_ACTIVE") == "shinyapps") {
+  dir.create(path.expand("~/.R"), showWarnings = FALSE)
+  writeLines("CXX17FLAGS = -O1 -g0", path.expand("~/.R/Makevars"))
+}
