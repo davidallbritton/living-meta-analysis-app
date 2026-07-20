@@ -9,8 +9,10 @@ output$moderatorSelection_ui <- renderUI({
   Variable.Factor.Names <- myrvs$Variable.Factor.Names
   tagList(
     p("Choose a categorical moderator here to divide the studies into subgroups.",
-      'The selected moderator is used by both the "Meta-Regression" (frequentist) and',
-      '"Bayesian Meta-Regression" results tabs.',
+      "The selected moderator is used by all four meta-regression results tabs:",
+      '"Meta-Regression" and "Bayesian Meta-Regression" (aggregated data), and',
+      '"Frequentist Multilevel Regression" and "Bayesian Multilevel Regression"',
+      "(unaggregated, effect sizes nested in papers).",
       "The choices are the factor variables of the current data file.",
       'After changing the moderator, press "(Re)Calculate Meta-Analysis" to update the results.'),
     radioButtons("includeModerator", "Do you want to include a moderator for meta-regression?",

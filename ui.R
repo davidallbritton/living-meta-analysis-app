@@ -1,7 +1,7 @@
 #######################################################################################
 ################### A General Tool for Living Meta-Analysis #######################
 #######################################################################################
-# v.1.2 2026.07.18
+# v.1.3 2026.07.19
 
 ###################   Shiny App UI ###################################
 
@@ -245,6 +245,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                              "The Bayes Factor Robustness Check panel requires multiple",
                                              "recomputations of the Bayesian model and is VERY slow as a result.",
                                              "You may only want to run it once, on your final selected model.",
+                                             "The Bayesian MULTILEVEL tabs have one extra cost: the first multilevel fit in a",
+                                             "session also compiles the model (about 1-2 minutes extra); later fits are much faster.",
                                              'For Bayesian analyses of large datasets, it is recommended that you download the app (see the "Code and data" and "Updates" sections below) and run it locally on your own machine for better performance.',
                                              "Some precomputed Bayesian models and robustness plots for the default data set may also be included with the app; those load quickly from the cache without recomputation."
                                            ),
@@ -345,13 +347,16 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                            a("here", href="https://github.com/davidallbritton/Breathing_life_into_meta-analysis", target = "_blank"),
                                            ("on GitHub."),
                                            h4("This updated version:"),
-                                           p("This is an updated version of the app (v1.2).  Additions since the published version include",
+                                           p("This is an updated version of the app (v1.3).  Additions since the published version include",
                                              "frequentist and Bayesian meta-regression with a categorical moderator, a Descriptives tab",
                                              "(frequency tables, summary statistics, and crosstabs for the currently selected data),",
                                              "live study counts in the selection criteria, a curated collection of data files,",
-                                             "and saving/loading of selection settings."),
+                                             "saving/loading of selection settings, and MULTILEVEL analyses: frequentist (CHE) and",
+                                             "Bayesian (brms) three-level models with effect sizes nested in papers, each with a",
+                                             "moderator-regression variant, in their own always-available tabs alongside the",
+                                             "standard aggregated analyses -- the downloadable R code reproduces both families."),
                                            br(),
-                                           ("Updated: 2026-07-18"),
+                                           ("Updated: 2026-07-19"),
                                            h4("Updates:"),
                                            ("Updates and extensions can be found at the OSF project site"),
                                            a("https://osf.io/3zxh2/", href="https://osf.io/3zxh2/", target = "_blank"),
@@ -416,13 +421,15 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                         # insert frequentist tabs here
                         tabPanel("Forest plot", 
                                  printButton, 
-                                 h4("Frequentist Forest plot with study weights and 95% confidence intervals:"),
+                                 h4("Frequentist Forest plot with study weights and 95% confidence intervals (aggregated data):"),
+                                 p(tags$small('For the multilevel (unaggregated) version, see the "Frequentist Multilevel" tab.')),
                                  plotOutput("freq_forest") %>% withSpinner(type = 6, color = "#3498DB")
                         ),
                         tabPanel("Funnel plot",
                                  printButton,
-                                 h4("Frequentist Funnel plot"),
-                                 p("Funnel plot to assess publication bias."),
+                                 h4("Frequentist Funnel plot (aggregated data)"),
+                                 p("Funnel plot to assess publication bias.",
+                                   tags$small('For the multilevel (unaggregated) version, see the "Frequentist Multilevel" tab.')),
                                  plotOutput("freq_funnel") %>% withSpinner(type = 6, color = "#3498DB")
                         ),
                         
