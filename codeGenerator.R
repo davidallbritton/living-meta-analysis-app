@@ -259,11 +259,28 @@ createMA.nonReactive <- function(df, Variable.Factor.Names, Variable.Numeric.Nam
   return(MAnr)
 }
 
-## Create MA, using the inputs recorded from the shiny app UI
-MA <- createMA.nonReactive(df, Variable.Factor.Names, Variable.Numeric.Names,
+## Create the TWO analysis datasets, using the inputs recorded from the app UI.
+## MA_aggregated feeds the standard two-level analyses (rma, bayesmeta, bmr);
+## MA_multilevel keeps every effect size as its own row for the multilevel
+## analyses (frequentist CHE rma.mv and the brms Bayesian multilevel model).
+## Both families can therefore run from ONE downloaded script, whichever
+## aggregation mode the app was in.
+aggregationAggregated <- if (aggregation == "Multilevel") "ID" else aggregation
+MA_aggregated <- createMA.nonReactive(df, Variable.Factor.Names, Variable.Numeric.Names,
                            Variable.Factors.selected, Variable.Numerics.selected,
                            Design, Publication.Year, N_Intervention,
-                           included, aggregation)
+                           included, aggregationAggregated)
+MA_multilevel <- createMA.nonReactive(df, Variable.Factor.Names, Variable.Numeric.Names,
+                           Variable.Factors.selected, Variable.Numerics.selected,
+                           Design, Publication.Year, N_Intervention,
+                           included, "Multilevel")
+## MA = the dataset matching the mode chosen in the app (used by the boxplot)
+MA <- if (aggregation == "Multilevel") MA_multilevel else MA_aggregated
+
+## Which analysis families to run (both default to "Yes"; the frequentist parts
+## are fast -- the slow Bayesian parts have their own switches further down)
+run_aggregated <- "Yes"   ## standard two-level analyses on MA_aggregated
+run_multilevel <- "Yes"   ## multilevel (CHE / brms) analyses on MA_multilevel
 
   '
   ########### End of this static code section
@@ -333,14 +350,11 @@ createMA.nonReactive <- function(MA, tauprior, mupriorsd, scaletau, mupriormean)
   bma
     }  #### end of createMA.nonReactive function
 
-# calculate bma bayesmeta object
-calculate_bma <- "Yes"  ## Change to "no" if you want to skip the slow Bayesian calculations
-if (aggregation == "Multilevel") {
-  calculate_bma <- "No"  # bayesmeta needs the aggregated two-level data; the app
-                         # blocks Bayesian analyses for the Multilevel option too
-}
+# calculate bma bayesmeta object (always from the AGGREGATED data)
+calculate_bma <- "Yes"  ## Change to "No" if you want to skip the slow Bayesian calculations
+if (run_aggregated == "No") calculate_bma <- "No"   # bayesmeta uses the aggregated data
 if(calculate_bma == "Yes") {
-  bma <- createMA.nonReactive(MA, tauprior, mupriorsd, scaletau, mupriormean)
+  bma <- createMA.nonReactive(MA_aggregated, tauprior, mupriorsd, scaletau, mupriormean)
 }
 
 '
@@ -380,19 +394,7 @@ output$boxplot
 
 ########## frequentist analyses
 
-# Create model for frequentist meta-analysis:
-# aggregated data -> two-level rma(); Multilevel -> the CHE working model via
-# fitMultilevelCHE() (defined in the downloaded HelperFunctions.R): three-level
-# rma.mv with effect sizes nested in papers, within-paper sampling correlation
-# imputed at rho = 0.5, and cluster-robust (CR2) tests and confidence intervals
-# (requires the clubSandwich package)
-if (aggregation == "Multilevel") {
-  fma <- fitMultilevelCHE(MA)
-} else {
-  fma <- rma(MA$es, MA$var, slab=MA$study)
-}
-
-### Frequentist Forest Plot
+### Frequentist Forest Plot (used by both analysis families below)
 create_freq_forest <- function(fma) {
   model <- fma
   # Increase bottom margin to make space for the text
@@ -422,15 +424,27 @@ create_freq_forest <- function(fma) {
   plot
 }
 #
-output$freq_forest <- create_freq_forest(fma)
-#  output$freq_forest
+######### frequentist analyses: standard two-level model (aggregated data) #########
+if (run_aggregated == "Yes") {
+  fma <- rma(MA_aggregated$es, MA_aggregated$var, slab=MA_aggregated$study)
+  output$freq_forest <- create_freq_forest(fma)
+  # Funnel plot (frequentist)
+  output$freq_funnel <- funnel(fma, xlab = "Observed outcome")
+}
 
-# Funnel plot (frequentist)
-output$freq_funnel <- funnel(fma, xlab = "Observed outcome")
-#  output$freq_funnel
+######### frequentist analyses: multilevel CHE model (unaggregated data) #########
+# fitMultilevelCHE() (in the downloaded HelperFunctions.R): three-level rma.mv
+# with effect sizes nested in papers, within-paper sampling correlation imputed
+# at rho = 0.5, and cluster-robust (CR2) tests and confidence intervals
+# (requires the clubSandwich package)
+if (run_multilevel == "Yes") {
+  fma_multilevel <- fitMultilevelCHE(MA_multilevel)
+  output$freq_forest_multilevel <- create_freq_forest(fma_multilevel)
+  output$freq_funnel_multilevel <- funnel(fma_multilevel, xlab = "Observed outcome")
+}
 
 
-######### bayesian analyses:
+######### bayesian analyses (bayesmeta; aggregated data):
 # (skipped entirely when calculate_bma was set to "No" above, since they all
 #  need the bma object)
 if (calculate_bma == "Yes") {
@@ -479,23 +493,24 @@ output$taupriorplot
 
 }  # end of bayesian analyses (calculate_bma guard)
 
-# Bayes factor robustness plot panel
+# Bayes factor robustness plot panel (bayesmeta; uses the AGGREGATED data)
 #
 create_robustplot <- function(tauprior, mupriorsd, scaletau){
   robust = "Yes"  ##Change to "no" if you want to skip this very time consuming section
   robustggplot <- NULL
   if (robust == "Yes" & tauprior == "Half cauchy") {
-    robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfcauchy(t, scale = scaletau))
+    robustggplot <- robustness(MA_aggregated,SD = mupriorsd, tauprior = function(t) dhalfcauchy(t, scale = scaletau))
   } else if (robust == "Yes" & tauprior == "Half normal") {
-    robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfnormal(t, scale = scaletau))
+    robustggplot <- robustness(MA_aggregated,SD = mupriorsd, tauprior = function(t) dhalfnormal(t, scale = scaletau))
   }
   robustggplot
 }
 #
-output$robustplot <- create_robustplot(tauprior, mupriorsd, scaletau)
-
-print("Bayes Factors over a variety of prior standard deviations:")
-output$robustplot 
+if (calculate_bma == "Yes") {   # needs proper bayesmeta priors and aggregated data
+  output$robustplot <- create_robustplot(tauprior, mupriorsd, scaletau)
+  print("Bayes Factors over a variety of prior standard deviations:")
+  output$robustplot
+}
 '
   ########## End of  Create code_for_plots ###############################
 
@@ -503,9 +518,54 @@ output$robustplot
   codeForMetaRegression <- metaRegCode()
   codeForBmr            <- bmrCode()
 
+  ####### Bayesian multilevel (brms) section ###########
+  # Reproduces the "Bayesian Multilevel" / "Bayesian Multilevel Regression" tabs.
+  # The moderator is the RECALCULATION-TIME one (bayesSnapshot), matching the app.
+  bmlModeratorRecorded <- if (!is.null(myrvs$bayesSnapshot)) myrvs$bayesSnapshot$moderatorName else ""
+  code_for_bml <- sprintf('
+
+######### Bayesian multilevel analyses (brms / Stan; UNaggregated data) #########
+#   The Bayesian analogue of the multilevel CHE model: a three-level model with
+#   effect sizes nested in papers, fit with the brms package.  The functions
+#   (fitBayesianMultilevel, bmlData, bmlSummaryTable, bmlDiagnosticsText,
+#   bmlForestPlot, bmlDensityPlot) are in the downloaded HelperFunctions.R file.
+#   NOTE: slow -- the FIRST fit in an R session also compiles the Stan model
+#   (about 1-2 minutes); later fits reuse the compiled model.
+#   Requires the brms package, a Half cauchy or Half normal tau prior, and a
+#   proper (filled-in) mu prior.
+calculate_brms <- if (aggregation == "Multilevel") "Yes" else "No"  ## set to "Yes" to (also) run these
+bmlModeratorName <- %s    ## moderator for the multilevel regression ("" = none chosen)
+if (run_multilevel == "Yes" && calculate_brms == "Yes") {
+  properMuPrior <- length(mupriormean) == 1 && !is.na(mupriormean) &&
+                   length(mupriorsd) == 1 && !is.na(mupriorsd)
+  if (tauprior %%in%% bmlSupportedTauPriors && properMuPrior) {
+    ## overall model
+    bml <- fitBayesianMultilevel(bmlData(MA_multilevel), tauprior = tauprior,
+                                 scaletau = scaletau, mupriormean = mupriormean,
+                                 mupriorsd = mupriorsd)
+    cat(bmlDiagnosticsText(bml), "\\n")
+    print(bmlSummaryTable(bml))
+    print(bmlForestPlot(bml))
+    print(bmlDensityPlot(bml))
+    ## per-group model (multilevel regression), if a moderator was chosen
+    if (nzchar(bmlModeratorName)) {
+      bmlReg <- fitBayesianMultilevel(bmlData(MA_multilevel, moderatorName = bmlModeratorName),
+                                      tauprior = tauprior, scaletau = scaletau,
+                                      mupriormean = mupriormean, mupriorsd = mupriorsd)
+      cat(bmlDiagnosticsText(bmlReg), "\\n")
+      print(bmlSummaryTable(bmlReg))
+      print(bmlForestPlot(bmlReg))
+    }
+  } else {
+    cat("Bayesian multilevel skipped: needs a Half cauchy or Half normal tau prior",
+        "and a proper (filled-in) mu prior.\\n")
+  }
+}
+', escapeAndDQuote(enc2utf8(bmlModeratorRecorded)))
+
   ####### Wrapping up and saving the code for display and downloading ###########
   # Put together all the R code
-  code_for_R_script <- paste0(code_for_MA, code_for_bma, code_for_plots, codeForDescriptives, codeForMetaRegression, codeForBmr)
+  code_for_R_script <- paste0(code_for_MA, code_for_bma, code_for_plots, codeForDescriptives, codeForMetaRegression, codeForBmr, code_for_bml)
   
   # Create headers and footers for R markdown file
   

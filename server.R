@@ -1508,11 +1508,12 @@ server <- function(input, output, session) {
       "HelperFunctions.R"
     },
     content = function(file) {
-      # Read contents of both files
+      # Read contents of the helper files (including the Bayesian multilevel functions)
       content1 <- readLines("HelperFunctions.R")
       content2 <- readLines("metaRegressionFunctions.R")
+      content3 <- readLines("bayesianMultilevelFunctions.R")
       # Combine the contents
-      combined_content <- c(content1, content2)
+      combined_content <- c(content1, content2, content3)
       # Write the combined content to the output file
       writeLines(combined_content, file)
     }

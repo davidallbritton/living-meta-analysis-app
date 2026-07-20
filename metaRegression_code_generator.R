@@ -8,33 +8,36 @@ observe({   #update the meta-regression plot code when a moderator is selected
   req(input$includeModerator == "Yes")
   moderatorChosen <- input$moderator_variable
   # blocked in the app (Papers aggregation blends this moderator within papers):
-  # generate an explanatory comment instead of the analysis
-  if (moderatorBlockedByPapersAgg(moderatorChosen)) {
-    isolate(metaRegCode(paste(
-      "##### Meta-regression skipped: the analysis aggregates effect sizes over Papers,",
-      "but the chosen moderator varies within at least one selected paper, so aggregation",
-      "would blend its groups together.  Use ID or Multilevel aggregation to analyze this",
-      "moderator. #####")))
-    return()
-  }
-  moderatorArgText <- paste0('moderator=MA[["', moderatorChosen, '"]]')
+  # skip only the AGGREGATED variant; the multilevel variant remains valid
+  blockedAgg <- moderatorBlockedByPapersAgg(moderatorChosen)
   # efac follows the "Symbol size" slider on the frequentist meta-regression tab
   efacFreq <- if (is.null(input$freq_efac)) 0.3 else input$freq_efac
-  # three-level rma.mv models when the "Multilevel" aggregation option is chosen
-  multilevelArg <- if (identical(input$aggregation, "Multilevel")) "TRUE" else "FALSE"
-  plotArgs <- paste0('MA=MA, ', moderatorArgText, ', col="red", border="red", efac=', efacFreq,
-                     ', caterpillar=FALSE, multilevel=', multilevelArg)
-
-  metaRegText <- '
-  ########## Code for making the meta-regression plot with one categorical moderator
-  #   Uses a function from a separate .R file to make the plot.  
+  # BOTH variants are emitted, each under its family switch: the standard
+  # two-level version on the aggregated data and the multilevel (CHE) version
+  # on the unaggregated data
+  sharedArgs <- paste0('col="red", border="red", efac=', efacFreq, ', caterpillar=FALSE')
+  aggregatedSection <- if (blockedAgg) '
+  ## standard two-level version SKIPPED: the app aggregated over Papers and the
+  ## chosen moderator varies within at least one selected paper, so aggregation
+  ## would blend its groups together.  Use ID aggregation to enable this variant.
+' else paste0('
+  ## standard two-level version (aggregated data):
+  if (run_aggregated == "Yes") {
+    forestByGroup(MA=MA_aggregated, moderator=MA_aggregated[["', moderatorChosen, '"]],
+                  ', sharedArgs, ', multilevel=FALSE)
+  }')
+  metaRegText <- paste0('
+  ########## Meta-regression plots with one categorical moderator
+  #   Uses forestByGroup() from the downloaded HelperFunctions.R file.
   ## additional arguments that might be useful: xlim, psize, xlab, cex
   ## For a caterpillar plot, use caterpillar=TRUE (not slab=NA)
   ## You can also add any other arguments that metafor::forest() allows
-  #
-  forestByGroup('
-  
-  metaRegText <- paste0(metaRegText, plotArgs, ")")
+  #', aggregatedSection, '
+  ## multilevel (CHE) version (unaggregated data):
+  if (run_multilevel == "Yes") {
+    forestByGroup(MA=MA_multilevel, moderator=MA_multilevel[["', moderatorChosen, '"]],
+                  ', sharedArgs, ', multilevel=TRUE)
+  }')
   
   isolate({   # this updates the reactive value so it can be used outside this "observe" block
     metaRegCode(metaRegText)
@@ -72,7 +75,8 @@ observe({   # update the Bayesian meta-regression code when a moderator is selec
 #   NOTE: like bma(), this Bayesian model can be slow to fit.
 #
 if (calculate_bma == "Yes") {   # reuse the same on/off switch used for the bma() model
-  bmrModel <- buildBmrModel(MA, moderatorName = "%s",
+                                # (uses the AGGREGATED data, like the app tab)
+  bmrModel <- buildBmrModel(MA_aggregated, moderatorName = "%s",
                             tauprior = tauprior, scaletau = scaletau,
                             mupriormean = mupriormean, mupriorsd = mupriorsd)
 
@@ -80,7 +84,7 @@ if (calculate_bma == "Yes") {   # reuse the same on/off switch used for the bma(
   print(bmrModel$summary)
 
   ## grouped forest plot with a Bayesian posterior polygon per moderator group
-  forestBmrByGroup(bmrModel, MA = MA, moderator = MA[["%s"]],
+  forestBmrByGroup(bmrModel, MA = MA_aggregated, moderator = MA_aggregated[["%s"]],
                    xlab = "Hedges g", efac = %s)
 }
 ', moderatorChosen, moderatorChosen, efacBmr)
