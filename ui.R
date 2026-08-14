@@ -1,7 +1,7 @@
 #######################################################################################
 ################### A General Tool for Living Meta-Analysis #######################
 #######################################################################################
-# v.1.3 2026.07.19
+# v.1.3 2026.08.14
 
 ###################   Shiny App UI ###################################
 
@@ -11,8 +11,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                   tags$meta(charset = "UTF-8")
                 ),
                 useShinyjs(),
-                titlePanel(title = div("A General Tool for Living Meta-Analysis (updated)"),
-                           windowTitle = "A General Tool for Living Meta-Analysis (updated)"),
+                titlePanel(title = div("A General Tool for Living Meta-Analysis (v1.3)"),
+                           windowTitle = "A General Tool for Living Meta-Analysis (v1.3)"),
                 sidebarLayout(
                   sidebarPanel(fluidRow(
                     uiOutput("currentDataFile"),
@@ -417,7 +417,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                                href="https://doi.org/10.5281/zenodo.21938551", target = "_blank"),
                                              "(this DOI always resolves to the most recent release)."),
                                            br(),
-                                           ("Updated: 2026-07-19"),
+                                           ("Updated: 2026-08-14"),
                                            h4("Updates:"),
                                            ("Updates and extensions can be found at the OSF project site"),
                                            a("https://osf.io/3zxh2/", href="https://osf.io/3zxh2/", target = "_blank"),
