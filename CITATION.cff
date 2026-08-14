@@ -12,6 +12,7 @@ authors:
   - given-names: David
     family-names: Allbritton
     orcid: "https://orcid.org/0000-0002-1469-9954"
+    affiliation: "DePaul University"
 version: "1.3"
 date-released: "2026-08-13"
 license: MIT
