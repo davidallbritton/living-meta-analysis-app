@@ -14,6 +14,14 @@ authors:
     orcid: "https://orcid.org/0000-0002-1469-9954"
     affiliation: "DePaul University"
 version: "1.3"
+doi: "10.5281/zenodo.21938551"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.21938551"
+    description: "Concept DOI: always resolves to the latest release"
+  - type: doi
+    value: "10.5281/zenodo.21938552"
+    description: "DOI for version 1.3"
 date-released: "2026-08-14"
 license: MIT
 repository-code: "https://github.com/davidallbritton/living-meta-analysis-app"

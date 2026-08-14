@@ -1,5 +1,8 @@
 # A General Tool for Living Meta-Analysis
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21938551.svg)](https://doi.org/10.5281/zenodo.21938551)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A Shiny web application for interactive, reproducible meta-analysis that can be
 kept up to date as new studies appear ("living" meta-analysis). It supports
 aggregated and multilevel effect-size models, frequentist (`metafor`) and
@@ -41,8 +44,13 @@ in:
 > https://doi.org/10.5334/joc.389
 
 If you use this software, please cite it using the metadata in
-[`CITATION.cff`](CITATION.cff). A Zenodo DOI for the software release is
-available (see the badge / release page).
+[`CITATION.cff`](CITATION.cff), or by DOI:
+
+> Allbritton, D. (2026). *A General Tool for Living Meta-Analysis* (Version 1.3)
+> [Computer software]. https://doi.org/10.5281/zenodo.21938551
+
+That is the concept DOI: it always resolves to the most recent release. To cite
+version 1.3 specifically, use https://doi.org/10.5281/zenodo.21938552.
 
 ## License
 
