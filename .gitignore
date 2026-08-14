@@ -1,0 +1,30 @@
+# R session / history
+.Rhistory
+.Rapp.history
+.RData
+.Ruserdata
+
+# R environment / secrets
+.Renviron
+.httr-oauth
+
+# RStudio
+.Rproj.user/
+
+# shinyapps.io / rsconnect deployment records (contain no secrets, but not
+# needed in the source repo; regenerated locally on deploy)
+rsconnect/
+
+# knitr / R Markdown caches
+*_cache/
+/cache/
+*.utf8.md
+*.knit.md
+
+# Build artifacts
+/*.tar.gz
+/*.Rcheck/
+*-Ex.R
+
+# macOS
+.DS_Store

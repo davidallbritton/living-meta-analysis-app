@@ -1,0 +1,51 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "A General Tool for Living Meta-Analysis"
+abstract: >-
+  A Shiny web application for interactive, reproducible living meta-analysis,
+  supporting aggregated and multilevel effect-size models with frequentist
+  (metafor) and Bayesian (bayesmeta, brms) estimation, meta-regression,
+  correlated within-paper sampling errors, Bayes-factor robustness checks, and
+  downloadable reproducible R scripts.
+type: software
+authors:
+  - given-names: David
+    family-names: Allbritton
+    orcid: "https://orcid.org/0000-0002-1469-9954"
+version: "1.3"
+date-released: "2026-08-13"
+license: MIT
+repository-code: "https://github.com/davidallbritton/living-meta-analysis-app"
+keywords:
+  - meta-analysis
+  - living meta-analysis
+  - Bayesian
+  - Shiny
+  - R
+  - metafor
+  - brms
+  - bayesmeta
+references:
+  - type: article
+    title: "Breathing Life Into Meta-Analytic Methods"
+    authors:
+      - given-names: David
+        family-names: Allbritton
+        orcid: "https://orcid.org/0000-0002-1469-9954"
+      - given-names: Pablo
+        family-names: Gómez
+        orcid: "https://orcid.org/0000-0003-4180-1560"
+      - given-names: Bernhard
+        family-names: Angele
+        orcid: "https://orcid.org/0000-0001-8989-8555"
+      - given-names: Martin
+        family-names: Vasilev
+        orcid: "https://orcid.org/0000-0003-1944-8828"
+      - given-names: Manuel
+        family-names: Perea
+        orcid: "https://orcid.org/0000-0002-3291-1365"
+    journal: "Journal of Cognition"
+    year: 2024
+    volume: 7
+    issue: 1
+    doi: "10.5334/joc.389"
