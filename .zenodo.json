@@ -1,6 +1,6 @@
 {
   "title": "A General Tool for Living Meta-Analysis",
-  "description": "A Shiny web application for interactive, reproducible living meta-analysis, supporting aggregated and multilevel effect-size models with frequentist (metafor) and Bayesian (bayesmeta, brms) estimation, meta-regression, correlated within-paper sampling errors, Bayes-factor robustness checks, and downloadable reproducible R scripts. Successor to the tool described in Allbritton, Gomez, Angele, Vasilev & Perea (2024), Journal of Cognition 7(1):61, doi:10.5334/joc.389.",
+  "description": "<p>A Shiny web application for interactive, reproducible living meta-analysis, supporting aggregated and multilevel effect-size models with frequentist (metafor) and Bayesian (bayesmeta, brms) estimation, meta-regression, correlated within-paper sampling errors, Bayes-factor robustness checks, and downloadable reproducible R scripts. Successor to the tool described in Allbritton, Gomez, Angele, Vasilev &amp; Perea (2024), Journal of Cognition 7(1):61, doi:10.5334/joc.389.</p><p>The current development version of the app can be found at:</p><p><a href=\"https://dallbrit.shinyapps.io/Meta_regression_app/\">https://dallbrit.shinyapps.io/Meta_regression_app/</a><br><a href=\"https://github.com/davidallbritton/living-meta-analysis-app\">https://github.com/davidallbritton/living-meta-analysis-app</a></p>",
   "upload_type": "software",
   "version": "1.3",
   "license": "MIT",

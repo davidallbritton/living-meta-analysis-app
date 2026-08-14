@@ -25,6 +25,7 @@ identifiers:
 date-released: "2026-08-14"
 license: MIT
 repository-code: "https://github.com/davidallbritton/living-meta-analysis-app"
+url: "https://dallbrit.shinyapps.io/Meta_regression_app/"
 keywords:
   - meta-analysis
   - living meta-analysis
