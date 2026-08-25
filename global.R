@@ -1,5 +1,5 @@
 ################### A General Tool for Living Meta-Analysis #################
-# v.1.3 2026.08.14
+# v.1.4 2026.08.25
 #----
 # default data file for initial display, before user uploads their own data file:
 load(file = "data/2023updatedData.Rda")             # loads a dataframe called "df"
@@ -60,6 +60,37 @@ defaultBmrSeed    <- loadSeedRDS("data/defaultPrecalculatedBmrModels.RDS")
 defaultBmlSeed    <- loadSeedRDS("data/defaultPrecalculatedBmlModels.RDS")
 
 
+
+################## Output tabs that can be marked as "included" ####################
+# The analysis-output tabs of the main panel, in display order.  Each one carries an
+# "Include this tab in the analysis" checkbox (input id "includeTab_<value>"); the
+# ticked set is highlighted in the tab strip, labelled in the generated R code, and
+# saved in the selections .json file.  Purely declarative -- nothing is gated by it.
+#
+# NAMES are the tabPanel value= (the ids written to the .json; keep stable), VALUES
+# are the display titles used in the generated code's labels.  ui.R, the code
+# generators and selections_server.R all read this one list.
+#
+# The Explanation / Included Studies / Current data / Downloads / R Code tabs are
+# deliberately absent: no section of the generated script corresponds to them.
+includableTabs <- c(
+  descriptives                       = "Descriptives",
+  outlier_check                      = "Outlier check",
+  forest_plot                        = "Forest plot",
+  funnel_plot                        = "Funnel plot",
+  meta_regression                    = "Meta-Regression",
+  frequentist_multilevel             = "Frequentist Multilevel",
+  frequentist_multilevel_regression  = "Frequentist Multilevel Regression",
+  bayesian_forest_plot               = "Bayesian Forest plot",
+  bayesian_funnel_plot               = "Bayesian Funnel plot",
+  bayesian_statistics                = "Bayesian Statistics",
+  bayesian_additional_plots          = "Bayesian Additional plots",
+  bayesian_robustness                = "Bayes factor robustness check",
+  bayesian_meta_regression           = "Bayesian Meta-Regression",
+  bayesian_multilevel                = "Bayesian Multilevel",
+  bayesian_multilevel_regression     = "Bayesian Multilevel Regression"
+)
+includableTabValues <- names(includableTabs)
 
 ################## Constants #######################################################
 printButton <- HTML('<p  style="text-align:right; font-size: 8px;"><button  onClick="window.print()">PRINT</button></p>')

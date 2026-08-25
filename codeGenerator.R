@@ -7,7 +7,7 @@
 ########################################
 # David Allbritton
 # December 2023
-# v.1.3 2026.08.14
+# v.1.4 2026.08.25
 ########################################
 
 ############### functions for generating the code ############
@@ -20,6 +20,36 @@ escapeAndDQuote <- function(x) {  # replacement for dQuote for strings that cont
 }
 
 #  check_for_bad_chars -- in HelperFunctions.R
+
+## Section label for one analysis-output tab: a banner comment plus a cat() marker
+## that prints when the generated script runs, saying whether that tab was ticked as
+## "Include this tab in the analysis" in the app (see included_tabs_server.R).
+## PURELY DECLARATIVE -- it labels the section, it does not gate it: every section is
+## still emitted and still runs, exactly as before this was added.
+##
+## Note for anyone extending this: code_for_plots (below) is a plain string containing
+## a literal "%" (the I-squared line), so it must NOT be run through sprintf.  The
+## labels are spliced into it with paste0() instead.
+sectionLabel <- function(value, included = includedTabValues()) {
+  title <- unname(includableTabs[[value]])
+  state <- if (value %in% included) "INCLUDED IN THE APP ANALYSIS" else "not marked as included"
+  paste0('\n######### ', title, '  [', state, ']\n',
+         'if (show_inclusion_labels) cat("\\n== ', title, ' -- ', state, ' ==\\n")\n')
+}
+
+## Replace every "@@LABEL:<tab value>@@" placeholder in a block of generated code with
+## that tab's section label.  strsplit()/paste0() rather than gsub(): the label text
+## contains backslash escapes, which gsub() would reinterpret in its replacement
+## argument even with fixed = TRUE.
+applySectionLabels <- function(txt, included = includedTabValues()) {
+  for (v in includableTabValues) {
+    token <- paste0("@@LABEL:", v, "@@")
+    if (!grepl(token, txt, fixed = TRUE)) next
+    txt <- paste0(strsplit(txt, token, fixed = TRUE)[[1]],
+                  collapse = sectionLabel(v, included))
+  }
+  txt
+}
 
 ##############################################################
 
@@ -300,6 +330,21 @@ run_multilevel <- "Yes"   ## multilevel (CHE / brms) analyses on MA_multilevel
   #
   code_for_MA <- paste0(code_for_MA, code_for_MA_function)  # adding that static code
 
+  ## Record which output tabs were ticked as "Include this tab in the analysis" in the
+  ## app, and emit the switch that silences the per-section markers.  Descriptive only:
+  ## every section below still runs regardless of what is ticked.
+  includedNow  <- includedTabValues()
+  includedList <- if (length(includedNow))
+    paste0("##   ", paste(unname(includableTabs[includedNow]), collapse = "\n##   "), "\n")
+  else "##   (none were ticked)\n"
+  code_for_MA <- paste0(code_for_MA, '
+######### Output tabs marked as "included in the analysis" in the app #########
+## Each analysis section below carries a label saying whether its tab was ticked.
+## The labels are DESCRIPTIVE ONLY -- every section still runs either way.
+', includedList, '#
+show_inclusion_labels <- TRUE   ## FALSE to suppress the printed "== ... ==" markers
+')
+
 ################### end of Generate MA ########
 
 
@@ -388,6 +433,7 @@ output <- list()
 
 ######### Create the plots etc. from the results panels ####################
 
+@@LABEL:outlier_check@@
 # Outliers panel
 create_boxplot <- function(MA) {
   MAo <- MA %>% tibble::rownames_to_column(var = "outlier") %>% mutate(is_outlier=ifelse(is_outlier(es), es, as.numeric(NA)))
@@ -439,8 +485,10 @@ create_freq_forest <- function(fma) {
 #
 ######### frequentist analyses: standard two-level model (aggregated data) #########
 if (run_aggregated == "Yes") {
+@@LABEL:forest_plot@@
   fma <- rma(MA_aggregated$es, MA_aggregated$var, slab=MA_aggregated$study)
   output$freq_forest <- create_freq_forest(fma)
+@@LABEL:funnel_plot@@
   # Funnel plot (frequentist)
   output$freq_funnel <- funnel(fma, xlab = "Observed outcome")
 }
@@ -451,6 +499,7 @@ if (run_aggregated == "Yes") {
 # at rhoCHE (set above), and cluster-robust (CR2) tests and confidence intervals
 # (requires the clubSandwich package)
 if (run_multilevel == "Yes") {
+@@LABEL:frequentist_multilevel@@
   fma_multilevel <- fitMultilevelCHE(MA_multilevel, rho = rhoCHE)
   output$freq_forest_multilevel <- create_freq_forest(fma_multilevel)
   output$freq_funnel_multilevel <- funnel(fma_multilevel, xlab = "Observed outcome")
@@ -462,14 +511,17 @@ if (run_multilevel == "Yes") {
 #  need the bma object)
 if (calculate_bma == "Yes") {
 
+@@LABEL:bayesian_forest_plot@@
 # Forest Plot panel
 output$forest <-  forestplot.bayesmeta(bma, xlab = "Hedges g")
 # output$forest
 
+@@LABEL:bayesian_funnel_plot@@
 # Funnel Plot panel
 output$funnel <-  funnel.bayesmeta(bma, main = "")
 # output$funnel
 
+@@LABEL:bayesian_statistics@@
 # Statistics panel
 output$statistics_panel <-  capture.output({
   cat("Statistics for Bayesian analysis")
@@ -493,6 +545,7 @@ output$statistics_panel <-  capture.output({
 cat(output$statistics_panel, sep = "\n")
 
 
+@@LABEL:bayesian_additional_plots@@
 # Additional plots panel
 output$evupdate <- priorposteriorlikelihood.ggplot(bma, lowerbound = 0 - (mupriormean + 1) * 1.5, upperbound = 0 + (mupriormean + 1) * 1.5)
 output$taupriorplot <-   tauprior.ggplot(bma)
@@ -520,6 +573,7 @@ create_robustplot <- function(tauprior, mupriorsd, scaletau){
 }
 #
 if (calculate_bma == "Yes") {   # needs proper bayesmeta priors and aggregated data
+@@LABEL:bayesian_robustness@@
   output$robustplot <- create_robustplot(tauprior, mupriorsd, scaletau)
   print("Bayes Factors over a variety of prior standard deviations:")
   output$robustplot
@@ -527,9 +581,11 @@ if (calculate_bma == "Yes") {   # needs proper bayesmeta priors and aggregated d
 '
   ########## End of  Create code_for_plots ###############################
 
-  codeForDescriptives   <- descriptivesCode()
-  codeForMetaRegression <- metaRegCode()
-  codeForBmr            <- bmrCode()
+  ## splice the section labels into every block that carries placeholders
+  code_for_plots        <- applySectionLabels(code_for_plots)
+  codeForDescriptives   <- applySectionLabels(descriptivesCode())
+  codeForMetaRegression <- applySectionLabels(metaRegCode())
+  codeForBmr            <- applySectionLabels(bmrCode())
 
   ####### Bayesian multilevel (brms) section ###########
   # Reproduces the "Bayesian Multilevel" / "Bayesian Multilevel Regression" tabs.
@@ -553,6 +609,7 @@ if (run_multilevel == "Yes" && calculate_brms == "Yes") {
   properMuPrior <- length(mupriormean) == 1 && !is.na(mupriormean) &&
                    length(mupriorsd) == 1 && !is.na(mupriorsd)
   if (tauprior %%in%% bmlSupportedTauPriors && properMuPrior) {
+@@LABEL:bayesian_multilevel@@
     ## overall model
     bml <- fitBayesianMultilevel(bmlData(MA_multilevel), tauprior = tauprior,
                                  scaletau = scaletau, mupriormean = mupriormean,
@@ -561,6 +618,7 @@ if (run_multilevel == "Yes" && calculate_brms == "Yes") {
     print(bmlSummaryTable(bml))
     print(bmlForestPlot(bml))
     print(bmlDensityPlot(bml))
+@@LABEL:bayesian_multilevel_regression@@
     ## per-group model (multilevel regression), if a moderator was chosen
     if (nzchar(bmlModeratorName)) {
       bmlReg <- fitBayesianMultilevel(bmlData(MA_multilevel, moderatorName = bmlModeratorName),
@@ -577,6 +635,7 @@ if (run_multilevel == "Yes" && calculate_brms == "Yes") {
   }
 }
 ', escapeAndDQuote(enc2utf8(bmlModeratorRecorded)))
+  code_for_bml <- applySectionLabels(code_for_bml)
 
   ####### Wrapping up and saving the code for display and downloading ###########
   # Put together all the R code
@@ -648,6 +707,7 @@ source("descriptives_code_generator.R", local = T)
 
 ## adding additional reactives to trigger updating the R code before downloading it
 ## this will replace MA() as the trigger for the observeEvent above
-reactiveTriggers <- reactive(list(MA(), metaRegCode(), bmrCode(), descriptivesCode()))
+reactiveTriggers <- reactive(list(MA(), metaRegCode(), bmrCode(), descriptivesCode(),
+                                  includedTabValues()))
 
 

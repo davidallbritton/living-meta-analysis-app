@@ -1,7 +1,7 @@
 #######################################################################################
 ################### A General Tool for Living Meta-Analysis #################
 #######################################################################################
-# v.1.3 2026.08.14
+# v.1.4 2026.08.25
 # feature (2026-07-14): selection-factor checkboxes show live "[n ES, k studies]" count badges.
 
 ################### Shiny App SERVER ###################################
@@ -22,6 +22,10 @@ server <- function(input, output, session) {
   # included so that the code is evaluated within the server envirnoment
   # rather than in the user's workspace (global environment)
   #
+  # which output tabs are marked "included in the analysis" (defines
+  # includedTabValues(), read by codeGenerator.R and selections_server.R)
+  source("included_tabs_server.R", local = T)
+
   source("codeGenerator.R", local = T)  # for generating non-reactive R code to download for reproducibility
   
   # increase the allowable file size for uploads:

@@ -1,7 +1,9 @@
 ## generating static R code for the meta-regression panel
 ##
 
-metaRegCode <- reactiveVal("##### No moderator chosen; no meta-regression done ########")
+metaRegCode <- reactiveVal(paste0("@@LABEL:meta_regression@@\n",
+                                  "@@LABEL:frequentist_multilevel_regression@@\n",
+                                  "##### No moderator chosen; no meta-regression done ########"))
   
 observe({   #update the meta-regression plot code when a moderator is selected
   req(input$includeModerator)
@@ -16,11 +18,11 @@ observe({   #update the meta-regression plot code when a moderator is selected
   # two-level version on the aggregated data and the multilevel (CHE) version
   # on the unaggregated data
   sharedArgs <- paste0('col="red", border="red", efac=', efacFreq, ', caterpillar=FALSE')
-  aggregatedSection <- if (blockedAgg) '
+  aggregatedSection <- if (blockedAgg) '@@LABEL:meta_regression@@
   ## standard two-level version SKIPPED: the app aggregated over Papers and the
   ## chosen moderator varies within at least one selected paper, so aggregation
   ## would blend its groups together.  Use ID aggregation to enable this variant.
-' else paste0('
+' else paste0('@@LABEL:meta_regression@@
   ## standard two-level version (aggregated data):
   if (run_aggregated == "Yes") {
     forestByGroup(MA=MA_aggregated, moderator=MA_aggregated[["', moderatorChosen, '"]],
@@ -33,6 +35,7 @@ observe({   #update the meta-regression plot code when a moderator is selected
   ## For a caterpillar plot, use caterpillar=TRUE (not slab=NA)
   ## You can also add any other arguments that metafor::forest() allows
   #', aggregatedSection, '
+@@LABEL:frequentist_multilevel_regression@@
   ## multilevel (CHE) version (unaggregated data):
   if (run_multilevel == "Yes") {
     forestByGroup(MA=MA_multilevel, moderator=MA_multilevel[["', moderatorChosen, '"]],
@@ -47,7 +50,8 @@ observe({   #update the meta-regression plot code when a moderator is selected
 
 ## generating static R code for the Bayesian meta-regression panel
 ##
-bmrCode <- reactiveVal("##### No moderator chosen; no Bayesian meta-regression done ########")
+bmrCode <- reactiveVal(paste0("@@LABEL:bayesian_meta_regression@@\n",
+                              "##### No moderator chosen; no Bayesian meta-regression done ########"))
 
 observe({   # update the Bayesian meta-regression code when a moderator is selected
   # the bmr model uses the RECALCULATION-TIME moderator (see bayesSnapshot in
@@ -57,7 +61,8 @@ observe({   # update the Bayesian meta-regression code when a moderator is selec
   # blocked in the app (Papers aggregation blends this moderator within papers)
   if (moderatorBlockedByPapersAgg(moderatorChosen)) {
     isolate(bmrCode(paste(
-      "##### Bayesian meta-regression skipped: the analysis aggregates effect sizes over",
+      "@@LABEL:bayesian_meta_regression@@",
+      "\n##### Bayesian meta-regression skipped: the analysis aggregates effect sizes over",
       "Papers, but the chosen moderator varies within at least one selected paper, so",
       "aggregation would blend its groups together.  Use ID aggregation (or Multilevel,",
       "with the frequentist tabs) to analyze this moderator. #####")))
@@ -66,7 +71,7 @@ observe({   # update the Bayesian meta-regression code when a moderator is selec
   # efac follows the "Symbol size" slider on the Bayesian meta-regression tab
   efacBmr <- if (is.null(input$bmrEfac)) 0.3 else input$bmrEfac
 
-  bmrText <- sprintf('
+  bmrText <- sprintf('@@LABEL:bayesian_meta_regression@@
 ########## Bayesian meta-regression with one categorical moderator #############
 #   Fits bmr() from the bayesmeta package using cell-means coding, so each
 #   coefficient is one moderator group pooled posterior effect.  Uses the same

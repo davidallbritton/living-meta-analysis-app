@@ -13,6 +13,8 @@
 #   - Dependence (rho): rhoCHE, skipCHE
 #   - Descriptives tab: the ticked factor/numeric variables and the variables of
 #     every crosstab (a "descriptives" block, applied by descriptives_server.R)
+#   - Output tabs marked "Include this tab in the analysis" (an "outputs" block; see
+#     included_tabs_server.R)
 #
 # The saved file records which data file it was made for.  Loading a file saved for
 # a different data set still applies whatever matches (with a warning) -- that is
@@ -78,6 +80,12 @@ collectDescriptives <- function() {
 }
 
 
+## the output tabs currently ticked as "Include this tab in the analysis".  Like the
+## descriptives block this is ALWAYS written (empty when nothing is ticked), so loading
+## a file also clears tabs that were ticked -- the restore stays exact.
+collectOutputs <- function() as.character(includedTabValues())
+
+
 ## ---- Save: download the current selections as a .json file ----
 
 ## file-name and body of the selection-settings file, shared by the two download
@@ -92,7 +100,8 @@ writeSelectionsJson <- function(file) {
          saved    = as.character(Sys.Date()),
          dataFile = currentDataName(),
          selections   = collectSelections(),
-         descriptives = collectDescriptives()),
+         descriptives = collectDescriptives(),
+         outputs      = collectOutputs()),
     file, auto_unbox = TRUE, pretty = TRUE, digits = NA)
 }
 
@@ -211,6 +220,34 @@ observe({
   applySelections(sel)
 })
 
+## ---- Load: apply the "included output tabs" block ----
+
+## outputs waiting to be applied (consumed once the checkboxes are bound in the
+## browser; they are static inputs, so that is as soon as the session is up)
+pendingOutputs <- reactiveVal(NULL)
+
+applyOutputs <- function(vals) {
+  vals  <- as.character(unlist(vals))
+  known <- intersect(includableTabValues, vals)
+  if (length(known) < length(vals))
+    showNotification(sprintf("%d saved output tab(s) are not tabs of this app version and were skipped.",
+                             length(vals) - length(known)),
+                     type = "warning", duration = 15)
+  for (v in includableTabValues)
+    updateCheckboxInput(session, paste0("includeTab_", v), value = v %in% known)
+}
+
+## apply pending outputs once the session is live (input$Design reporting a value means
+## the rendered UI is bound, so the update messages will not be lost -- the same gate
+## the selections observer above uses)
+observe({
+  vals <- pendingOutputs()
+  req(!is.null(vals), input$Design)
+  pendingOutputs(NULL)
+  applyOutputs(vals)
+})
+
+
 ## read + sanity-check a selections file; returns the parsed file or NULL.
 ## Valid = our type marker plus at least one non-empty block (selections or
 ## descriptives), so a stray unrelated .json is still rejected.
@@ -220,7 +257,8 @@ readSelectionsFile <- function(path) {
   if (is.null(parsed) || !identical(parsed$type, "selection-settings")) return(NULL)
   hasSel  <- is.list(parsed$selections)   && length(parsed$selections)   > 0
   hasDesc <- is.list(parsed$descriptives) && length(Filter(length, parsed$descriptives)) > 0
-  if (!hasSel && !hasDesc) return(NULL)
+  hasOut  <- length(parsed$outputs) > 0
+  if (!hasSel && !hasDesc && !hasOut) return(NULL)
   parsed
 }
 
@@ -241,6 +279,8 @@ observeEvent(input$SelectionsUp, {
   if (length(parsed$selections)) pendingSelections(parsed$selections)
   # files saved before the descriptives block existed simply lack it: leave the tab alone
   if (!is.null(parsed$descriptives)) pendingDescriptives(parsed$descriptives)
+  # likewise for the outputs block (absent in files saved by v1.3 and earlier)
+  if (!is.null(parsed$outputs)) pendingOutputs(parsed$outputs)
 })
 
 ## at startup, auto-apply data/default_selections.json (if this app copy has one)
@@ -259,4 +299,5 @@ observeEvent(myrvs$df.reactive, once = TRUE, {
                    type = "message", duration = 8)
   if (length(parsed$selections)) pendingSelections(parsed$selections)
   if (!is.null(parsed$descriptives)) pendingDescriptives(parsed$descriptives)
+  if (!is.null(parsed$outputs)) pendingOutputs(parsed$outputs)
 })

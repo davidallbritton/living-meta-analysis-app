@@ -13,7 +13,7 @@ authors:
     family-names: Allbritton
     orcid: "https://orcid.org/0000-0002-1469-9954"
     affiliation: "DePaul University"
-version: "1.3"
+version: "1.4"
 doi: "10.5281/zenodo.21938551"
 identifiers:
   - type: doi
@@ -22,7 +22,9 @@ identifiers:
   - type: doi
     value: "10.5281/zenodo.21938552"
     description: "DOI for version 1.3"
-date-released: "2026-08-14"
+  # TODO on release: add the version DOI Zenodo mints for 1.4
+
+date-released: "2026-08-25"
 license: MIT
 repository-code: "https://github.com/davidallbritton/living-meta-analysis-app"
 url: "https://dallbrit.shinyapps.io/Meta_regression_app/"

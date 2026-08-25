@@ -2,7 +2,7 @@
 ## (sourced local = T from codeGenerator.R, like metaRegression_code_generator.R)
 ##
 
-descriptivesCode <- reactiveVal("##### Nothing selected in the Descriptives tab; no descriptive statistics code generated ########")
+descriptivesCode <- reactiveVal("@@LABEL:descriptives@@\n##### Nothing selected in the Descriptives tab; no descriptive statistics code generated ########")
 
 observe({   # update the descriptives code whenever the Descriptives tab choices change
   chosenF  <- input$descFactorsChosen
@@ -11,8 +11,9 @@ observe({   # update the descriptives code whenever the Descriptives tab choices
   ctList   <- lapply(myCrosstabIds(), function(id) input[[paste0("crosstabVars_", id)]])
   ctList   <- Filter(function(v) length(v) >= 2, ctList)
   if (!length(chosenF) && !length(chosenN) && !length(ctList)) {
-    isolate(descriptivesCode(
-      "##### Nothing selected in the Descriptives tab; no descriptive statistics code generated ########"))
+    isolate(descriptivesCode(paste0(
+      "@@LABEL:descriptives@@\n",
+      "##### Nothing selected in the Descriptives tab; no descriptive statistics code generated ########")))
     return()
   }
 
@@ -27,7 +28,7 @@ observe({   # update the descriptives code whenever the Descriptives tab choices
   }
 
   ## the recorded choices (dynamic part)
-  choicesText <- sprintf('
+  choicesText <- sprintf('@@LABEL:descriptives@@
 ########## Descriptive statistics for the currently selected data ##########
 #   Reproduces the "Descriptives" tab: summaries of the selected effect-size
 #   rows (all selection criteria applied, BEFORE effect-size aggregation).

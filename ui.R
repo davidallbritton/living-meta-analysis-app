@@ -1,9 +1,25 @@
 #######################################################################################
 ################### A General Tool for Living Meta-Analysis #######################
 #######################################################################################
-# v.1.3 2026.08.14
+# v.1.4 2026.08.25
 
 ###################   Shiny App UI ###################################
+
+## "Include this tab in the analysis" checkbox, placed at the top of each of the
+## analysis-output tabs listed in includableTabs (global.R).  Purely declarative:
+## ticking it highlights the tab in the tab strip, labels the matching section of
+## the generated R code, and is saved in the selections .json.  Nothing is gated.
+##
+## These are STATIC inputs inside tabsetPanel, so they are bound at page load
+## whether or not the tab is ever opened -- unlike the Descriptives choosers, which
+## are renderUI outputs and stay unrendered until their tab is first shown.
+includeTabCheckbox <- function(value) {
+  div(class = "include-tab-box",
+      style = "margin: 0 0 6px 0; padding: 4px 8px; background-color: #f5f5f5; border-radius: 3px;",
+      checkboxInput(paste0("includeTab_", value),
+                    label = tags$small("Include this tab in the analysis"),
+                    value = FALSE))
+}
 
 # Define UI
 ui <- fluidPage(theme = shinytheme("cosmo"),
@@ -11,8 +27,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                   tags$meta(charset = "UTF-8")
                 ),
                 useShinyjs(),
-                titlePanel(title = div("A General Tool for Living Meta-Analysis (v1.3)"),
-                           windowTitle = "A General Tool for Living Meta-Analysis (v1.3)"),
+                titlePanel(title = div("A General Tool for Living Meta-Analysis (v1.4)"),
+                           windowTitle = "A General Tool for Living Meta-Analysis (v1.4)"),
                 sidebarLayout(
                   sidebarPanel(fluidRow(
                     uiOutput("currentDataFile"),
@@ -265,6 +281,10 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                       hr()
                     ))),
                   mainPanel(
+                    # bold + bullet styling for the tabs marked as "included"
+                    # (a <style> block built in included_tabs_server.R).  Sits
+                    # OUTSIDE the tabset so it is always visible and never suspended.
+                    uiOutput("includedTabStyle"),
                     fluidRow(
                       tabsetPanel(id = "mainTabset",
                                   tabPanel("Explanation", 
@@ -401,7 +421,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                            a("here", href="https://github.com/davidallbritton/Breathing_life_into_meta-analysis", target = "_blank"),
                                            ("on GitHub."),
                                            h4("This updated version:"),
-                                           p("This is an updated version of the app (v1.3).  Additions since the published version include",
+                                           p("This is an updated version of the app (v1.4).  Additions since the published version include",
                                              "frequentist and Bayesian meta-regression with a categorical moderator, a Descriptives tab",
                                              "(frequency tables, summary statistics, and crosstabs for the currently selected data),",
                                              "live study counts in the selection criteria, a curated collection of data files,",
@@ -409,6 +429,14 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                              "Bayesian (brms) three-level models with effect sizes nested in papers, each with a",
                                              "moderator-regression variant, in their own always-available tabs alongside the",
                                              "standard aggregated analyses -- the downloadable R code reproduces both families."),
+                                           p(tags$b("New in v1.4:"),
+                                             'each analysis-output tab carries an "Include this tab in the analysis"',
+                                             "checkbox.  Ticked tabs are shown in bold with a bullet in the tab strip,",
+                                             "the matching section of the downloaded R code is labelled as included",
+                                             "(and says so when the script runs), and the set is saved in the",
+                                             "selection-settings file.  It is a way of recording which results are",
+                                             "actually part of your analysis -- nothing is hidden or skipped, and every",
+                                             "tab still computes exactly as before."),
                                            p("The source code is at",
                                              a("https://github.com/davidallbritton/living-meta-analysis-app",
                                                href="https://github.com/davidallbritton/living-meta-analysis-app", target = "_blank"),
@@ -417,7 +445,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                                href="https://doi.org/10.5281/zenodo.21938551", target = "_blank"),
                                              "(this DOI always resolves to the most recent release)."),
                                            br(),
-                                           ("Updated: 2026-08-14"),
+                                           ("Updated: 2026-08-25"),
                                            h4("Updates:"),
                                            ("Updates and extensions can be found at the OSF project site"),
                                            a("https://osf.io/3zxh2/", href="https://osf.io/3zxh2/", target = "_blank"),
@@ -453,7 +481,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  h4('This table displays the current data file plus any added studies'), br(),
                                  DT::dataTableOutput("currentData.display") %>% withSpinner(type = 6, color = "#3498DB"), br()
                         ),
-                        tabPanel("Descriptives", value = "descriptives", printButton,
+                        tabPanel("Descriptives", value = "descriptives",
+                                 includeTabCheckbox("descriptives"), printButton,
                                  h4("Descriptive statistics for the currently selected data"),
                                  p('These summaries describe the effect sizes currently selected by the',
                                    '"Study criteria" panel and update immediately as the selection changes',
@@ -470,7 +499,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  hr(),
                                  downloadButton("descriptivesDown", "Download these tables (.xlsx)"), br(), br()
                         ),
-                        tabPanel("Outlier check",
+                        tabPanel("Outlier check", value = "outlier_check",
+                                 includeTabCheckbox("outlier_check"),
                                  printButton,
                                  h4("Boxplot of the selected effect sizes (Hedges' g):"),
                                  p('The boxplot shows the distribution of the effect sizes in the current analysis',
@@ -480,13 +510,15 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                    'at the bottom of the "Study criteria" panel and re-calculate.'),
                                  plotOutput("boxplot") %>% withSpinner(type = 6, color = "#3498DB")),
                         # insert frequentist tabs here
-                        tabPanel("Forest plot", 
+                        tabPanel("Forest plot", value = "forest_plot",
+                                 includeTabCheckbox("forest_plot"),
                                  printButton, 
                                  h4("Frequentist Forest plot with study weights and 95% confidence intervals (aggregated data):"),
                                  p(tags$small('For the multilevel (unaggregated) version, see the "Frequentist Multilevel" tab.')),
                                  plotOutput("freq_forest") %>% withSpinner(type = 6, color = "#3498DB")
                         ),
-                        tabPanel("Funnel plot",
+                        tabPanel("Funnel plot", value = "funnel_plot",
+                                 includeTabCheckbox("funnel_plot"),
                                  printButton,
                                  h4("Frequentist Funnel plot (aggregated data)"),
                                  p("Funnel plot to assess publication bias.",
@@ -494,11 +526,13 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  plotOutput("freq_funnel") %>% withSpinner(type = 6, color = "#3498DB")
                         ),
                         
-                        tabPanel("Meta-Regression",
+                        tabPanel("Meta-Regression", value = "meta_regression",
+                                 includeTabCheckbox("meta_regression"),
                                  uiOutput("metaRegressionOutputUI")
                                  ),
 
                         tabPanel("Frequentist Multilevel", value = "frequentist_multilevel",
+                                 includeTabCheckbox("frequentist_multilevel"),
                                  printButton,
                                  h4("Frequentist Multilevel (CHE) Meta-Analysis (effect sizes nested in papers)"),
                                  p('Always computed from the UNaggregated effect sizes -- every effect size',
@@ -519,20 +553,24 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  plotOutput("freq_funnel_ml") %>% withSpinner(type = 6, color = "#3498DB")
                                  ),
                         tabPanel("Frequentist Multilevel Regression", value = "frequentist_multilevel_regression",
+                                 includeTabCheckbox("frequentist_multilevel_regression"),
                                  uiOutput("metaRegressionMlOutputUI")
                                  ),
 
-                        tabPanel("Bayesian Forest plot",  value = "bayesian_forest_plot",
+                        tabPanel("Bayesian Forest plot", value = "bayesian_forest_plot",
+                                 includeTabCheckbox("bayesian_forest_plot"),
                                  printButton, 
                                  h4("Forest plot with 95% credible intervals:"),
                                  plotOutput("forest") %>% withSpinner(type = 6, color = "#3498DB")
                                  ),
                         tabPanel("Bayesian Funnel plot", value = "bayesian_funnel_plot",
+                                 includeTabCheckbox("bayesian_funnel_plot"),
                                  printButton,
                                  h4("Funnel plot to assess publication bias:"),
                                  plotOutput("funnel")  %>% withSpinner(type = 6, color = "#3498DB")
                                  ),
                         tabPanel("Bayesian Statistics", value = "bayesian_statistics",
+                                 includeTabCheckbox("bayesian_statistics"),
                                  printButton,
                                  h4("Parameters:"),
                                  p("τ (tau): posterior distribution of heterogeneity."),
@@ -549,6 +587,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  h4("Joint maximum-a-posteriori:"), verbatimTextOutput("MAP") %>% withSpinner(type = 6, color = "#3498DB")
                                  ),
                         tabPanel("Bayesian Additional plots", value = "bayesian_additional_plots",
+                                 includeTabCheckbox("bayesian_additional_plots"),
                                  printButton,
                                  h4("Joint posterior density of heterogeneity τ and effect μ:"), plotOutput("joint") %>%  withSpinner(type = 6, color = "#3498DB"),
                                  p("Darker shading corresponds to higher probability density."),
@@ -561,6 +600,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  h4("τ prior distribution:"), plotOutput("taupriorplot") %>% withSpinner(type = 6, color = "#3498DB")
                                  ),
                         tabPanel("Bayes factor robustness check", value = "bayesian_robustness",
+                                 includeTabCheckbox("bayesian_robustness"),
                                  printButton,
                                  h4("Bayes Factors over a variety of prior standard deviations:"),
                                  p("Will only be computed if 'Yes' is selected for 'µ Bayes Factor robustness check' and the priors for τ and μ are proper.",),br(),
@@ -587,6 +627,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  p("Interpretations of Bayes factors are based on Jeffreys (1961) with slight modifications by Lee and Wagenmakers (2013) and should be considered with caution."))
                                  ),
                         tabPanel("Bayesian Meta-Regression", value = "bayesian_meta_regression",
+                                 includeTabCheckbox("bayesian_meta_regression"),
                                  printButton,
                                  h4("Bayesian Meta-Regression"),
                                  p("A Bayesian meta-regression with one categorical moderator, fit with",
@@ -618,6 +659,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  ),
 
                         tabPanel("Bayesian Multilevel", value = "bayesian_multilevel",
+                                 includeTabCheckbox("bayesian_multilevel"),
                                  printButton,
                                  h4("Bayesian Multilevel Meta-Analysis (effect sizes nested in papers)"),
                                  p('The Bayesian analogue of the "Frequentist Multilevel" tab:',
@@ -645,6 +687,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  br()
                                  ),
                         tabPanel("Bayesian Multilevel Regression", value = "bayesian_multilevel_regression",
+                                 includeTabCheckbox("bayesian_multilevel_regression"),
                                  printButton,
                                  h4("Bayesian Multilevel Meta-Regression (one categorical moderator)"),
                                  p('The same three-level model as the "Bayesian Multilevel" tab, but with',
@@ -689,6 +732,13 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                    "The R code that will be downloaded is displayed below.  If it is",
                                    'not displayed or is not what you expected, you may need to press "(Re)Calculate Meta-Analysis".'
                                    ),
+                                 p('Every analysis section is labelled with whether its tab was ticked as',
+                                   '"Include this tab in the analysis" -- a banner comment plus a marker that',
+                                   'prints when the script runs, so the output shows which results were part',
+                                   'of the analysis and which were not.  The labels are descriptive only:',
+                                   'every section still runs either way.  Set',
+                                   tags$code('show_inclusion_labels <- FALSE'),
+                                   'near the top of the script to silence the printed markers.'),
                                  downloadButton("downloadCode", "Download R Code"),
                                  downloadButton("downloadMarkdown", "Download R Markdown"),
                                  downloadButton("download_HelperFunctions", "Download required helper functions"),
