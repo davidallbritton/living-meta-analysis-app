@@ -22,7 +22,6 @@ identifiers:
   - type: doi
     value: "10.5281/zenodo.21938552"
     description: "DOI for version 1.3"
-  # TODO on release: add the version DOI Zenodo mints for 1.4
 
 date-released: "2026-08-25"
 license: MIT
