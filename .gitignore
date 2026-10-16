@@ -15,10 +15,14 @@
 # needed in the source repo; regenerated locally on deploy)
 rsconnect/
 
-# Precomputed brms (Bayesian multilevel) fits: ~190 MB, over GitHub's 100 MB
-# file limit.  Built locally and shipped only in the shinyapps.io deployment
-# (rsconnect bundles from the local folder and does not read .gitignore).
+# Precomputed results built locally and shipped only in the shinyapps.io
+# deployment (rsconnect bundles from the local folder and does not read
+# .gitignore):
+# - brms (Bayesian multilevel) fits: ~116 MB, over GitHub's 100 MB file limit
+# - Bayes factor robustness plots: stored ggplot objects only render under the
+#   ggplot2 major version that built them (the 2023 file failed under ggplot2 4)
 data/defaultPrecalculatedBml*.RDS
+data/defaultPrecalculatedPlots.RDS
 
 # knitr / R Markdown caches
 *_cache/
