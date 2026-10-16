@@ -1,7 +1,7 @@
 #######################################################################################
 ################### A General Tool for Living Meta-Analysis #################
 #######################################################################################
-# v.1.5 2026.10.16
+# v.1.5.1 2026.10.16
 #
 ################### Bayesian multilevel (three-level) model functions #################
 #
@@ -192,7 +192,7 @@ checkOldBmlModels <- function(listPrevious, MA, tauprior, mupriorsd, scaletau,
     for (i in seq_along(listPrevious)) {
       ma_previous <- as.data.frame(listPrevious[[i]]$MA)
       ma_previous <- ma_previous %>% mutate_if(is.factor, as.character)
-      if (identical(ma_previous, MA) &&
+      if (sameMAData(ma_previous, MA) &&
           identical(listPrevious[[i]]$moderatorName, moderatorName) &&
           identical(listPrevious[[i]]$tauprior, tauprior) &&
           samePriorValue(listPrevious[[i]]$mupriorsd, mupriorsd) &&

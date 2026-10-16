@@ -1,7 +1,7 @@
 # living-meta-analysis-app — guidance for Claude Code sessions
 
 This repository **is** the Shiny app "A General Tool for Living Meta-Analysis"
-(v1.5). It is the primary, public development repository — the app source lives
+(v1.5.1). It is the primary, public development repository — the app source lives
 at the repository root (which is why `shiny::runGitHub("living-meta-analysis-app",
 "davidallbritton")` works). Work directly here; there is no separate mirror.
 
@@ -44,8 +44,11 @@ at the repository root (which is why `shiny::runGitHub("living-meta-analysis-app
    dialog, so confirmation is a real FALSE→TRUE transition.  Keep that pattern.
 2. **Cache lookups compare numeric priors by value** (`samePriorValue`) because saved
    caches contain both integer `0L` and double `0` for the same setting; `identical()`
-   alone silently misses and forces slow refits.  MA data frames are still compared with
-   `identical()` after factor→character conversion.
+   alone silently misses and forces slow refits.  MA data frames are compared with
+   `sameMAData()` (HelperFunctions.R), never `identical()`: factors as character,
+   numeric columns to a 1e-10 relative tolerance, everything else exactly.  Aggregated
+   es/var values differ in their last bits across platforms, so `identical()` made the
+   Papers-aggregation seeds miss on the server.
 3. **brms compile cost**: prior constants are passed as Stan *data* (`stanvars`), so one
    compiled template per model structure (in `bmlTemplates`, per process) serves every
    prior value and dataset via `update()`.  The moderator column is always renamed
@@ -66,7 +69,7 @@ at the repository root (which is why `shiny::runGitHub("living-meta-analysis-app
 
 ## Conventions
 
-- Version header `# v.1.5 2026.10.16` in the main .R files — bump all of them together,
+- Version header `# v.1.5.1 2026.10.16` in the main .R files — bump all of them together,
   plus the app title, the Explanation tab's "This updated version" text and "Updated:" date,
   and README.md's citation, when releasing.  Keep
   `CITATION.cff` / `.zenodo.json` version fields in step with releases.

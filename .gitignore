@@ -15,6 +15,11 @@
 # needed in the source repo; regenerated locally on deploy)
 rsconnect/
 
+# Precomputed brms (Bayesian multilevel) fits: ~190 MB, over GitHub's 100 MB
+# file limit.  Built locally and shipped only in the shinyapps.io deployment
+# (rsconnect bundles from the local folder and does not read .gitignore).
+data/defaultPrecalculatedBml*.RDS
+
 # knitr / R Markdown caches
 *_cache/
 /cache/

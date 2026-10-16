@@ -1,7 +1,7 @@
 #######################################################################################
 ################### A General Tool for BAYESIAN META-ANALYSIS #######################
 #######################################################################################
-# v.1.5 2026.10.16
+# v.1.5.1 2026.10.16
 
 ################### Helper functions #################################################
 
@@ -314,6 +314,36 @@ normalizeTauPriorLabels <- function(listPrevious) {
 ## NULL and NA compare equal to themselves (both map through as.numeric()).
 samePriorValue <- function(a, b) identical(as.numeric(a), as.numeric(b))
 
+## Is a cached MA table the same data as the current one?  Used by every cache
+## lookup in place of identical().  Numeric columns that went through
+## aggregation (es, var) can differ in their last bits between R versions,
+## math libraries and operating systems, and identical() then silently misses
+## the cache and forces a slow refit (the "Papers"-aggregation seeds missed on
+## 2 es and 3 var values that printed identically).  So numeric columns
+## (integer or double) must agree to a relative tolerance of 1e-10 -- far below
+## any difference that could change a fitted model -- while everything else
+## (column names and order, row count, character/logical columns, NA
+## positions) must match exactly.  Factors are compared as character, because
+## factor levels are recorded differently on different platforms.
+sameMAData <- function(a, b, tolerance = 1e-10) {
+  a <- as.data.frame(a) %>% mutate_if(is.factor, as.character)
+  b <- as.data.frame(b) %>% mutate_if(is.factor, as.character)
+  if (!identical(names(a), names(b)) || nrow(a) != nrow(b)) return(FALSE)
+  for (col in names(a)) {
+    x <- a[[col]]; y <- b[[col]]
+    if (is.numeric(x) && is.numeric(y)) {
+      x <- as.numeric(x); y <- as.numeric(y)
+      if (!identical(is.na(x), is.na(y))) return(FALSE)
+      ok <- !is.na(x) & x != y            # x != y is FALSE for equal values, incl. equal Infs
+      if (any(ok) && any(abs(x[ok] - y[ok]) > tolerance * pmax(1, abs(x[ok]), abs(y[ok]))))
+        return(FALSE)
+    } else if (!identical(unname(x), unname(y))) {
+      return(FALSE)
+    }
+  }
+  TRUE
+}
+
 checkOldModels <- function(listPrevious, MA, tauprior, mupriorsd, scaletau, mupriormean, prevMAsNoFactors) {
   return_bma <- FALSE
   if(length(listPrevious)) {
@@ -321,7 +351,7 @@ checkOldModels <- function(listPrevious, MA, tauprior, mupriorsd, scaletau, mupr
     MA <-  MA %>% mutate_if(is.factor, as.character)
     for (i in seq_along(listPrevious)) {
       ma_previous <- as.data.frame(prevMAsNoFactors[[i]]) 
-      if (identical(ma_previous, MA) &&
+      if (sameMAData(ma_previous, MA) &&
           identical(listPrevious[[i]]$tauprior, tauprior) &&
           samePriorValue(listPrevious[[i]]$mupriorsd, mupriorsd) &&
           samePriorValue(listPrevious[[i]]$scaletau, scaletau) &&
@@ -347,7 +377,7 @@ checkOldBmrModels <- function(listPrevious, MA, tauprior, mupriorsd, scaletau, m
     for (i in seq_along(listPrevious)) {
       ma_previous <- as.data.frame(listPrevious[[i]]$MA)
       ma_previous <- ma_previous %>% mutate_if(is.factor, as.character)
-      if (identical(ma_previous, MA) &&
+      if (sameMAData(ma_previous, MA) &&
           identical(listPrevious[[i]]$moderatorName, moderatorName) &&
           identical(listPrevious[[i]]$tauprior, tauprior) &&
           samePriorValue(listPrevious[[i]]$mupriorsd, mupriorsd) &&
@@ -370,7 +400,7 @@ checkOldPlots <- function(listPrevious, MA, tauprior, mupriorsd, scaletau, robus
     MA <-  MA %>% mutate_if(is.factor, as.character)
     for (i in seq_along(listPrevious)) {
       ma_previous <- listPrevious[[i]]$MA 
-      if (identical(ma_previous, MA) &&
+      if (sameMAData(ma_previous, MA) &&
           samePriorValue(listPrevious[[i]]$mupriorsd, mupriorsd) &&
           samePriorValue(listPrevious[[i]]$scaletau, scaletau) &&
           identical(listPrevious[[i]]$robust , robust)

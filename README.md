@@ -46,7 +46,7 @@ in:
 If you use this software, please cite it using the metadata in
 [`CITATION.cff`](CITATION.cff), or by DOI:
 
-> Allbritton, D. (2026). *A General Tool for Living Meta-Analysis* (Version 1.5)
+> Allbritton, D. (2026). *A General Tool for Living Meta-Analysis* (Version 1.5.1)
 > [Computer software]. https://doi.org/10.5281/zenodo.21938551
 
 That is the concept DOI: it always resolves to the most recent release. To cite

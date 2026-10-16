@@ -1,7 +1,7 @@
 #######################################################################################
 ################### A General Tool for Living Meta-Analysis #######################
 #######################################################################################
-# v.1.5 2026.10.16
+# v.1.5.1 2026.10.16
 
 ###################   Shiny App UI ###################################
 
@@ -27,8 +27,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                   tags$meta(charset = "UTF-8")
                 ),
                 useShinyjs(),
-                titlePanel(title = div("A General Tool for Living Meta-Analysis (v1.5)"),
-                           windowTitle = "A General Tool for Living Meta-Analysis (v1.5)"),
+                titlePanel(title = div("A General Tool for Living Meta-Analysis (v1.5.1)"),
+                           windowTitle = "A General Tool for Living Meta-Analysis (v1.5.1)"),
                 sidebarLayout(
                   sidebarPanel(fluidRow(
                     uiOutput("currentDataFile"),
@@ -427,7 +427,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                            a("here", href="https://github.com/davidallbritton/Breathing_life_into_meta-analysis", target = "_blank"),
                                            ("on GitHub."),
                                            h4("This updated version:"),
-                                           p("This is an updated version of the app (v1.5).  Additions since the published version include",
+                                           p("This is an updated version of the app (v1.5.1).  Additions since the published version include",
                                              "frequentist and Bayesian meta-regression with a categorical moderator, a Descriptives tab",
                                              "(frequency tables, summary statistics, and crosstabs for the currently selected data),",
                                              "live study counts in the selection criteria, a curated collection of data files,",
@@ -451,6 +451,12 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                              "multilevel test was already an F test but had been labelled as Q).  The multilevel",
                                              "(CHE) and Bayesian models are unchanged.  The stated fitting times for the",
                                              "Bayesian multilevel models have also been corrected."),
+                                           p(tags$b("New in v1.5.1:"),
+                                             "precomputed Bayesian results for the default data set now also load",
+                                             'instantly when "Aggregate over" is set to Papers (they were being',
+                                             "recomputed because tiny rounding differences between computers stopped",
+                                             "them from matching), and on the hosted app the Bayesian multilevel models",
+                                             "for the default data are precomputed as well.  No analysis results change."),
                                            p("The source code is at",
                                              a("https://github.com/davidallbritton/living-meta-analysis-app",
                                                href="https://github.com/davidallbritton/living-meta-analysis-app", target = "_blank"),
