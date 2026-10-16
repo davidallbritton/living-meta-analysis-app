@@ -74,7 +74,7 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
   # model fitter shared by the overall model and the subgroup models
   fitOne <- function(d, sl) {
     if (multilevel) fitMultilevelCHE(d, sl, rho = rho)   # CHE + cluster-robust inference
-    else rma(d$es, d$var, slab = sl)
+    else rma(d$es, d$var, slab = sl, test = "adhoc")       # Knapp-Hartung, truncated at 1
   }
   overallLabel  <- if (multilevel) "Multilevel Model for All Studies" else "RE Model for All Studies"
   subgroupLabel <- if (multilevel) "Multilevel Model for Subgroup"   else "RE Model for Subgroup"
@@ -131,7 +131,7 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
     subMA <- MA[moderator == groupname,]
     subslab <- slab[moderator == groupname]
     subfma <- tryCatch(fitOne(subMA, subslab),
-                       error = function(e) rma(subMA$es, subMA$var, slab=subslab))
+                       error = function(e) rma(subMA$es, subMA$var, slab=subslab, test="adhoc"))
     submodels[[i]] <- subfma
     # update for the next entry
     lineNum <- (y + groupSpace + 1)
@@ -204,18 +204,24 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
   ####
 
   # add model testing moderator (multilevel: CHE model, so QM/QMp below are the
-  # cluster-robust Wald test of the subgroup differences)
+  # cluster-robust F test of the subgroup differences; two-level: the F test
+  # from the ad hoc Knapp-Hartung adjustment)
   fmaMod <- if (multilevel) {
     fitMultilevelCHE(MA, mods = ~ moderator, rho = rho)
   } else {
-    rma(MA$es, MA$var, mods = ~ moderator)
+    rma(MA$es, MA$var, mods = ~ moderator, test = "adhoc")
   }
   #
-  ### add text for the test of subgroup differences
+  ### add text for the test of subgroup differences (an F test with two df
+  ### unless the model used z tests, in which case QM is chi-square)
+  testStat <- if (fmaMod$test == "z") {
+    bquote(paste(Q[M], " = ", .(fmtx(fmaMod$QM, digits=2)), ", df = ", .(fmaMod$QMdf[1])))
+  } else {
+    bquote(paste(F, "(", .(fmaMod$QMdf[1]), ", ", .(fmtx(fmaMod$QMdf[2], digits=1)), ") = ",
+                 .(fmtx(fmaMod$QM, digits=2))))
+  }
   text(usr[1], belowPlot, pos=4, cex=cex, xpd=TRUE,
-       bquote(paste("Test for Subgroup Differences: ", 
-                    Q[M], " = ", .(fmtx(fmaMod$QM, digits=2)),
-                    ", df = ", .(fmaMod$p - 1), ", ",
+       bquote(paste("Test for Subgroup Differences: ", .(testStat), ", ",
                     .(fmtp(fmaMod$QMp, digits=2, pname="p", add0=TRUE, sep=TRUE, equal=TRUE)))))
 }
 ###### end of forestByGroup() function

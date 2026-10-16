@@ -7,7 +7,7 @@
 ########################################
 # David Allbritton
 # December 2023
-# v.1.4 2026.08.25
+# v.1.5 2026.10.16
 ########################################
 
 ############### functions for generating the code ############
@@ -486,7 +486,8 @@ create_freq_forest <- function(fma) {
 ######### frequentist analyses: standard two-level model (aggregated data) #########
 if (run_aggregated == "Yes") {
 @@LABEL:forest_plot@@
-  fma <- rma(MA_aggregated$es, MA_aggregated$var, slab=MA_aggregated$study)
+  # REML tau^2; Knapp-Hartung tests and CIs with the scaling factor truncated at 1
+  fma <- rma(MA_aggregated$es, MA_aggregated$var, slab=MA_aggregated$study, test="adhoc")
   output$freq_forest <- create_freq_forest(fma)
 @@LABEL:funnel_plot@@
   # Funnel plot (frequentist)

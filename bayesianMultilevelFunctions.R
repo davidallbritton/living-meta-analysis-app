@@ -1,7 +1,7 @@
 #######################################################################################
 ################### A General Tool for Living Meta-Analysis #################
 #######################################################################################
-# v.1.4 2026.08.25
+# v.1.5 2026.10.16
 #
 ################### Bayesian multilevel (three-level) model functions #################
 #
@@ -14,19 +14,28 @@
 # heterogeneity SDs (tau_paper and tau_ES).  Only those proper priors are
 # supported (Stan needs proper, sample-able priors).
 #
-# COMPILATION STRATEGY (the expensive part of Stan): the prior CONSTANTS are
-# passed to Stan as data (brms "stanvars"), so the generated Stan code -- and
-# therefore the compiled model -- is identical across prior values and data
-# sets.  The first fit of each model structure compiles (~30-90 s) and is kept
-# as a process-wide template in bmlTemplates; every later fit reuses it via
-# update() and only samples (a few seconds).  There are at most 4 structures:
-# {Half cauchy, Half normal} x {no moderator, moderator}.  The moderator column
-# is always renamed "moderator" in the data so one template serves any chosen
-# moderator variable.
+# COMPILATION STRATEGY: the prior CONSTANTS are passed to Stan as data (brms
+# "stanvars"), so the generated Stan code -- and therefore the compiled model --
+# is identical across prior values and data sets.  The first fit of each model
+# structure compiles (~30 s) and is kept as a process-wide template in
+# bmlTemplates; every later fit reuses it via update() and only samples.  There
+# are at most 4 structures: {Half cauchy, Half normal} x {no moderator,
+# moderator}.  The moderator column is always renamed "moderator" in the data so
+# one template serves any chosen moderator variable.
 #
-# Sampling settings: 4 chains x (3000 iter - 1000 warmup) = 8000 kept draws,
-# adapt_delta = 0.99 (the near-zero tau_ES funnel produces divergences at the
-# default 0.8), fixed seed for reproducibility.
+# SAMPLING COST: with CHE on (the production path), sampling, not compilation,
+# dominates.  The fcor(V) likelihood is one multivariate normal over all N
+# effect sizes (dense N x N covariance; its Cholesky factor is computed once,
+# but every gradient still costs O(N^2)), and NUTS takes about twice as many
+# steps per iteration as the diagonal model.  Measured 2026-10-16 on the
+# default data (79 rows): ~45-80 s per chain, so ~2 min per fit locally (2
+# cores) and ~4x one chain on shinyapps.io (sequential chains), versus ~3 s per
+# chain for the diagonal model.  Hence the precomputed-fits strategy for
+# production.
+#
+# Sampling settings: see bmlSettings below.  adapt_delta = 0.99 (the near-zero
+# tau_ES funnel produces divergences at the default 0.8), fixed seed for
+# reproducibility.
 #######################################################################################
 
 ## process-wide store for compiled template fits (shared by all sessions)

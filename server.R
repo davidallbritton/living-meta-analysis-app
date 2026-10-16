@@ -1,7 +1,7 @@
 #######################################################################################
 ################### A General Tool for Living Meta-Analysis #################
 #######################################################################################
-# v.1.4 2026.08.25
+# v.1.5 2026.10.16
 # feature (2026-07-14): selection-factor checkboxes show live "[n ES, k studies]" count badges.
 
 ################### Shiny App SERVER ###################################
@@ -1428,11 +1428,13 @@ server <- function(input, output, session) {
   ##### This section added for frequentist analyses, for large datasets ####
   #
   # Create model for the standard (two-level) frequentist meta-analysis, from
-  # the aggregated data.
+  # the aggregated data.  REML tau^2; tests and CIs use the Knapp-Hartung
+  # adjustment with its scaling factor truncated at 1 (test = "adhoc"), so the
+  # CI is never narrower than the Wald z interval.
   fma <- reactive({
     MA()  # must reference MA() first so its check for (nrows > 0) happens
     #
-    rma(MA()$es, MA()$var, slab=MA()$study)})
+    rma(MA()$es, MA()$var, slab=MA()$study, test="adhoc")})
 
   # The multilevel frequentist model, from the UNaggregated data: the CHE
   # working model via fitMultilevelCHE() (metaRegressionFunctions.R) --

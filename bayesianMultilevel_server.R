@@ -1,7 +1,7 @@
 #######################################################################################
 ################### A General Tool for Living Meta-Analysis #################
 #######################################################################################
-# v.1.4 2026.08.25
+# v.1.5 2026.10.16
 #
 ################### Bayesian Multilevel panels (server) ###############################
 #
@@ -111,9 +111,9 @@ bmlConfirmModal <- function(triggerName) {
   myrvs[[triggerName]] <- FALSE
   shinyalert(
     title = paste("Are you sure you want to fit this new Bayesian multilevel model?",
-                  "Sampling takes a little while, and the FIRST multilevel fit in a",
-                  "session also compiles the model (about 1-2 minutes extra).",
-                  "Later fits skip the compilation."),
+                  "Each fit typically takes a few minutes (longer for large selections",
+                  "and on the hosted app), and the FIRST fit of each model in a session",
+                  "also compiles it (about half a minute extra)."),
     type = "warning",
     showCancelButton = TRUE,
     confirmButtonText = "Yes, continue!",
