@@ -9,6 +9,8 @@ load(file = "data/2023updatedData.Rda")             # loads a dataframe called "
 # Load required packages and source helper functions #----
 library(purrr)
 library(metafor)
+if (packageVersion("metafor") < "4.6.0")   # escalc(measure = "SMCRPH") for added within-subject studies
+  stop("This app needs metafor version 4.6-0 or later.")
 library(clubSandwich)  # cluster-robust (CR2) inference for the multilevel CHE model
 library(readxl)
 library(writexl)

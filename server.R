@@ -577,6 +577,8 @@ server <- function(input, output, session) {
       # display the input boxes for d, d_var
       dtags <- tagList( hr(),
         p("Cohen's d and its variance:"),
+        p(em("Enter the uncorrected d (Cohen's d, not Hedges' g); the app applies the small-sample correction.",
+             "For a within-subject design, d must be standardized by the SD of the scores, not the SD of the difference scores.")),
         numericInput(inputId = "d_add",  label = "effect size (Cohen's d)", value =""),
         numericInput(inputId = "d_var_add",  label = "variance of d", value ="")
       )

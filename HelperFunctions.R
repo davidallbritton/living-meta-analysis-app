@@ -253,9 +253,14 @@ getEffectSize <- function(g=NA, g_var=NA, d=NA, d_var=NA, mean_E=NA, mean_C=NA,
         sd2i <- sqrt(var_C)
         sd1i <- sqrt(var_E)
       } else if (var_type == "Standard error") {
-        sd2i <- var_C * sqrt(N_Control)
-        sd1i <- var_E * sqrt(N_Intervention)
+        if (Design == "between") {
+          sd2i <- var_C * sqrt(N_Control)
+          sd1i <- var_E * sqrt(N_Intervention)
+        } else { # within: every participant contributes to both conditions
+          sd2i <- var_C * sqrt(N_Total)
+          sd1i <- var_E * sqrt(N_Total)
         }
+      }
       #
       # calculate g for a between design from group means and SDs
       if (Design == "between"){
@@ -274,9 +279,13 @@ getEffectSize <- function(g=NA, g_var=NA, d=NA, d_var=NA, mean_E=NA, mean_C=NA,
           gcalc <- metafor::escalc (measure = "SMCR", vtype = "LS2",
                            m1i = mean_E, m2i = mean_C,
                            sd1i = sd2i, ni = N_Total, ri = r)   # using SD of the control condition sd2i
-        } else { # using both control SD and intervention SD; SMCC for within group design
-          gcalc <- metafor::escalc (measure = "SMCC", vtype = "LS2",
-                           m1i = mean_E, m2i = mean_C, 
+        } else { # using both control SD and intervention SD; SMCRPH for within group design
+          # SMCRPH standardizes by sqrt((sd1i^2 + sd2i^2)/2), so g is on the same raw-score
+          # metric as SMD, SMD1 and SMCR and does not depend on r when the SDs differ.
+          # (SMCC, used in v1.5.1 and earlier, standardized by the SD of the change scores.)
+          # Default vtype "LS": Bonett's (2008) variance for unequal variances at the two occasions.
+          gcalc <- metafor::escalc (measure = "SMCRPH",
+                           m1i = mean_E, m2i = mean_C,
                            sd1i = sd1i, sd2i = sd2i, ni = N_Total, ri = r)
         }
       }

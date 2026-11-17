@@ -69,7 +69,7 @@ d_to_r<- function(d, n1, n2, varD=NULL){
   a<- (n1+ n2)^2/ (n1*n2)
   r<- d/ sqrt(d^2+a)
   
-  if(length(varD==0)){
+  if(is.null(varD)){
     
     return(r)
     
@@ -110,6 +110,7 @@ Ttest_to_d_var<- function(d, N_C=NULL, N_E=NULL, n=NULL, design="between", r=NUL
 
 ANOVA_to_d<- function(Fvalue, N_C=NULL, N_E=NULL, n=NULL, design="between", r=NULL){
   #from Borenstein (2009)
+  # The result is always positive: the sign must be set from the direction of the means.
   
   if(design=="between"){
     d<- sqrt((Fvalue*(N_C+N_E))/ (N_C*N_E))
@@ -143,6 +144,8 @@ Fishers_z_to_r<- function(z){ (exp(2*z)-1)/(exp(2*z)+1) }
 
 
 ### From Morris & DeShon (2002), Psych Methods
+# In the three variance functions below, the last term is d^2 / c(df)^2 (Equation 22 and
+# Table 2), where c(df) = 1 - 3/(4df - 1) is the bias function of Equation 23.
 # eq.11
 d_IG<- function(d_RM, r){ d_RM*sqrt(2*(1-r)) }
 
@@ -151,7 +154,7 @@ d_IG<- function(d_RM, r){ d_RM*sqrt(2*(1-r)) }
 var_RM<- function(n, d_RM){
   df<- n-1
   c<- 1- (3/(4*df-1)) 
-  var<- (1/n)*((n-1)/(n-3))*(1+n*(d_RM^2))- (d_RM^2)/((c*(n-1))^2)
+  var<- (1/n)*((n-1)/(n-3))*(1+n*(d_RM^2))- (d_RM^2)/(c^2)
   return(var)
 }
 
@@ -161,7 +164,7 @@ var_IG<- function(N_C, N_E, d_IG){
   n<- (N_C*N_E)/(N_C+N_E)
   df<- N_C+ N_E -2
   c<- 1- (3/(4*df-1))
-  var<- (1/n)*((N-2)/(N-4))*(1+n*(d_IG^2))- (d_IG^2)/((c*(N-2))^2)
+  var<- (1/n)*((N-2)/(N-4))*(1+n*(d_IG^2))- (d_IG^2)/(c^2)
   return(var)
 }
 
@@ -169,7 +172,7 @@ var_IG<- function(N_C, N_E, d_IG){
 var_IGr<- function(r,n, d_IG){
   df<- n-1
   c<- 1- (3/(4*df-1)) 
-  var<- ((2*(1-r))/n)* ((n-1)/(n-3))*(1+ (n/(2*(1-r)))*(d_IG^2))- (d_IG^2)/((c*(n-1))^2)
+  var<- ((2*(1-r))/n)* ((n-1)/(n-3))*(1+ (n/(2*(1-r)))*(d_IG^2))- (d_IG^2)/(c^2)
   return(var)
 }
 
