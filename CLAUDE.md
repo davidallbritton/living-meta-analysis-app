@@ -1,7 +1,7 @@
 # living-meta-analysis-app — guidance for Claude Code sessions
 
 This repository **is** the Shiny app "A General Tool for Living Meta-Analysis"
-(v1.5.1). It is the primary, public development repository — the app source lives
+(v1.5.2). It is the primary, public development repository — the app source lives
 at the repository root (which is why `shiny::runGitHub("living-meta-analysis-app",
 "davidallbritton")` works). Work directly here; there is no separate mirror.
 
@@ -69,7 +69,7 @@ at the repository root (which is why `shiny::runGitHub("living-meta-analysis-app
 
 ## Conventions
 
-- Version header `# v.1.5.1 2026.10.16` in the main .R files — bump all of them together,
+- Version header `# v.1.5.2 2026.11.16` in the main .R files — bump all of them together,
   plus the app title, the Explanation tab's "This updated version" text and "Updated:" date,
   and README.md's citation, when releasing.  Keep
   `CITATION.cff` / `.zenodo.json` version fields in step with releases.

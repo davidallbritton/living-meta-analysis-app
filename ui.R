@@ -1,7 +1,7 @@
 #######################################################################################
 ################### A General Tool for Living Meta-Analysis #######################
 #######################################################################################
-# v.1.5.1 2026.10.16
+# v.1.5.2 2026.11.16
 
 ###################   Shiny App UI ###################################
 
@@ -27,8 +27,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                   tags$meta(charset = "UTF-8")
                 ),
                 useShinyjs(),
-                titlePanel(title = div("A General Tool for Living Meta-Analysis (v1.5.1)"),
-                           windowTitle = "A General Tool for Living Meta-Analysis (v1.5.1)"),
+                titlePanel(title = div("A General Tool for Living Meta-Analysis (v1.5.2)"),
+                           windowTitle = "A General Tool for Living Meta-Analysis (v1.5.2)"),
                 sidebarLayout(
                   sidebarPanel(fluidRow(
                     uiOutput("currentDataFile"),
@@ -441,7 +441,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                            a("here", href="https://github.com/davidallbritton/Breathing_life_into_meta-analysis", target = "_blank"),
                                            ("on GitHub."),
                                            h4("This updated version:"),
-                                           p("This is an updated version of the app (v1.5.1).  Additions since the published version include",
+                                           p("This is an updated version of the app (v1.5.2).  Additions since the published version include",
                                              "frequentist and Bayesian meta-regression with a categorical moderator, a Descriptives tab",
                                              "(frequency tables, summary statistics, and crosstabs for the currently selected data),",
                                              "live study counts in the selection criteria, a curated collection of data files,",
@@ -471,6 +471,17 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                              "recomputed because tiny rounding differences between computers stopped",
                                              "them from matching), and on the hosted app the Bayesian multilevel models",
                                              "for the default data are precomputed as well.  No analysis results change."),
+                                           p(tags$b("New in v1.5.2:"),
+                                             'when a within-subject study is entered in the "Add a Study" tab from means with',
+                                             "both standard deviations, its effect size is now the mean difference divided by",
+                                             "√((SD1² + SD2²)/2) (metafor measure SMCRPH), with the variance for unequal SDs.",
+                                             "Earlier versions divided by the SD of the difference scores (SMCC), which put",
+                                             "these effect sizes on a different metric from all the others and made them",
+                                             "larger whenever r > .5.  Standard errors entered for a within-subject study are",
+                                             "now converted to SDs with the total N.  Studies added with earlier versions keep",
+                                             "the values stored in their data files.  The Explanation tab now states the",
+                                             "metric of each effect-size measure and includes a list of references.",
+                                             "Analyses of uploaded and curated data files are unchanged."),
                                            p("The source code is at",
                                              a("https://github.com/davidallbritton/living-meta-analysis-app",
                                                href="https://github.com/davidallbritton/living-meta-analysis-app", target = "_blank"),
@@ -479,7 +490,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                                href="https://doi.org/10.5281/zenodo.21938551", target = "_blank"),
                                              "(this DOI always resolves to the most recent release)."),
                                            br(),
-                                           ("Updated: 2026-10-16"),
+                                           ("Updated: 2026-11-16"),
                                            h4("Updates:"),
                                            ("Updates and extensions can be found at the OSF project site"),
                                            a("https://osf.io/3zxh2/", href="https://osf.io/3zxh2/", target = "_blank"),
