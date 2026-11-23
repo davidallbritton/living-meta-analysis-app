@@ -36,3 +36,6 @@ recently updated files first.
 A local copy can offer further files that are not part of the release: list them
 in `curated_index_local.csv` (same columns), which the app reads after
 `curated_index.csv`, and keep that file and its data files out of version control.
+If a file is listed in both, the row in `curated_index_local.csv` replaces the one
+in `curated_index.csv`, so a local copy can, for example, give a released file a
+sharing table.

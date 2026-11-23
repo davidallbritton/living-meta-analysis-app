@@ -203,6 +203,12 @@ server <- function(input, output, session) {
       curatedIndex <- dplyr::bind_rows(lapply(curatedFiles, function(f)
         readr::read_csv(f, show_col_types = FALSE, col_types = readr::cols(.default = "c")))) %>%
         as.data.frame()
+      # a file listed in both indexes keeps only its local row (read last), so a
+      # local copy can relabel or annotate a released file; it keeps the released
+      # row's place in the dropdown
+      firstPos <- match(curatedIndex$filename, curatedIndex$filename)
+      keep <- !duplicated(curatedIndex$filename, fromLast = TRUE)
+      curatedIndex <- curatedIndex[keep, , drop = FALSE][order(firstPos[keep]), , drop = FALSE]
       curatedIndex <- curatedIndex[file.exists(file.path("data/curated", curatedIndex$filename)), , drop = FALSE]
       if (nrow(curatedIndex) == 0) curatedIndex <- NULL
     }

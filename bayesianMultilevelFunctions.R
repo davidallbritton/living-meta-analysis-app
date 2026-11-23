@@ -356,8 +356,12 @@ bmlMeanDraws <- function(fit) {
   m  <- as.matrix(fit)
   fx <- rownames(brms::fixef(fit))
   out <- m[, paste0("b_", fx), drop = FALSE]
-  colnames(out) <- if (identical(fx, "Intercept")) "µ (overall mean)"
-                   else levels(droplevels(factor(fit$data$moderator)))
+  if (identical(fx, "Intercept")) colnames(out) <- "µ (overall mean)" else {
+    lv <- levels(droplevels(factor(fit$data$moderator)))
+    # brms renames levels in its coefficient names but keeps their order
+    stopifnot(length(lv) == length(fx))
+    colnames(out) <- lv
+  }
   out
 }
 bmlTauDraws <- function(fit) {

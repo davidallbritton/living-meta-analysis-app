@@ -53,6 +53,7 @@ cheContrast <- function(d, moderator, levelA, levelB, rho = 0.5, sharing = NULL)
     warning = function(w) if (grepl("omnibus Wald test", conditionMessage(w)))
       invokeRestart("muffleWarning"))
   # with cell-means coding the coefficients are in the factor's level order
+  stopifnot(identical(rownames(m$beta), paste0("moderator", lv)))
   cv <- rep(0, length(lv)); cv[match(levelA, lv)] <- 1; cv[match(levelB, lv)] <- -1
   a <- stats::anova(m, X = matrix(cv, nrow = 1))
   est <- as.numeric(a$Xb); se <- as.numeric(a$se); df <- as.numeric(a$ddf)
@@ -72,6 +73,7 @@ rmaContrast <- function(MA, moderator, levelA, levelB) {
   lv <- levels(d$moderator)
   if (!all(c(levelA, levelB) %in% lv) || identical(levelA, levelB)) return(NULL)
   m <- metafor::rma(es, var, mods = ~ 0 + moderator, data = d, test = "adhoc")
+  stopifnot(identical(rownames(m$beta), paste0("moderator", lv)))
   cv <- rep(0, length(lv)); cv[match(levelA, lv)] <- 1; cv[match(levelB, lv)] <- -1
   a <- stats::anova(m, X = matrix(cv, nrow = 1))
   est <- as.numeric(a$Xb); se <- as.numeric(a$se)
@@ -89,12 +91,13 @@ rmaContrast <- function(MA, moderator, levelA, levelB) {
 ## exact mixture-of-normals posterior: its mean and SD in closed form, its quantiles
 ## and P(> 0) from the mixture's CDF, with no simulation.  `moderator` is the
 ## moderator column of the data the model was fitted to: bmr() renames levels
-## (make.names: "music+noise" becomes "music.noise"), so levels are matched by
-## position, in the order buildBmrModel() gives the coefficients.  NULL if either
-## level is not among them.
+## (make.names: "music+noise" becomes "music.noise"), so the levels are taken from
+## the moderator with bmrLevels(), the same function buildBmrModel() uses to name the
+## coefficients, and must match the fit's coefficient names exactly after make.names
+## and in the same order.  NULL if they do not, or if either level is not among them.
 bmrContrast <- function(fit, moderator, levelA, levelB) {
-  lv <- levels(droplevels(as.factor(as.character(moderator))))
-  if (length(lv) != length(fit$variables) ||
+  lv <- bmrLevels(moderator)
+  if (!identical(make.names(lv), as.character(fit$variables)) ||
       !all(c(levelA, levelB) %in% lv) || identical(levelA, levelB)) return(NULL)
   cv <- rep(0, length(lv)); cv[match(levelA, lv)] <- 1; cv[match(levelB, lv)] <- -1
   s  <- fit$support
@@ -325,10 +328,17 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
 # (see the bma() reactive in server.R) so priors are consistent across tabs.
 # The chosen mu prior (mupriormean / mupriorsd) is applied to every group's
 # coefficient via bmr()'s beta prior.
-buildBmrModel <- function(MA, moderatorName, tauprior, scaletau, mupriormean, mupriorsd) {
-  moderator <- MA[[moderatorName]]
+## The moderator as the factor buildBmrModel() fits: empty levels dropped (same fix
+## as forestByGroup()), level order kept if it already is a factor.  bmrContrast()
+## uses the same function, so its levels line up with the coefficients.
+bmrModeratorFactor <- function(moderator) {
   if (!is.factor(moderator)) moderator <- as.factor(as.character(moderator))
-  moderator <- droplevels(moderator)   # drop empty subgroups (same fix as forestByGroup())
+  droplevels(moderator)
+}
+bmrLevels <- function(moderator) levels(bmrModeratorFactor(moderator))
+
+buildBmrModel <- function(MA, moderatorName, tauprior, scaletau, mupriormean, mupriorsd) {
+  moderator <- bmrModeratorFactor(MA[[moderatorName]])
 
   # cell-means design matrix: one coefficient per moderator level
   X <- model.matrix(~ moderator - 1)
