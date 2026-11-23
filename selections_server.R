@@ -31,8 +31,11 @@
 # data changed since the save, and offers to include them (checkStaleSelections).
 # Files record the data's ranges and levels at save time ("dataAtSave") for this.
 #
-# A selections file placed at data/default_selections.json in the app directory is
-# applied automatically at startup (only while the default data set is loaded).
+# This app copy's default selections file is applied automatically at startup
+# (only while the default data set is loaded): the file named on the first line of
+# data/default_selections.txt, relative to data/ (for example
+# "curated/mydata_selections.json", so a curated entry and the startup default can
+# use the same file), or else data/default_selections.json.
 # Together with replacing the default data file, that is all it takes to make a
 # copy of this app that reproduces the selections of, e.g., a published article.
 #
@@ -255,9 +258,11 @@ applySelections <- function(sel) {
 ## apply pending selections once the study-criteria panel is live in the browser
 ## (input$Design reporting a value implies the whole rendered UI is bound, so the
 ## update messages will not be lost)
+## (a curated file's selections wait for its freshly rebuilt study-criteria panel:
+## studyPanelHidden() in server.R blanks the panel briefly while a file loads)
 observe({
   sel <- pendingSelections()
-  req(sel, myrvs$df.reactive, input$Design)
+  req(sel, myrvs$df.reactive, input$Design, !isTRUE(studyPanelHidden()))
   pendingSelections(NULL)
   applySelections(sel)
   checkStaleSelections(sel)
@@ -277,8 +282,8 @@ checkStaleSelections <- function(sel) {
                                checks = c("Design", myrvs$Variable.Factor.Names))
   myrvs$staleCases <- cases
   if (is.null(cases)) return()
-  if (is.null(atSave) && identical(attr(sel, "source"), "default")) {
-    showNotification(paste("data/default_selections.json was saved before v1.6, so the app cannot",
+  if (is.null(atSave) && attr(sel, "source") %in% c("default", "curated")) {
+    showNotification(paste(attr(sel, "fileName"), "was saved before v1.6, so the app cannot",
                            "tell whether its filters leave out rows that are new since it was saved.",
                            "Check the Study criteria panel, then save the selections again to record the data."),
                      type = "warning", duration = 20)
@@ -404,23 +409,45 @@ observeEvent(input$SelectionsUp, {
   if (!is.null(parsed$outputs)) pendingOutputs(parsed$outputs)
 })
 
-## at startup, auto-apply data/default_selections.json (if this app copy has one)
-## while the default data set is still loaded; fires once, when the data first
-## becomes available (ignoreNULL skips the pre-load NULL state)
-observeEvent(myrvs$df.reactive, once = TRUE, {
-  if (!is.null(myrvs$currentInputFile)) return()     # another data set beat us to it
-  if (!file.exists("data/default_selections.json")) return()
-  parsed <- readSelectionsFile("data/default_selections.json")
+## Apply a selections file that belongs with the data just loaded: this app copy's
+## default selections at startup (source "default"), or the selections named in a
+## curated entry's "selections" column (source "curated", called by the curated
+## loader in server.R).  Unlike an upload, the pairing is deliberate, so the
+## data-file and sharing-table checks are skipped.
+applySelectionsFile <- function(path, displayName, source, what) {
+  parsed <- readSelectionsFile(path)
   if (is.null(parsed)) {
-    showNotification("data/default_selections.json could not be read; using standard defaults.",
+    showNotification(paste0(displayName, " could not be read; using standard defaults."),
                      type = "warning", duration = 10)
-    return()
+    return(invisible(FALSE))
   }
-  showNotification("Applying this app copy's default selections (data/default_selections.json).",
+  showNotification(paste0("Applying ", what, " (", displayName, ")."),
                    type = "message", duration = 8)
   if (length(parsed$selections))
     pendingSelections(structure(parsed$selections, dataAtSave = parsed$dataAtSave,
-                                source = "default"))
+                                source = source, fileName = displayName))
   if (!is.null(parsed$descriptives)) pendingDescriptives(parsed$descriptives)
   if (!is.null(parsed$outputs)) pendingOutputs(parsed$outputs)
+  invisible(TRUE)
+}
+
+## at startup, auto-apply this app copy's default selections (if it has any) while
+## the default data set is still loaded; fires once, when the data first becomes
+## available (ignoreNULL skips the pre-load NULL state).  data/default_selections.txt
+## names the file (relative to data/); without it, data/default_selections.json.
+observeEvent(myrvs$df.reactive, once = TRUE, {
+  if (!is.null(myrvs$currentInputFile)) return()     # another data set beat us to it
+  if (file.exists("data/default_selections.txt")) {
+    f <- trimws(readLines("data/default_selections.txt", n = 1, warn = FALSE, encoding = "UTF-8"))
+    if (!length(f) || !nzchar(f) || !file.exists(file.path("data", f))) {
+      showNotification(paste0("data/default_selections.txt names a selections file that is not in data/",
+                              if (length(f) && nzchar(f)) paste0(' ("', f, '")') else "",
+                              "; using standard defaults."), type = "warning", duration = 20)
+      return()
+    }
+    applySelectionsFile(file.path("data", f), basename(f),
+                        "default", "this app copy's default selections")
+  } else if (file.exists("data/default_selections.json"))
+    applySelectionsFile("data/default_selections.json", "data/default_selections.json",
+                        "default", "this app copy's default selections")
 })

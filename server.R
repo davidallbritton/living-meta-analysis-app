@@ -239,7 +239,10 @@ server <- function(input, output, session) {
         if (isTruthy(chosen$citation)) tagList(br(), tags$i(chosen$citation)),
         if ("sharing" %in% names(chosen) && isTruthy(chosen$sharing))
           tagList(br(), tags$small(paste0("Comes with a sharing table (", chosen$sharing,
-                                          "), which is loaded with it."))))
+                                          "), which is loaded with it."))),
+        if ("selections" %in% names(chosen) && isTruthy(chosen$selections))
+          tagList(br(), tags$small(paste0("Comes with saved selections (", chosen$selections,
+                                          "), which are applied when it loads."))))
     })
 
     ## Load the chosen curated file, replacing the current data (same as an upload).
@@ -255,6 +258,13 @@ server <- function(input, output, session) {
             file.exists(file.path("data/curated", chosen$sharing)))
           loadSharingFile(file.path("data/curated", chosen$sharing), chosen$sharing)
         else offerSharingTable(chosen$label)
+        # optional column "selections": a selections file saved by this app, also in
+        # data/curated/, applied once the rebuilt study-criteria panel is live
+        # (applySelectionsFile() in selections_server.R)
+        if ("selections" %in% names(chosen) && isTruthy(chosen$selections) &&
+            file.exists(file.path("data/curated", chosen$selections)))
+          applySelectionsFile(file.path("data/curated", chosen$selections), chosen$selections,
+                              "curated", "the selections that come with this file")
         # the curated file is now the data source, so clear the upload control's
         # file name display (each chooser only shows a file name while it is the
         # current data source)
@@ -1575,7 +1585,7 @@ server <- function(input, output, session) {
   source("descriptives_server.R", local = T)
 
   # Save / load the left-panel selection settings (and apply
-  # data/default_selections.json at startup if this app copy has one)
+  # this app copy's default selections at startup, if it has any)
   source("selections_server.R", local = T)
 
   # optional sharing table: which effect sizes share data (structured V)

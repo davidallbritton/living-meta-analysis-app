@@ -3,7 +3,7 @@
 #----
 # default data file for initial display, before user uploads their own data file.
 # A copy of the app can open on another data set instead (with
-# data/default_selections.json and data/default_sharing.csv, this makes a copy that
+# default selections and a default sharing table, this makes a copy that
 # opens on a published analysis): put it at data/default_data.Rda (a data frame
 # called "df" in the app's data-file format) and, optionally, its display name on
 # the first line of data/default_data_label.txt.

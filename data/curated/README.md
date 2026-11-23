@@ -29,6 +29,10 @@ maintained source of updated data for living meta-analyses.
   errors in the multilevel models; all other pairs are independent.  Leave it
   empty, or leave the column out, for the flat structure (every pair from the
   same paper correlated).
+- `selections` — optional: the name of a selections file in this folder (a
+  .json saved with "Save current selections" in the app), applied when the data
+  file is loaded, for example the selections of a published analysis.  Leave it
+  empty, or leave the column out, to start with every study included.
 
 Rows appear in the dropdown in the order they are listed here, so put the most
 recently updated files first.
