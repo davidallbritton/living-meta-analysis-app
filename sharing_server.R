@@ -139,3 +139,28 @@ sharingStatusUI <- function(withButton = FALSE) {
 output$sharingStatusLoad <- renderUI(sharingStatusUI(withButton = TRUE))
 output$sharingStatusDependence <- renderUI(sharingStatusUI())
 output$covarianceNoteFml <- renderUI({ MAml(); covarianceNote() })
+
+
+## After a data file is loaded (uploaded, or a curated file that names no sharing
+## table), offer to load its sharing table straight away.  Optional: closing the
+## dialog keeps the flat structure, and the table can still be loaded later in the
+## "Load Data File" tab.
+offerSharingTable <- function(dataName) {
+  showModal(modalDialog(
+    title = "Load a sharing table for this data file? (optional)",
+    p(paste0('If you have a sharing table for "', dataName, '", load it here.'),
+      "It says which effect sizes were computed from overlapping data (the same",
+      "participants, or a shared control group), so that the multilevel analyses",
+      "correlate only those effect sizes.  Without one, every pair of effect sizes from",
+      "the same paper is treated as correlated."),
+    p(tags$small("A .csv with columns", tags$code("ID"), "and", tags$code("unit"),
+                 ", one line per membership.  You can also load or remove one later in the",
+                 '"Load Data File" tab.')),
+    fileInput("SharingUpModal", label = NULL, buttonLabel = "Load sharing table...",
+              accept = ".csv"),
+    footer = modalButton("No sharing table"),
+    easyClose = TRUE))
+}
+observeEvent(input$SharingUpModal, {
+  if (loadSharingFile(input$SharingUpModal$datapath, input$SharingUpModal$name)) removeModal()
+})

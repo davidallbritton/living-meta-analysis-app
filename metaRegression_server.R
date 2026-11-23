@@ -210,6 +210,7 @@ output$metaRegressionOutputUI <- renderUI({
           ## You can also add any other arguments that forest() allows
         }, 
         height = freq_forest_height_mod()),    
+        uiOutput("rmaContrastOut"),
         
         # input boxes for adjusting x axis:
         hr(),
@@ -297,5 +298,25 @@ output$cheContrastOut <- renderUI({
   tagList(h4("Contrast between two moderator levels"),
           p(tags$small("Three-level CHE model with one mean per level (~ 0 + moderator);",
                        "cluster-robust (CR2) standard error, Satterthwaite degrees of freedom.")),
+          renderTable(ct, digits = 3))
+})
+
+
+## contrast between two moderator levels in the standard (aggregated) model
+output$rmaContrastOut <- renderUI({
+  lv <- contrastLevels()
+  if (is.null(lv)) return(p(tags$small('To compare two levels, choose them under "Contrast between',
+                                       'two levels" in the "Moderator Selection" tab.')))
+  MA <- MA()
+  moderatorName <- input$moderator_variable
+  req(moderatorName %in% names(MA))
+  if (moderatorBlockedByPapersAgg(moderatorName)) return(NULL)
+  ct <- tryCatch(rmaContrast(MA, MA[[moderatorName]], lv[1], lv[2]), error = function(e) e)
+  if (inherits(ct, "error")) return(p(style = "color:#c0392b;", conditionMessage(ct)))
+  if (is.null(ct)) return(p("One of the chosen levels has no effect sizes in the current selection."))
+  tagList(h4("Contrast between two moderator levels"),
+          p(tags$small("Random-effects model with one mean per level (~ 0 + moderator);",
+                       "Knapp-Hartung test and interval, scaling factor truncated at 1",
+                       '(the same adjustment as the forest plot above).')),
           renderTable(ct, digits = 3))
 })

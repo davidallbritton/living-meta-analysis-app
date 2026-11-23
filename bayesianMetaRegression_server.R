@@ -199,6 +199,27 @@ output$bmrSummary <- renderPrint({
   bmrModel()$summary
 })
 
+## contrast between two moderator levels (A - B): exact posterior from the fit
+output$bmrContrastOut <- renderUI({
+  fit <- bmrModel()
+  lv <- contrastLevels()
+  if (is.null(lv)) return(p(tags$small('To compare two levels, choose them under "Contrast between',
+                                       'two levels" in the "Moderator Selection" tab.')))
+  MA <- isolate(MA())
+  moderatorName <- isolate(myrvs$bayesSnapshot$moderatorName)
+  ct <- bmrContrast(fit, MA[[moderatorName]], lv[1], lv[2])
+  if (is.null(ct)) return(p(tags$small(paste0(
+    "The chosen levels are not both in this model (fitted for the moderator \"", moderatorName,
+    "\" at the last recalculation).  Choose two of its levels, or recalculate after changing",
+    " the moderator."))))
+  tagList(renderTable(ct, digits = 3),
+          p(tags$small("The posterior of the difference between the two levels' means, computed",
+                       "exactly from the fitted model (no simulation).  2.5% and 97.5%: equal-tailed",
+                       "95% interval; HDI: the shortest 95% interval (the kind bayesmeta reports",
+                       "in the summary above).  P(> 0): the posterior",
+                       "probability that level A's mean exceeds level B's.")))
+})
+
 
 ## ---- Managing "cached" Bayesian meta-regression models ----
 ## Mirrors the "Saved Plots and Models" tab handlers for bma() models and

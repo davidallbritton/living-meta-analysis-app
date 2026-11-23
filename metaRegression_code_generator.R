@@ -27,6 +27,10 @@ observe({   #update the meta-regression plot code when a moderator is selected
   if (run_aggregated == "Yes") {
     forestByGroup(MA=MA_aggregated, moderator=MA_aggregated[["', moderatorChosen, '"]],
                   ', sharedArgs, ', multilevel=FALSE)
+    ## contrast between two moderator levels (A - B), Knapp-Hartung
+    if (length(contrastLevels) == 2)
+      print(rmaContrast(MA_aggregated, MA_aggregated[["', moderatorChosen, '"]],
+                        contrastLevels[1], contrastLevels[2]))
   }')
   metaRegText <- paste0('
   ########## Meta-regression plots with one categorical moderator
@@ -95,8 +99,12 @@ if (calculate_bma == "Yes") {   # reuse the same on/off switch used for the bma(
   ## grouped forest plot with a Bayesian posterior polygon per moderator group
   forestBmrByGroup(bmrModel, MA = MA_aggregated, moderator = MA_aggregated[["%s"]],
                    xlab = "Hedges g", efac = %s)
+
+  ## contrast between two moderator levels (A - B): exact posterior, with P(> 0)
+  if (length(contrastLevels) == 2)
+    print(bmrContrast(bmrModel, MA_aggregated[["%s"]], contrastLevels[1], contrastLevels[2]))
 }
-', moderatorChosen, moderatorChosen, efacBmr)
+', moderatorChosen, moderatorChosen, efacBmr, moderatorChosen)
 
   isolate({   # update the reactive value so it can be used outside this "observe" block
     bmrCode(bmrText)

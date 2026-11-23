@@ -62,6 +62,60 @@ cheContrast <- function(d, moderator, levelA, levelB, rho = 0.5, sharing = NULL)
              df = df, t = est / se, p = as.numeric(a$pval), check.names = FALSE)
 }
 
+## The same contrast in the standard two-level random-effects model on AGGREGATED
+## data (the Meta-Regression tab's model): rma() with one mean per level
+## (~ 0 + moderator) and Knapp-Hartung tests and intervals with the scaling factor
+## truncated at 1 (test = "adhoc").  NULL if either level is absent.
+rmaContrast <- function(MA, moderator, levelA, levelB) {
+  d <- data.frame(es = as.numeric(MA$es), var = as.numeric(MA$var),
+                  moderator = droplevels(factor(as.character(moderator))))
+  lv <- levels(d$moderator)
+  if (!all(c(levelA, levelB) %in% lv) || identical(levelA, levelB)) return(NULL)
+  m <- metafor::rma(es, var, mods = ~ 0 + moderator, data = d, test = "adhoc")
+  cv <- rep(0, length(lv)); cv[match(levelA, lv)] <- 1; cv[match(levelB, lv)] <- -1
+  a <- stats::anova(m, X = matrix(cv, nrow = 1))
+  est <- as.numeric(a$Xb); se <- as.numeric(a$se)
+  df <- if (length(a$ddf) && is.finite(as.numeric(a$ddf)[1])) as.numeric(a$ddf)[1] else Inf
+  data.frame(Contrast = paste(levelA, "\u2212", levelB), Estimate = est, SE = se,
+             `95% CI lower` = est - stats::qt(.975, df) * se,
+             `95% CI upper` = est + stats::qt(.975, df) * se,
+             df = df, t = est / se, p = as.numeric(a$pval), check.names = FALSE)
+}
+
+## The same contrast from a bayesmeta bmr() fit with cell-means coding (the Bayesian
+## Meta-Regression tab's model).  bmr's posterior is a mixture over a grid of tau
+## values of normal distributions for the coefficients ($support: weights,
+## conditional means and covariances), so a difference of two level means has an
+## exact mixture-of-normals posterior: its mean and SD in closed form, its quantiles
+## and P(> 0) from the mixture's CDF, with no simulation.  `moderator` is the
+## moderator column of the data the model was fitted to: bmr() renames levels
+## (make.names: "music+noise" becomes "music.noise"), so levels are matched by
+## position, in the order buildBmrModel() gives the coefficients.  NULL if either
+## level is not among them.
+bmrContrast <- function(fit, moderator, levelA, levelB) {
+  lv <- levels(droplevels(as.factor(as.character(moderator))))
+  if (length(lv) != length(fit$variables) ||
+      !all(c(levelA, levelB) %in% lv) || identical(levelA, levelB)) return(NULL)
+  cv <- rep(0, length(lv)); cv[match(levelA, lv)] <- 1; cv[match(levelB, lv)] <- -1
+  s  <- fit$support
+  w  <- s$weight / sum(s$weight)
+  mu <- as.numeric(s$mean %*% cv)
+  sd <- sqrt(vapply(seq_along(w), function(i) as.numeric(t(cv) %*% s$covariance[i, , ] %*% cv),
+                    numeric(1)))
+  m  <- sum(w * mu)
+  cdf <- function(x) sum(w * stats::pnorm(x, mu, sd))
+  brk <- c(min(mu - 8 * sd), max(mu + 8 * sd))
+  qf <- function(p) stats::uniroot(function(x) cdf(x) - p, brk, tol = 1e-10)$root
+  q <- vapply(c(.025, .975), qf, numeric(1))
+  ## highest-density (shortest) 95% interval, the kind bayesmeta itself reports:
+  ## the lower tail probability a that minimises the width q(a + .95) - q(a)
+  a <- stats::optimize(function(a) qf(a + .95) - qf(a), c(1e-6, .05 - 1e-6), tol = 1e-8)$minimum
+  data.frame(Contrast = paste(levelA, "\u2212", levelB), `Posterior mean` = m,
+             SD = sqrt(sum(w * (sd^2 + mu^2)) - m^2),
+             `2.5%` = q[1], `97.5%` = q[2], `HDI lower` = qf(a), `HDI upper` = qf(a + .95),
+             `P(> 0)` = 1 - cdf(0), check.names = FALSE)
+}
+
 ##############################################################################
 ################ Functions for meta-regression ###############################
 

@@ -58,7 +58,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                             '(or have the same ID); all other pairs, including pairs from the',
                                             'same paper, are independent.  Without a sharing table, every pair',
                                             'from the same paper is correlated at ρ.  Load the matching data',
-                                            'file first; loading another data file removes the sharing table.',
+                                            'file first (the app offers to load its sharing table right after a',
+                                            'data file loads); loading another data file removes the sharing table.',
                                             'A file at', tags$code("data/default_sharing.csv"), 'is loaded at startup.')),
                                fileInput("SharingUp", label = NULL,
                                          buttonLabel = "Load sharing table...",
@@ -761,7 +762,9 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                    h4("Marginal posterior summary:"),
                                    p("τ (tau): posterior heterogeneity. Each remaining column is a moderator",
                                      "group's posterior effect (mode, median, mean, sd, and 95% credible interval)."),
-                                   verbatimTextOutput("bmrSummary") %>% withSpinner(type = 6, color = "#3498DB")
+                                   verbatimTextOutput("bmrSummary") %>% withSpinner(type = 6, color = "#3498DB"),
+                                   h4("Contrast between two moderator levels:"),
+                                   uiOutput("bmrContrastOut")
                                  )
                                  ),
 

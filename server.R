@@ -182,6 +182,7 @@ server <- function(input, output, session) {
         # the uploaded file is now the data source, so clear the curated dropdown
         # (each chooser only shows a file name while it is the current data source)
         updateSelectInput(session, "curatedDataFile", selected = "")
+        offerSharingTable(input$DataFileUp$name)   # optional; sharing_server.R
       }
     })
 
@@ -229,7 +230,10 @@ server <- function(input, output, session) {
       p(style = "font-size:90%",
         tags$b(chosen$label), br(),
         paste0("(", chosen$date, ")  ", chosen$description),
-        if (isTruthy(chosen$citation)) tagList(br(), tags$i(chosen$citation)))
+        if (isTruthy(chosen$citation)) tagList(br(), tags$i(chosen$citation)),
+        if ("sharing" %in% names(chosen) && isTruthy(chosen$sharing))
+          tagList(br(), tags$small(paste0("Comes with a sharing table (", chosen$sharing,
+                                          "), which is loaded with it."))))
     })
 
     ## Load the chosen curated file, replacing the current data (same as an upload).
@@ -244,6 +248,7 @@ server <- function(input, output, session) {
         if ("sharing" %in% names(chosen) && isTruthy(chosen$sharing) &&
             file.exists(file.path("data/curated", chosen$sharing)))
           loadSharingFile(file.path("data/curated", chosen$sharing), chosen$sharing)
+        else offerSharingTable(chosen$label)
         # the curated file is now the data source, so clear the upload control's
         # file name display (each chooser only shows a file name while it is the
         # current data source)
