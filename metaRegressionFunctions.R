@@ -38,22 +38,53 @@ fitMultilevelCHE <- function(d, sl = d$study, rho = 0.5, mods = NULL, sharing = 
   metafor::robust(model, cluster = Paper, clubSandwich = TRUE)
 }
 
-## Difference between two moderator levels' means (levelA - levelB) in the CHE
-## model with cell-means coding (~ 0 + moderator): estimate, SE, CI and test with
-## cluster-robust (CR2) standard errors and Satterthwaite degrees of freedom.
-## NULL if either level is absent from these rows.
-cheContrast <- function(d, moderator, levelA, levelB, rho = 0.5, sharing = NULL) {
+## The CHE model with one mean per moderator level (cell-means coding,
+## ~ 0 + moderator): all levels in ONE model, sharing its heterogeneity and its
+## sampling covariance, with cluster-robust (CR2) inference.  Used for the
+## multilevel regression's per-level estimates (forestByGroup(), cheCellMeans())
+## and contrasts (cheContrast()).  `moderator` is a vector of the rows' levels.
+fitCheCellMeans <- function(d, moderator, rho = 0.5, sharing = NULL, slab = NULL) {
   d$moderator <- droplevels(factor(as.character(moderator)))
-  lv <- levels(d$moderator)
-  if (!all(c(levelA, levelB) %in% lv) || identical(levelA, levelB)) return(NULL)
   # (robust() cannot form its omnibus test that ALL cell means are zero when there
   # are few papers per level; that test is not used here, so its warning is muffled)
   m <- withCallingHandlers(
-    fitMultilevelCHE(d, rho = rho, mods = ~ 0 + moderator, sharing = sharing),
+    fitMultilevelCHE(d, sl = if (is.null(slab)) d$study else slab, rho = rho,
+                     mods = ~ 0 + moderator, sharing = sharing),
     warning = function(w) if (grepl("omnibus Wald test", conditionMessage(w)))
       invokeRestart("muffleWarning"))
   # with cell-means coding the coefficients are in the factor's level order
-  stopifnot(identical(rownames(m$beta), paste0("moderator", lv)))
+  stopifnot(identical(rownames(m$beta), paste0("moderator", levels(d$moderator))))
+  m
+}
+
+## Each level's estimated mean from fitCheCellMeans(): estimate, CR2 95% CI,
+## Satterthwaite df and the 95% prediction interval for a new effect size from a
+## new paper at that level (both heterogeneity components added to the estimate's
+## variance), plus the numbers of papers and effect sizes.  A level whose df cannot
+## be computed (a single paper) gets no intervals (NA).
+cheCellMeans <- function(d, moderator, rho = 0.5, sharing = NULL, m = NULL) {
+  if (is.null(m)) m <- fitCheCellMeans(d, moderator, rho, sharing)
+  lv <- levels(droplevels(factor(as.character(moderator))))
+  est <- as.numeric(m$beta); se <- sqrt(diag(as.matrix(m$vb)))
+  df <- as.numeric(m$ddf)
+  tc <- ifelse(is.finite(df) & df > 0, stats::qt(.975, pmax(df, 1e-8)), NA_real_)
+  sp <- sqrt(se^2 + sum(m$sigma2))
+  data.frame(Level = lv,
+             Papers = vapply(lv, function(l) length(unique(d$Paper[as.character(moderator) == l])), 1L),
+             `Effect sizes` = as.vector(table(factor(as.character(moderator), levels = lv))),
+             Estimate = est, `95% CI lower` = est - tc * se, `95% CI upper` = est + tc * se,
+             df = df, `95% PI lower` = est - tc * sp, `95% PI upper` = est + tc * sp,
+             check.names = FALSE, row.names = NULL)
+}
+
+## Difference between two moderator levels' means (levelA - levelB) in the CHE
+## model with cell-means coding (fitCheCellMeans()): estimate, SE, CI and test with
+## cluster-robust (CR2) standard errors and Satterthwaite degrees of freedom.
+## NULL if either level is absent from these rows.
+cheContrast <- function(d, moderator, levelA, levelB, rho = 0.5, sharing = NULL) {
+  lv <- levels(droplevels(factor(as.character(moderator))))
+  if (!all(c(levelA, levelB) %in% lv) || identical(levelA, levelB)) return(NULL)
+  m <- fitCheCellMeans(d, moderator, rho, sharing)
   cv <- rep(0, length(lv)); cv[match(levelA, lv)] <- 1; cv[match(levelB, lv)] <- -1
   a <- stats::anova(m, X = matrix(cv, nrow = 1))
   est <- as.numeric(a$Xb); se <- as.numeric(a$se); df <- as.numeric(a$ddf)
@@ -63,17 +94,58 @@ cheContrast <- function(d, moderator, levelA, levelB, rho = 0.5, sharing = NULL)
              df = df, t = est / se, p = as.numeric(a$pval), check.names = FALSE)
 }
 
+## The standard two-level random-effects model on AGGREGATED data with one mean per
+## moderator level (cell-means coding, ~ 0 + moderator) and ONE between-study
+## variance tau^2 shared by all levels, with Knapp-Hartung tests and intervals
+## (scaling factor truncated at 1, test = "adhoc").  The Meta-Regression tab's
+## subgroup estimates (forestByGroup()), its table (rmaCellMeans()), its test of
+## subgroup differences and its contrast (rmaContrast()) all come from this model.
+fitRmaCellMeans <- function(MA, moderator, slab = NULL) {
+  d <- data.frame(es = as.numeric(MA$es), var = as.numeric(MA$var),
+                  moderator = droplevels(factor(as.character(moderator))))
+  m <- metafor::rma(es, var, mods = ~ 0 + moderator, data = d, test = "adhoc",
+                    slab = if (is.null(slab)) seq_len(nrow(d)) else slab)
+  stopifnot(identical(rownames(m$beta), paste0("moderator", levels(d$moderator))))
+  m
+}
+
+## Each level's estimated mean from fitRmaCellMeans(): estimate, Knapp-Hartung 95%
+## CI and df, the 95% prediction interval for a new study at that level (with the
+## shared tau^2), and, for comparison, the heterogeneity of the level's studies on
+## their own (a separate random-effects fit within the level: tau^2, I^2, Q and its
+## p; NA for a level with a single study).
+rmaCellMeans <- function(MA, moderator, m = NULL) {
+  if (is.null(m)) m <- fitRmaCellMeans(MA, moderator)
+  mod <- as.character(moderator)
+  lv <- levels(droplevels(factor(mod)))
+  est <- as.numeric(m$beta); se <- sqrt(diag(as.matrix(m$vb)))
+  df <- rep(as.numeric(m$ddf)[1], length(lv))
+  tc <- ifelse(is.finite(df) & df > 0, stats::qt(.975, pmax(df, 1e-8)), stats::qnorm(.975))
+  sp <- sqrt(se^2 + m$tau2)
+  sep <- lapply(lv, function(l) {
+    i <- mod == l
+    if (sum(i) < 2) return(NULL)
+    tryCatch(metafor::rma(as.numeric(MA$es[i]), as.numeric(MA$var[i])), error = function(e) NULL)
+  })
+  sepStat <- function(f) vapply(sep, function(x) if (is.null(x)) NA_real_ else as.numeric(f(x)), 1)
+  data.frame(Level = lv, Studies = as.vector(table(factor(mod, levels = lv))),
+             Estimate = est, `95% CI lower` = est - tc * se, `95% CI upper` = est + tc * se,
+             df = df, `95% PI lower` = est - tc * sp, `95% PI upper` = est + tc * sp,
+             `This level alone: tau^2` = sepStat(function(x) x$tau2),
+             `This level alone: I^2 (%)` = sepStat(function(x) x$I2),
+             `This level alone: Q` = sepStat(function(x) x$QE),
+             `This level alone: p (Q)` = sepStat(function(x) x$QEp),
+             check.names = FALSE, row.names = NULL)
+}
+
 ## The same contrast in the standard two-level random-effects model on AGGREGATED
 ## data (the Meta-Regression tab's model): rma() with one mean per level
 ## (~ 0 + moderator) and Knapp-Hartung tests and intervals with the scaling factor
 ## truncated at 1 (test = "adhoc").  NULL if either level is absent.
 rmaContrast <- function(MA, moderator, levelA, levelB) {
-  d <- data.frame(es = as.numeric(MA$es), var = as.numeric(MA$var),
-                  moderator = droplevels(factor(as.character(moderator))))
-  lv <- levels(d$moderator)
+  lv <- levels(droplevels(factor(as.character(moderator))))
   if (!all(c(levelA, levelB) %in% lv) || identical(levelA, levelB)) return(NULL)
-  m <- metafor::rma(es, var, mods = ~ 0 + moderator, data = d, test = "adhoc")
-  stopifnot(identical(rownames(m$beta), paste0("moderator", lv)))
+  m <- fitRmaCellMeans(MA, moderator)
   cv <- rep(0, length(lv)); cv[match(levelA, lv)] <- 1; cv[match(levelB, lv)] <- -1
   a <- stats::anova(m, X = matrix(cv, nrow = 1))
   est <- as.numeric(a$Xb); se <- as.numeric(a$se)
@@ -156,7 +228,16 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
   # MA is the dataframe with yi=es, vi=var. Note it is not a model object like x is for forest()
   # moderator is a vector of the same length as MA, such as MA$moderatorFactor
   # multilevel: fit three-level rma.mv models (effect sizes nested in papers;
-  # MA must then hold the UNaggregated rows with Paper and ID columns)
+  # MA must then hold the UNaggregated rows with Paper and ID columns).
+  # Which model each part of the plot comes from:
+  #   * each study's row: the data;
+  #   * the bottom diamond: a model for all studies WITHOUT the moderator;
+  #   * each subgroup diamond (and its prediction interval) and the test for
+  #     subgroup differences: ONE "shared" model with a mean per level and one
+  #     set of heterogeneity variances for all levels -- fitCheCellMeans() (CR2
+  #     inference) when multilevel, fitRmaCellMeans() (Knapp-Hartung) otherwise;
+  #   * (two-level only) the line under each subgroup diamond: that subgroup's own
+  #     heterogeneity, from a separate fit within the subgroup, for description.
   # rho: assumed within-paper sampling correlation, used only when multilevel
   # sharing: optional sharing table (see buildSamplingV()), used only when multilevel
 
@@ -165,8 +246,8 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
     if (multilevel) fitMultilevelCHE(d, sl, rho = rho, sharing = sharing)   # CHE + cluster-robust inference
     else rma(d$es, d$var, slab = sl, test = "adhoc")       # Knapp-Hartung, truncated at 1
   }
-  overallLabel  <- if (multilevel) "Multilevel Model for All Studies" else "RE Model for All Studies"
-  subgroupLabel <- if (multilevel) "Multilevel Model for Subgroup"   else "RE Model for Subgroup"
+  overallLabel  <- if (multilevel) "Multilevel model for all studies, no moderator"
+                   else "RE model for all studies, no moderator"
   #
   fma <- fitOne(MA, slab)
   #
@@ -198,9 +279,14 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
   # need the number in each group; top and bottom row for each group
   groupSizes <- table(moderator)          # number in each level of GroupNames
 
+  # every subgroup's estimate, CI and prediction interval from the shared model
+  # (rows in level order)
+  cellMeans <- if (multilevel) {
+    cheCellMeans(MA, moderator, m = fitCheCellMeans(MA, moderator, rho = rho,
+                                                    sharing = sharing, slab = slab))
+  } else rmaCellMeans(MA, moderator, m = fitRmaCellMeans(MA, moderator, slab = slab))
   # calculate row numbers and models for subgroups by looping over subgroups:
   # initialize values for the loop
-  submodels <- list()
   groupLabelRow <- integer(nGroups)
   groupModelRow <- integer(nGroups)
   lineNum <-  spaceBelow + 1 # initialize the line of the forest plot to the row for the first ES
@@ -217,11 +303,6 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
     groupModelRow[i] <- lineNum + belowGroup
     # create a model for each group (a multilevel subgroup with too few papers
     # can fail to fit; fall back to the two-level model for that subgroup)
-    subMA <- MA[moderator == groupname,]
-    subslab <- slab[moderator == groupname]
-    subfma <- tryCatch(fitOne(subMA, subslab),
-                       error = function(e) rma(subMA$es, subMA$var, slab=subslab, test="adhoc"))
-    submodels[[i]] <- subfma
     # update for the next entry
     lineNum <- (y + groupSpace + 1)
   }
@@ -269,28 +350,43 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
   # add models for subgroups
   for (i in 1:nGroups) {
     # Define the base arguments for addpoly
-    baseArgs <- list(x=submodels[[i]],
-                     row=groupModelRow[i],
-                     mlab=mlabfun(subgroupLabel, submodels[[i]]),
-                     xpd=TRUE,
-                     addpred=addpred)
+    baseArgs <- if (multilevel) {
+      cm <- cellMeans[i, ]
+      noCI <- is.na(cm[["95% CI lower"]])      # a single paper: no CR2 interval
+      c(list(x = cm$Estimate,
+             ci.lb = if (noCI) cm$Estimate else cm[["95% CI lower"]],
+             ci.ub = if (noCI) cm$Estimate else cm[["95% CI upper"]],
+             rows = groupModelRow[i], xpd = TRUE,
+             mlab = if (noCI) "Mean in the shared model (one paper: no interval)"
+                    else bquote(paste("Mean in the shared model (CR2, df = ",
+                                      .(fmtx(cm$df, digits = 1)), ")"))),
+        if (addpred && !noCI) list(pi.lb = cm[["95% PI lower"]], pi.ub = cm[["95% PI upper"]]))
+    } else {
+      cm <- cellMeans[i, ]
+      c(list(x = cm$Estimate, ci.lb = cm[["95% CI lower"]], ci.ub = cm[["95% CI upper"]],
+             rows = groupModelRow[i], xpd = TRUE,
+             mlab = list(bquote(paste("Mean in the shared model (one ", tau^2,
+                                      " for all subgroups; Knapp-Hartung, df = ", .(cm$df), ")")))),
+        if (addpred) list(pi.lb = cm[["95% PI lower"]], pi.ub = cm[["95% PI upper"]]))
+    }
     # Combine the base arguments with the additional arguments
     combinedArgs <- c(baseArgs, argsForSubs)
     # Call addpoly with the combined arguments
     do.call(addpoly, combinedArgs)
+    # two-level: the subgroup's own heterogeneity (separate fit), for description
+    if (!multilevel) {
+      cm <- cellMeans[i, ]
+      txt <- if (is.na(cm[["This level alone: Q"]])) "This subgroup alone: a single study"
+        else bquote(paste("This subgroup alone (separate fit): Q = ",
+                          .(fmtx(cm[["This level alone: Q"]], digits = 2)), ", df = ", .(cm$Studies - 1), ", ",
+                          .(fmtp(cm[["This level alone: p (Q)"]], digits = 3, pname = "p", add0 = TRUE,
+                                 sep = TRUE, equal = TRUE)), "; ",
+                          I^2, " = ", .(fmtx(cm[["This level alone: I^2 (%)"]], digits = 1)), "%, ",
+                          tau^2, " = ", .(fmtx(cm[["This level alone: tau^2"]], digits = 2))))
+      text(usr[1], groupModelRow[i] - 1, pos = 4, cex = cex * 0.85, font = 3, xpd = TRUE, txt)
+    }
   }
   
-  #### The simpler version that does not pass color arguments:
-  # # add models for subgroups
-  # for(i in 1:nGroups) {
-  #   addpoly(submodels[[i]],
-  #           row=groupModelRow[i],
-  #           mlab=mlabfun("RE Model for Subgroup", submodels[[i]]),
-  #           xpd = TRUE,
-  #           addpred=addpred
-  #           )
-  # }
-  ####
 
   # add model testing moderator (multilevel: CHE model, so QM/QMp below are the
   # cluster-robust F test of the subgroup differences; two-level: the F test
@@ -310,7 +406,7 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
                  .(fmtx(fmaMod$QM, digits=2))))
   }
   text(usr[1], belowPlot, pos=4, cex=cex, xpd=TRUE,
-       bquote(paste("Test for Subgroup Differences: ", .(testStat), ", ",
+       bquote(paste("Test for subgroup differences (shared model): ", .(testStat), ", ",
                     .(fmtp(fmaMod$QMp, digits=2, pname="p", add0=TRUE, sep=TRUE, equal=TRUE)))))
 }
 ###### end of forestByGroup() function

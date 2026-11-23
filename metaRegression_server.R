@@ -175,6 +175,15 @@ output$metaRegressionOutputUI <- renderUI({
     h4("Frequentist Meta-Regression: Forest Plot with Subgroups"),
     p("Will only be computed if 'Yes' is selected for 'Include Moderator' and a",
       "categorical moderator is selected in the 'Moderator Selection' tab (left panel).") ,
+    p(tags$small(
+      tags$b("Which model each part comes from."),
+      "The bottom diamond: a random-effects model for all studies, without the moderator.",
+      "Each subgroup's diamond and prediction interval, the table below the plot, the",
+      "test for subgroup differences and the contrast: ONE shared model with a mean for",
+      "each subgroup and a single between-study variance (\u03c4\u00b2) for all of them",
+      "(Knapp-Hartung tests and intervals).  The italic line under each subgroup",
+      "diamond: that subgroup's studies analysed on their own (a separate fit), shown",
+      "only to describe how heterogeneous that subgroup is.")),
     conditionalPanel(
       condition = "input.includeModerator == 'Yes'",
       tagList(
@@ -210,6 +219,7 @@ output$metaRegressionOutputUI <- renderUI({
           ## You can also add any other arguments that forest() allows
         }, 
         height = freq_forest_height_mod()),    
+        uiOutput("rmaCellMeansOut"),
         uiOutput("rmaContrastOut"),
         
         # input boxes for adjusting x axis:
@@ -262,6 +272,13 @@ output$metaRegressionMlOutputUI <- renderUI({
       tagList(
         renderText(paste("Moderator variable is:  ", moderatorName)),
         covarianceNote(),
+        p(tags$small(
+          tags$b("Which model each part comes from."),
+          "The bottom diamond: a three-level model for all studies, without the moderator.",
+          "Each subgroup's diamond and prediction interval, the table below the plot, the",
+          "test for subgroup differences and the contrast: ONE shared three-level model with",
+          "a mean for each subgroup and the same between-paper and within-paper variances for",
+          "all of them (CR2 cluster-robust inference).")),
         renderPlot({
           req(moderatorName)
           forestByGroup(MA = MAmlData, moderator = MAmlData[[moderatorName]],
@@ -274,12 +291,31 @@ output$metaRegressionMlOutputUI <- renderUI({
                         sharing = myrvs$bayesSnapshot$sharing)
         },
         height = freq_forest_height_mlreg()),
+        uiOutput("cheCellMeansOut"),
         uiOutput("cheContrastOut")
       )
     )
   )
 })
 
+
+## each level's estimated mean in the frequentist multilevel model (the numbers
+## behind the subgroup diamonds of the forest plot above)
+output$cheCellMeansOut <- renderUI({
+  MAmlData <- MAml()
+  moderatorName <- input$moderator_variable
+  req(moderatorName %in% names(MAmlData))
+  snap <- req(myrvs$bayesSnapshot)
+  cm <- tryCatch(cheCellMeans(MAmlData, MAmlData[[moderatorName]], rho = snap$rhoCHE,
+                              sharing = snap$sharing), error = function(e) e)
+  if (inherits(cm, "error")) return(p(style = "color:#c0392b;", conditionMessage(cm)))
+  tagList(h4("Estimated mean of each level"),
+          p(tags$small("One three-level CHE model with a mean for each level (~ 0 + moderator):",
+                       "cluster-robust (CR2) 95% confidence intervals with Satterthwaite degrees",
+                       "of freedom (df), and 95% prediction intervals for a new effect size from a",
+                       "new paper.  With few papers at a level, df is small and the interval wide.")),
+          renderTable(cm, digits = 3))
+})
 
 ## contrast between two moderator levels in the frequentist multilevel model
 output$cheContrastOut <- renderUI({
@@ -296,11 +332,31 @@ output$cheContrastOut <- renderUI({
   if (inherits(ct, "error")) return(p(style = "color:#c0392b;", conditionMessage(ct)))
   if (is.null(ct)) return(p("One of the chosen levels has no effect sizes in the current selection."))
   tagList(h4("Contrast between two moderator levels"),
-          p(tags$small("Three-level CHE model with one mean per level (~ 0 + moderator);",
-                       "cluster-robust (CR2) standard error, Satterthwaite degrees of freedom.")),
+          p(tags$small("From the shared three-level CHE model (one mean per level), as are",
+                       "the subgroup diamonds above; cluster-robust (CR2) standard error,",
+                       "Satterthwaite degrees of freedom.")),
           renderTable(ct, digits = 3))
 })
 
+
+## each level's estimated mean in the standard (aggregated) shared model, with each
+## level's own heterogeneity beside it for description
+output$rmaCellMeansOut <- renderUI({
+  MA <- MA()
+  moderatorName <- input$moderator_variable
+  req(moderatorName %in% names(MA))
+  if (moderatorBlockedByPapersAgg(moderatorName)) return(NULL)
+  cm <- tryCatch(rmaCellMeans(MA, MA[[moderatorName]]), error = function(e) e)
+  if (inherits(cm, "error")) return(p(style = "color:#c0392b;", conditionMessage(cm)))
+  names(cm) <- sub("tau\\^2", "\u03c4\u00b2", sub("I\\^2", "I\u00b2", names(cm)))
+  tagList(h4("Estimated mean of each level"),
+          p(tags$small("Estimate to 95% PI: from the shared model (one mean per level, one",
+                       "\u03c4\u00b2 for all levels; Knapp-Hartung confidence intervals with df;",
+                       "prediction intervals for a new study at that level).  \"This level",
+                       "alone\" columns: the level's studies analysed on their own, for",
+                       "description only (blank for a level with a single study).")),
+          renderTable(cm, digits = 3, na = ""))
+})
 
 ## contrast between two moderator levels in the standard (aggregated) model
 output$rmaContrastOut <- renderUI({
@@ -315,8 +371,8 @@ output$rmaContrastOut <- renderUI({
   if (inherits(ct, "error")) return(p(style = "color:#c0392b;", conditionMessage(ct)))
   if (is.null(ct)) return(p("One of the chosen levels has no effect sizes in the current selection."))
   tagList(h4("Contrast between two moderator levels"),
-          p(tags$small("Random-effects model with one mean per level (~ 0 + moderator);",
-                       "Knapp-Hartung test and interval, scaling factor truncated at 1",
-                       '(the same adjustment as the forest plot above).')),
+          p(tags$small("From the shared model (one mean per level, one \u03c4\u00b2 for all",
+                       "levels), as are the subgroup diamonds above; Knapp-Hartung test and",
+                       "interval, scaling factor truncated at 1.")),
           renderTable(ct, digits = 3))
 })
