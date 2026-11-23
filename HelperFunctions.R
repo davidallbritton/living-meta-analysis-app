@@ -49,6 +49,29 @@ entriesForData <- function(entries, df) {
   }, entries)
 }
 
+# The tau prior for bayesmeta(): a density function for "Half cauchy" and "Half
+# normal" (with the given scale), else the prior's name ("uniform", "Jeffreys", ...).
+# Made here rather than inline in the server so that the function carries only the
+# scale: a closure written inside a session would carry the whole session with it,
+# and every saved model (download, precomputed file) would hold that session's
+# caches -- a few hundred MB.
+tauPriorFunction <- function(tauprior, scaletau) {
+  force(scaletau)
+  if (identical(tauprior, "Half cauchy")) function(t) bayesmeta::dhalfcauchy(t, scale = scaletau)
+  else if (identical(tauprior, "Half normal")) function(t) bayesmeta::dhalfnormal(t, scale = scaletau)
+  else tauprior
+}
+
+# bayesmeta() for the app's settings, called from here rather than from the
+# server: bayesmeta keeps some arguments as promises, and a promise made in a
+# session would make every saved model carry that session.
+fitBayesmeta <- function(MA, tauprior, scaletau, mupriormean, mupriorsd) {
+  y <- MA$es; sigma <- sqrt(MA$var); labels <- MA$study
+  tp <- tauPriorFunction(tauprior, scaletau)
+  mp <- c("mean" = mupriormean, "sd" = mupriorsd)
+  bayesmeta::bayesmeta(y = y, sigma = sigma, labels = labels, tau.prior = tp, mu.prior = mp)
+}
+
 # Reformat the data.  returns a list
 reformat.df <- function(df.input) {
   df.original <- df.input

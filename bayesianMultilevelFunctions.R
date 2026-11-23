@@ -173,8 +173,13 @@ fitBayesianMultilevel <- function(d, tauprior, scaletau, mupriormean, mupriorsd,
 
   template <- bmlTemplates[[templateKey]]
   fit <- if (is.null(template)) {
+    ## the formula lives in the global environment, not in this function's frame:
+    ## brms keeps data2 (V) in an environment whose parent is the formula's, and a
+    ## frame-parented one would make every saved fit carry this frame (the
+    ## compiled-template store and the previous fit, ~100 MB per saved model)
     do.call(brms::brm, c(list(
-              stats::as.formula(formulaText), data = d, prior = priors, stanvars = sv,
+              stats::as.formula(formulaText, env = globalenv()), data = d, prior = priors,
+              stanvars = sv,
               chains = bmlSettings$chains, iter = bmlSettings$iter,
               warmup = bmlSettings$warmup, cores = bmlSettings$cores,
               control = list(adapt_delta = bmlSettings$adapt_delta),

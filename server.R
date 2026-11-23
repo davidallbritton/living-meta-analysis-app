@@ -1051,19 +1051,9 @@ server <- function(input, output, session) {
       old_bma <- checkOldModels(cm <- useCache("models"), MA=MA, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, mupriormean=mupriormean, prevMAsNoFactors = cacheMAsNoFactors(cm))
       if(isTruthy(old_bma)) bma <- old_bma  # retrieve previously calculated bma model
       else { #### if there is no prevously calculated bma model to retrieve, calculate a new one
-        if (tauprior == "Half cauchy") {
-          bma <- bayesmeta(y = MA$es,sigma = sqrt(MA$var), labels = MA$study, 
-                           tau.prior = function(t) dhalfcauchy(t, scale = scaletau), 
-                           mu.prior = c("mean" = mupriormean, "sd" = mupriorsd))
-        } else if (tauprior == "Half normal") {
-          bma <- bayesmeta(y = MA$es,sigma = sqrt(MA$var), labels = MA$study,
-                           tau.prior = function(t) dhalfnormal(t, scale = scaletau),
-                           mu.prior = c("mean" = mupriormean, "sd" = mupriorsd))
-        } else {
-          bma <- bayesmeta(y = MA$es,sigma = sqrt(MA$var), labels = MA$study, 
-                           tau.prior = tauprior, 
-                           mu.prior = c("mean" = mupriormean, "sd" = mupriorsd))
-        }
+        # the tau prior comes from tauPriorFunction() (HelperFunctions.R), never
+        # from a function written here: saved models would carry the session
+        bma <- fitBayesmeta(MA, tauprior, scaletau, mupriormean, mupriorsd)
         ## store the new model 
         updateModels(MA=MA, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, mupriormean=mupriormean, bma=bma)
         bma
@@ -1231,9 +1221,9 @@ server <- function(input, output, session) {
     else {
       robustggplot <- NULL
       if (robust == "Yes" & tauprior == "Half cauchy" & isTruthy(myrvs$triggerBmaRobust)) {
-        robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfcauchy(t, scale = scaletau))
+        robustggplot <- robustness(MA,SD = mupriorsd, tauprior = tauPriorFunction(tauprior, scaletau))
       } else if (robust == "Yes" & tauprior == "Half normal" & isTruthy(myrvs$triggerBmaRobust)) {
-        robustggplot <- robustness(MA,SD = mupriorsd, tauprior = function(t) dhalfnormal(t, scale = scaletau))
+        robustggplot <- robustness(MA,SD = mupriorsd, tauprior = tauPriorFunction(tauprior, scaletau))
       }
       ## store the new plot in the list of old plots; this function only has a side effect, no return value
       if (isTruthy(robustggplot)) {
