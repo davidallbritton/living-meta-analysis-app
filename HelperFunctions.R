@@ -457,7 +457,8 @@ samePriorValue <- function(a, b) identical(as.numeric(a), as.numeric(b))
 ## (integer or double) must agree to a relative tolerance of 1e-10 -- far below
 ## any difference that could change a fitted model -- while everything else
 ## (column names and order, row count, character/logical columns, NA
-## positions) must match exactly.  Factors are compared as character, because
+## positions) must match exactly, except that in text NA, "" and "NA" all count
+## as missing (a .csv cannot keep them apart).  Factors are compared as character, because
 ## factor levels are recorded differently on different platforms.
 sameMAData <- function(a, b, tolerance = 1e-10) {
   a <- as.data.frame(a) %>% mutate_if(is.factor, as.character)
@@ -471,8 +472,14 @@ sameMAData <- function(a, b, tolerance = 1e-10) {
       ok <- !is.na(x) & x != y            # x != y is FALSE for equal values, incl. equal Infs
       if (any(ok) && any(abs(x[ok] - y[ok]) > tolerance * pmax(1, abs(x[ok]), abs(y[ok]))))
         return(FALSE)
-    } else if (!identical(unname(x), unname(y))) {
-      return(FALSE)
+    } else {
+      # text (or a column that is text in one table and numeric in the other):
+      # compared as text, with NA, an empty string and the text "NA" all meaning
+      # "missing", as a .csv reader takes them -- so the same data read from a
+      # .csv and from an .Rda (the built-in data keeps "" and "NA" as text) match
+      x <- as.character(x); y <- as.character(y)
+      x[is.na(x) | x == "NA"] <- ""; y[is.na(y) | y == "NA"] <- ""
+      if (!identical(unname(x), unname(y))) return(FALSE)
     }
   }
   TRUE

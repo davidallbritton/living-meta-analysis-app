@@ -43,7 +43,14 @@ maintained source of updated data for living meta-analyses.
   appear at once.  The files are read only when first needed and released when
   another data file is loaded.  Keep in each file only the results for this data
   file: a download from "Saved Plots and Models" contains everything cached in
-  that session.
+  that session.  The default data set's folder is
+  `vasilev_reading_noise_2023_update_precomputed/`; its `bml.RDS` and `plots.RDS`
+  are not in git (see `.gitignore`) and are shipped only with a deployment.
+- `default` — `yes` for the entry the app opens on, loaded with everything it
+  brings (sharing table, selections, precomputed results).  Mark exactly one.
+  An entry marked in `curated_index_local.csv` takes precedence, so a local copy
+  can open on its own data set (for example a published analysis).  Without a
+  marked entry the app opens on the built-in `data/2023updatedData.Rda`.
 
 Rows appear in the dropdown in the order they are listed here, so put the most
 recently updated files first.

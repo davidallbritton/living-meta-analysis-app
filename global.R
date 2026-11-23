@@ -62,9 +62,10 @@
 #   * Data files: one reader for uploads, curated files and a configured copy's
 #     default (readDataFile()); curated entries can bring a sharing table, saved
 #     selections and precomputed results (index columns sharing, selections,
-#     precomputed; a local index can override the released one); a configured copy
-#     names its defaults in data/default_data.txt, default_sharing.txt,
-#     default_selections.txt and default_precomputed.txt.  After a data file loads,
+#     precomputed; a local index can override the released one).  The default data
+#     set is the curated entry marked in the index's "default" column (a local
+#     index's mark wins), loaded with everything it brings; the built-in .Rda is
+#     only a fallback.  After a data file loads,
 #     one dialog offers its sharing table and selections.
 #   * Loaded-files record (loadedFiles_server.R): a "Loaded now" box, a header naming
 #     the files the displayed results come from, and the same record in the
@@ -126,7 +127,8 @@ readCuratedIndex <- function() {
   files <- files[file.exists(files)]
   if (!length(files)) return(NULL)
   idx <- as.data.frame(dplyr::bind_rows(lapply(files, function(f)
-    readr::read_csv(f, show_col_types = FALSE, col_types = readr::cols(.default = "c")))))
+    dplyr::mutate(readr::read_csv(f, show_col_types = FALSE, col_types = readr::cols(.default = "c")),
+                  .local = basename(f) == "curated_index_local.csv"))))
   firstPos <- match(idx$filename, idx$filename)
   keep <- !duplicated(idx$filename, fromLast = TRUE)
   idx <- idx[keep, , drop = FALSE][order(firstPos[keep]), , drop = FALSE]
@@ -134,81 +136,79 @@ readCuratedIndex <- function() {
   if (nrow(idx)) idx else NULL
 }
 
-################## Default data file for initial display ###########################
-# Before a user loads a data file, the app shows a default data set: the built-in
-# data/2023updatedData.Rda, unless this app copy names its own.  A copy can open on
-# another data set (with default selections and a default sharing table, this makes
-# a copy that opens on a published analysis) in either of two ways:
-#   * data/default_data.txt: its first line names a data file in the app's format,
-#     relative to data/ (for example "curated/mydata.csv", so a curated entry and the
-#     startup default can use the same file).  It is read like an upload.
-#   * data/default_data.Rda: a data frame called "df" in the app's data-file format.
-# Its display name is the first line of data/default_data_label.txt if there is one,
-# else the curated index's label for that file, else the file name.
-#   defaultDataFile    the default data's file name, as shown in the app
-#   defaultDataSource  "built-in" or "default" (this copy's own default)
-#   defaultDataBuiltIn TRUE for the built-in data
-#   defaultDataLabel   the display name
-defaultDataFile <- NULL
-if (file.exists("data/default_data.txt")) {
-  f <- trimws(readLines("data/default_data.txt", n = 1, warn = FALSE, encoding = "UTF-8"))
-  df <- if (length(f) && nzchar(f) && file.exists(file.path("data", f)))
-    tryCatch(readDataFile(file.path("data", f)), error = function(e) {
-      warning("data/default_data.txt: ", f, " could not be used: ", conditionMessage(e), call. = FALSE)
-      NULL })
-  else { warning("data/default_data.txt names a file that is not in data/", call. = FALSE); NULL }
-  if (!is.null(df)) {
-    names(df) <- gsub(":", "_", names(df))          # as removeColons() does for uploads
-    defaultDataFile <- basename(f)
-    curated <- if (startsWith(f, "curated/")) readCuratedIndex()
-    curatedLabel <- if (!is.null(curated)) curated$label[curated$filename == basename(f)]
-    defaultDataLabel <- if (length(curatedLabel) == 1) curatedLabel else basename(f)
-  }
+################## Default data set for initial display ###########################
+# Before a user loads a data file, the app shows the curated entry marked "yes" in
+# the curated index's "default" column, with everything that entry brings: its
+# sharing table, saved selections and precomputed results (as if it had been
+# chosen from the dropdown).  An entry marked in a local copy's
+# curated_index_local.csv takes precedence over the released index, so a copy can
+# open on its own data set (for example a published analysis).  Without a marked
+# entry, or if its file cannot be read, the app falls back on the built-in
+# data/2023updatedData.Rda (with a v1.5.2-style data/default_selections.json, if
+# present).
+#   defaultDataFile        the default data's file name, as shown in the app
+#   defaultDataSource      "default" (a curated entry) or "built-in" (the fallback)
+#   defaultDataBuiltIn     TRUE for the fallback
+#   defaultDataLabel       the display name (the entry's label)
+#   defaultSharingFile     the default's sharing table, relative to data/ (or NULL)
+#   defaultSelectionsFile  the default's selections file, relative to data/ (or NULL)
+#   defaultEntry           the entry's row of the curated index (or NULL); its
+#                          precomputed results are set up below (defaultPrecomputedSet)
+curatedField <- function(row, col) {
+  v <- if (!is.null(row) && col %in% names(row)) as.character(row[[col]]) else NA_character_
+  if (length(v) == 1 && !is.na(v) && nzchar(trimws(v))) trimws(v) else NULL
 }
-if (is.null(defaultDataFile) && file.exists("data/default_data.Rda")) {
-  load(file = "data/default_data.Rda")              # loads a dataframe called "df"
-  defaultDataFile <- "default_data.Rda"
-  defaultDataLabel <- "default_data.Rda"
-}
-if (is.null(defaultDataFile)) {
+defaultEntry <- local({
+  idx <- readCuratedIndex()
+  if (is.null(idx) || !"default" %in% names(idx)) return(NULL)
+  marked <- idx[tolower(trimws(idx$default)) %in% c("yes", "true", "1"), , drop = FALSE]
+  if (!nrow(marked)) return(NULL)
+  marked <- marked[order(!marked$.local), , drop = FALSE]     # a local entry first
+  marked[1, , drop = FALSE]
+})
+df <- if (!is.null(defaultEntry))
+  tryCatch(readDataFile(file.path("data/curated", defaultEntry$filename)), error = function(e) {
+    warning("The default curated entry ", defaultEntry$filename, " could not be read: ",
+            conditionMessage(e), "; using the built-in data.", call. = FALSE)
+    NULL })
+if (!is.null(df)) {
+  names(df) <- gsub(":", "_", names(df))          # as removeColons() does for uploads
+  defaultDataFile <- defaultEntry$filename
+  defaultDataLabel <- defaultEntry$label
+  defaultDataSource <- "default"
+  defaultDataBuiltIn <- FALSE
+  existing <- function(f) if (!is.null(f) && file.exists(file.path("data/curated", f))) file.path("curated", f)
+  defaultSharingFile <- existing(curatedField(defaultEntry, "sharing"))
+  defaultSelectionsFile <- existing(curatedField(defaultEntry, "selections"))
+} else {
+  defaultEntry <- NULL
   load(file = "data/2023updatedData.Rda")           # loads a dataframe called "df"
   defaultDataFile <- "2023updatedData.Rda"
   defaultDataLabel <- "Vasilev et al. 2018 plus 2023 updates"
   defaultDataSource <- "built-in"
   defaultDataBuiltIn <- TRUE
-} else {
-  defaultDataSource <- "default"
-  defaultDataBuiltIn <- FALSE
-  if (file.exists("data/default_data_label.txt"))
-    defaultDataLabel <- trimws(readLines("data/default_data_label.txt", n = 1, warn = FALSE,
-                                         encoding = "UTF-8"))
+  defaultSharingFile <- NULL
+  defaultSelectionsFile <- if (file.exists("data/default_selections.json")) "default_selections.json"
 }
-suppressWarnings(rm(f, curated, curatedLabel))
 
 
 ################## Precomputed models and plots (shared by the R process) ##########
 # A data source can come with precomputed results, in the same four forms as the
 # caches of "Saved Plots and Models": bayesmeta models, Bayes-factor robustness
 # plots, Bayesian meta-regression models and Bayesian multilevel models.  A set of
-# them is identified by a setId:
-#   "built-in"            the built-in data's set: data/defaultPrecalculated*.RDS
-#   "<folder>"            a folder relative to data/ holding any of models.RDS,
-#                         plots.RDS, bmr.RDS and bml.RDS (each a list as saved by
-#                         the matching download) -- named by a curated entry's
-#                         "precomputed" column, or by data/default_precomputed.txt
+# them is identified by a setId, a folder relative to data/ holding any of
+# models.RDS, plots.RDS, bmr.RDS and bml.RDS (each a list as saved by the matching
+# download), named by a curated entry's "precomputed" column (for example
+# "curated/vasilev_reading_noise_2023_update_precomputed", the default data's set).
 # A session attaches the set of the data it has loaded (precomputed_server.R).
 # Each file is read only when a session first looks in that cache, then kept here
 # and shared by every session (R lists copy on write, so a session adding its own
 # fits copies pointers, not the cached objects); it is dropped once no session has
-# the set attached.  So the built-in multilevel fits (about 290 MB in memory) are
-# never read unless someone fits a multilevel model on the built-in data.
+# the set attached.  So the default data's multilevel fits (about 290 MB in memory)
+# are never read unless someone fits a multilevel model on that data.
 precomputedTypes <- c("models", "plots", "bmr", "bml")
-precomputedFiles <- function(setId) {
-  if (identical(setId, "built-in"))
-    c(models = "data/defaultPrecalculatedModels.RDS", plots = "data/defaultPrecalculatedPlots.RDS",
-      bmr = "data/defaultPrecalculatedBmrModels.RDS", bml = "data/defaultPrecalculatedBmlModels.RDS")
-  else setNames(file.path("data", setId, paste0(precomputedTypes, ".RDS")), precomputedTypes)
-}
+precomputedFiles <- function(setId)
+  setNames(file.path("data", setId, paste0(precomputedTypes, ".RDS")), precomputedTypes)
 precomputedExists <- function(setId) !is.null(setId) && any(file.exists(precomputedFiles(setId)))
 precomputedStore <- new.env()     # "<setId>::<type>" -> list of cache entries
 precomputedUsers <- new.env()     # setId -> number of sessions with it attached
@@ -233,17 +233,11 @@ releasePrecomputed <- function(setId) {
     if (length(keys)) rm(list = keys, envir = precomputedStore)
   } else precomputedUsers[[setId]] <- n - 1L
 }
-## the default data's set: the built-in one for the built-in data; for a configured
-## copy, the folder named on the first line of data/default_precomputed.txt
-## (relative to data/), if any
-defaultPrecomputedSet <- if (defaultDataBuiltIn) "built-in" else {
-  if (file.exists("data/default_precomputed.txt")) {
-    f <- trimws(readLines("data/default_precomputed.txt", n = 1, warn = FALSE, encoding = "UTF-8"))
-    if (length(f) && nzchar(f) && precomputedExists(f)) f
-    else { warning("data/default_precomputed.txt names no folder of precomputed results in data/",
-                   call. = FALSE); NULL }
-  }
-}
+## the default data's set: the "precomputed" folder of the default curated entry
+defaultPrecomputedSet <- local({
+  f <- curatedField(defaultEntry, "precomputed")
+  if (!is.null(f) && precomputedExists(file.path("curated", f))) file.path("curated", f)
+})
 
 
 

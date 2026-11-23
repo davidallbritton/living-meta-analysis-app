@@ -14,12 +14,8 @@
 #
 # Sources of a sharing table, each replacing the previous one:
 #   * the "Load sharing table..." upload in the "Load Data File" tab;
-#   * this app copy's default sharing table, loaded at startup with the default
-#     data set: the first line of data/default_sharing.txt names its file, relative
-#     to data/ (for example "curated/mydata_sharing.csv", so a curated entry and the
-#     startup default can use the same file).  With data/default_selections.json
-#     and the default data file, this lets a copy of the app open on a published
-#     analysis;
+#   * the default data set's sharing table, loaded at startup: the default curated
+#     entry's "sharing" file (defaultSharingFile, global.R);
 #   * a curated data file whose row in data/curated/curated_index.csv names a
 #     sharing table in the optional column "sharing".
 # Loading a different data file removes the sharing table (loadDataFile() in
@@ -70,19 +66,11 @@ clearSharingTable <- function() {
   shinyjs::reset("SharingUp")
 }
 
-## startup: this app copy's default sharing table, with the default data set
-## (data/default_sharing.txt names the file, relative to data/)
+## startup: the default data set's sharing table (the default curated entry's;
+## defaultSharingFile in global.R, relative to data/)
 observeEvent(myrvs$df.reactive, once = TRUE, {
-  if (!file.exists("data/default_sharing.txt")) return()
-  f <- trimws(readLines("data/default_sharing.txt", n = 1, warn = FALSE, encoding = "UTF-8"))
-  path <- file.path("data", f)
-  if (!length(f) || !nzchar(f) || !file.exists(path)) {
-    showNotification(paste0("data/default_sharing.txt names a sharing table that is not in data/",
-                            if (length(f) && nzchar(f)) paste0(' ("', f, '")') else "",
-                            "; no sharing table was loaded."), type = "warning", duration = 20)
-    return()
-  }
-  loadSharingFile(path, basename(f), "default")
+  if (!is.null(defaultSharingFile))
+    loadSharingFile(file.path("data", defaultSharingFile), basename(defaultSharingFile), "default")
 })
 
 observeEvent(input$SharingUp, {

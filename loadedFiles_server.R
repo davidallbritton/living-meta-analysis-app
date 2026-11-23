@@ -97,9 +97,9 @@ loadedState <- reactive({
        precomputedSet    = myrvs$precomputedSet)
 })
 
-dataSourceText <- c("built-in" = "the app's built-in data", default = "this app copy's default data",
+dataSourceText <- c("built-in" = "the app's built-in data", default = "the default data set, from the curated collection",
                     curated = "from the curated collection", upload = "uploaded")
-sharingSourceText <- c(default = "loaded at startup with the default data",
+sharingSourceText <- c(default = "comes with the default data set",
                        curated = "comes with the curated data file", upload = "uploaded")
 selectionsSourceText <- c(default = "applied at startup", curated = "came with the curated data file",
                           upload = "loaded from a file")

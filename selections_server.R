@@ -31,13 +31,12 @@
 # data changed since the save, and offers to include them (checkStaleSelections).
 # Files record the data's ranges and levels at save time ("dataAtSave") for this.
 #
-# This app copy's default selections file is applied automatically at startup
-# (only while the default data set is loaded): the file named on the first line of
-# data/default_selections.txt, relative to data/ (for example
-# "curated/mydata_selections.json", so a curated entry and the startup default can
-# use the same file), or else data/default_selections.json.
-# Together with replacing the default data file, that is all it takes to make a
-# copy of this app that reproduces the selections of, e.g., a published article.
+# The default data set's selections file is applied automatically at startup (only
+# while the default data set is loaded): the default curated entry's "selections"
+# file (defaultSelectionsFile, global.R), or, with the built-in data, a
+# data/default_selections.json as in v1.5.2.  Marking a curated entry as the default
+# (with its selections) is all it takes to make a copy of this app open on, e.g., the
+# analysis of a published article.
 #
 # Applying selections uses the same update*Input mechanism as the "Reset filters"
 # button.  The apply step waits until input$Design exists, i.e. until the
@@ -448,23 +447,13 @@ applySelectionsFile <- function(path, displayName, source, what) {
   invisible(TRUE)
 }
 
-## at startup, auto-apply this app copy's default selections (if it has any) while
-## the default data set is still loaded; fires once, when the data first becomes
-## available (ignoreNULL skips the pre-load NULL state).  data/default_selections.txt
-## names the file (relative to data/); without it, data/default_selections.json.
+## at startup, auto-apply the default data set's selections (if any) while the
+## default data set is still loaded; fires once, when the data first becomes
+## available (ignoreNULL skips the pre-load NULL state).  defaultSelectionsFile
+## (global.R) is relative to data/.
 observeEvent(myrvs$df.reactive, once = TRUE, {
   if (!is.null(myrvs$currentInputFile)) return()     # another data set beat us to it
-  if (file.exists("data/default_selections.txt")) {
-    f <- trimws(readLines("data/default_selections.txt", n = 1, warn = FALSE, encoding = "UTF-8"))
-    if (!length(f) || !nzchar(f) || !file.exists(file.path("data", f))) {
-      showNotification(paste0("data/default_selections.txt names a selections file that is not in data/",
-                              if (length(f) && nzchar(f)) paste0(' ("', f, '")') else "",
-                              "; using standard defaults."), type = "warning", duration = 20)
-      return()
-    }
-    applySelectionsFile(file.path("data", f), basename(f),
-                        "default", "this app copy's default selections")
-  } else if (file.exists("data/default_selections.json"))
-    applySelectionsFile("data/default_selections.json", "data/default_selections.json",
-                        "default", "this app copy's default selections")
+  if (!is.null(defaultSelectionsFile))
+    applySelectionsFile(file.path("data", defaultSelectionsFile), basename(defaultSelectionsFile),
+                        "default", "the default data set's selections")
 })

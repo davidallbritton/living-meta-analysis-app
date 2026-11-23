@@ -7,14 +7,16 @@ at the repository root (which is why `shiny::runGitHub("living-meta-analysis-app
 
 ## Architecture
 
-- `global.R` loads packages, `source()`s the three helper files, loads the default
-  data (`data/2023updatedData.Rda` → `df`, unless a configured copy names its own in
-  `data/default_data.txt` or supplies `data/default_data.Rda`; `defaultDataFile`,
-  `defaultDataSource`, `defaultDataLabel`), defines `readCuratedIndex()`, the
-  **process-wide store of precomputed results** (`precomputedEntries()`: a set's files
-  are read at first use and dropped once no session has the set attached; the built-in
-  data's set is `data/defaultPrecalculated*.RDS`), and the brms compiled-template store
-  `bmlTemplates`.
+- `global.R` loads packages, `source()`s the three helper files, defines
+  `readCuratedIndex()`, loads the default data -- the curated entry marked
+  `default = yes` (a local index's mark wins), with its sharing table, selections and
+  precomputed folder (`defaultDataFile`, `defaultDataLabel`, `defaultSharingFile`,
+  `defaultSelectionsFile`, `defaultPrecomputedSet`); `data/2023updatedData.Rda` is only
+  the fallback -- the **process-wide store of precomputed results**
+  (`precomputedEntries()`: a set's files are read at first use and dropped once no
+  session has the set attached; the default data's set is
+  `data/curated/vasilev_reading_noise_2023_update_precomputed/`), and the brms
+  compiled-template store `bmlTemplates`.
 - `server.R` sources, with `local = TRUE` (all share one environment):
   `codeGenerator.R` (+ `metaRegression_code_generator.R`, `descriptives_code_generator.R`),
   `descriptives_server.R`, `selections_server.R`, `bayesianMultilevel_server.R`,
@@ -56,7 +58,8 @@ at the repository root (which is why `shiny::runGitHub("living-meta-analysis-app
    caches contain both integer `0L` and double `0` for the same setting; `identical()`
    alone silently misses and forces slow refits.  MA data frames are compared with
    `sameMAData()` (HelperFunctions.R), never `identical()`: factors as character,
-   numeric columns to a 1e-10 relative tolerance, everything else exactly.  Aggregated
+   numeric columns to a 1e-10 relative tolerance, everything else exactly (except that
+   in text NA, "" and "NA" all count as missing: a .csv cannot keep them apart).  Aggregated
    es/var values differ in their last bits across platforms, so `identical()` made the
    Papers-aggregation seeds miss on the server.
 3. **brms compile cost**: prior constants are passed as Stan *data* (`stanvars`), so one
@@ -94,9 +97,10 @@ at the repository root (which is why `shiny::runGitHub("living-meta-analysis-app
   records, regenerated locally on deploy — no secrets).  brms on the hosted server is a
   memory issue (2 GB min; 8 GB comfortable): chains run sequentially on shinyapps (cores
   auto-switch via `R_CONFIG_ACTIVE` in bmlSettings) and fits degrade to an explanatory
-  message on failure.  Production strategy: ship precomputed fits as
-  `data/defaultPrecalculatedBmlModels.RDS` (fit locally, download from Saved Plots and
-  Models) so cached requests need no server-side Stan.
+  message on failure.  Production strategy: ship precomputed fits in a curated entry's
+  precomputed folder (for the default data,
+  `data/curated/vasilev_reading_noise_2023_update_precomputed/bml.RDS`; fit locally,
+  download from Saved Plots and Models) so cached requests need no server-side Stan.
 
 ## Roadmap: open items by difficulty
 

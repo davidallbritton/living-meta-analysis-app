@@ -1,2 +1,2 @@
-filename,label,date,description,citation
-vasilev_reading_noise_2023_update.csv,Effects of background noise on reading (2023 update),2023,"The app's default data set: effects of background noise, speech, and music on reading comprehension and speed, updated through 2023 (79 effect sizes). Loading it restores the data the app starts with.","Vasilev, Kirkby, & Angele (2018), updated"
+"filename","label","date","description","citation","sharing","selections","precomputed","default"
+"vasilev_reading_noise_2023_update.csv","Effects of background noise on reading (Vasilev et al. 2018 plus 2023 updates)","2023","The app's default data set: effects of background noise, speech, and music on reading comprehension and speed, updated through 2023 (79 effect sizes). Loading it restores the data the app starts with.","Vasilev, Kirkby, & Angele (2018), updated","","","vasilev_reading_noise_2023_update_precomputed","yes"
