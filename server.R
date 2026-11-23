@@ -46,33 +46,14 @@ server <- function(input, output, session) {
   ## initialize reactive value to indicate whether the app has finished loading
   myrvs$uiRendered  <- FALSE
   
-  ###  initialize $previousPlots and $previousModels from the process-wide seed
-  ###  caches loaded once in global.R (shared across sessions via copy-on-write;
-  ###  this session's own additions never modify the shared seed)
-  myrvs$previousPlots <- defaultPlotsSeed
-  myrvs$previousModels <- defaultModelsSeed
+  ###  the session's caches of bayesmeta models and robustness plots start empty;
+  ###  precomputed results that come with the loaded data are added at first use
+  ###  (precomputed_server.R).  Cached models are matched with the data's factors
+  ###  as character (cacheMAsNoFactors()), because factor levels are recorded
+  ###  differently on different platforms.
+  myrvs$previousPlots <- list()
+  myrvs$previousModels <- list()
 
-  ### a reactive value that gets updated whenever myrvs$previousModels changes:
-  #   This version of MA() without factor variables is necessary because
-  #   factor levels are recorded differently on different platforms, making
-  #   it impossible to use precalculated bma()s from one computer on another computer
-  #   This is needed to be make the pre-loaded bma() models work on the shinyapps.io server.
-  previousMAsNoFactors <- reactiveValues(MAs = list())
-  #
-  observe ({
-    prevModels <- myrvs$previousModels
-    isolate ({
-      if(length(myrvs$previousModels)) {
-        for (i in 1:length(prevModels)) {
-          nofactors <- prevModels[[i]]$MA
-          nofactors <- nofactors %>% mutate_if(is.factor, as.character)
-          previousMAsNoFactors$MAs[[i]] <- nofactors
-        }
-      }
-    })
-  })
-    
-  
   myrvs$nfiles <- 0
     observe({
     if(is.null(input$DataFileUp)){   #this trigger works because input$DataFileUp gets initialized to null when the app first loads, which triggers the observer
@@ -100,42 +81,14 @@ server <- function(input, output, session) {
     ## data set, replacing the existing data and updating the UI.  Shared by the
     ## user-upload observer below and the curated data file loader.
     ## Returns TRUE if the data was loaded, FALSE if the file could not be used.
-    loadDataFile <- function(file_path, display_name) {
-      file_extension <- tools::file_ext(file_path)
-      if (file_extension %in% c("xlsx", "xls")) {
-        df <- readxl::read_excel(file_path) %>% as.data.frame()
-      } else {
-        # The .csv should use UTF-8 encoding if there are non-ASCII characters
-        # otherwise they can cause the app to crash.
-        df <- readr::read_csv(file_path, show_col_types = FALSE)  %>% as.data.frame()
-      }
-      #
-      # the four marker columns are required (they bracket the selection variables)
-      markers <- c("Begin.Selection.Factors", "End.Selection.Factors",
-                   "Begin.Selection.Numerics", "End.Selection.Numerics")
-      missingMarkers <- setdiff(markers, names(df))
-      if (length(missingMarkers) > 0) {
-        showNotification(paste0("This data file cannot be used: it is missing the required marker column(s) ",
-                                paste(missingMarkers, collapse = ", "),
+    loadDataFile <- function(file_path, display_name, file_name = basename(file_path),
+                             source = "upload") {
+      df <- tryCatch(readDataFile(file_path), error = function(e) e)
+      if (inherits(df, "error")) {
+        showNotification(paste0("This data file cannot be used: ", conditionMessage(df),
                                 '.  See the list of required columns (and the template file) on the "Explanation" tab.'),
                          type = "error", duration = 20)
         return(FALSE)
-      }
-      # make sure the numeric columns are of the correct type
-      start_col <- which(names(df) == "Begin.Selection.Numerics")
-      end_col <- which(names(df) == "End.Selection.Numerics")
-      # Convert columns from start to end into numeric
-      df[, start_col:end_col] <- lapply(df[, start_col:end_col], function(x) as.numeric(as.character(x)))
-      #
-      # List of column names to potentially convert to numeric
-      columns_to_convert <- c("Publication.Year", "N_Intervention", "N_Control", "N_Total")
-      # Loop through each column name
-      for (col in columns_to_convert) {
-        # Check if the column exists in the dataframe
-        if (col %in% names(df)) {
-          # Convert the column to numeric
-          df[[col]] <- as.numeric(as.character(df[[col]]))
-        }
       }
       #
       # Fix colons in column names
@@ -151,6 +104,10 @@ server <- function(input, output, session) {
       myrvs$nfiles <- myrvs$nfiles + 1
       myrvs$recalculatedSinceUpload <- 0
       myrvs$currentInputFile <- display_name
+      myrvs$dataFile <- file_name        # the file's own name, and where it came from
+      myrvs$dataSource <- source         # ("upload" or "curated"; see loadedFiles_server.R)
+      clearSelectionsRecord()            # a selections file belongs to the previous data
+      detachPrecomputedSet()             # so do its precomputed results (precomputed_server.R)
       myrvs$uiRendered  <- FALSE    # to keep recalculate button inactive until UI loaded
       # a sharing table's IDs belong to the previous data set (sharing_server.R)
       clearSharingTable()
@@ -158,6 +115,14 @@ server <- function(input, output, session) {
       # groups) in the new one, so switch the moderator off; the moderator radio
       # buttons themselves are rebuilt from the new data by moderatorSelection_ui
       updateRadioButtons(session, "includeModerator", selected = "No")
+      # the "Include this tab in the analysis" ticks describe the previous data's
+      # analysis, so untick them all (a curated file's selections, applied after
+      # this, tick their own again)
+      for (v in includableTabValues)
+        updateCheckboxInput(session, paste0("includeTab_", v), value = FALSE)
+      # likewise the Descriptives crosstabs (descriptives_server.R); its ticked
+      # variables are rebuilt from the new data by the chooser itself
+      resetCrosstabs()
       TRUE
     }
 
@@ -177,12 +142,12 @@ server <- function(input, output, session) {
       #
       validate(need(file_extension %in% c("xlsx", "xls", "csv"), "Please upload an Excel (.xlsx/.xls) or CSV (.csv) file"))
       #
-      if (loadDataFile(file_path, input$DataFileUp$name)) {
+      if (loadDataFile(file_path, input$DataFileUp$name, input$DataFileUp$name, "upload")) {
         output$inputFileError <- renderUI(NULL) # remove error message if file uploaded successfully
         # the uploaded file is now the data source, so clear the curated dropdown
         # (each chooser only shows a file name while it is the current data source)
         updateSelectInput(session, "curatedDataFile", selected = "")
-        offerSharingTable(input$DataFileUp$name)   # optional; sharing_server.R
+        offerCompanionFiles(input$DataFileUp$name)   # optional; loadedFiles_server.R
       }
     })
 
@@ -196,22 +161,7 @@ server <- function(input, output, session) {
     ## An optional data/curated/curated_index_local.csv (same columns) lists further
     ## files after those, for a local copy whose extra files are not part of the
     ## release (keep it and its files out of version control).
-    curatedIndex <- NULL
-    curatedFiles <- file.path("data/curated", c("curated_index.csv", "curated_index_local.csv"))
-    curatedFiles <- curatedFiles[file.exists(curatedFiles)]
-    if (length(curatedFiles)) {
-      curatedIndex <- dplyr::bind_rows(lapply(curatedFiles, function(f)
-        readr::read_csv(f, show_col_types = FALSE, col_types = readr::cols(.default = "c")))) %>%
-        as.data.frame()
-      # a file listed in both indexes keeps only its local row (read last), so a
-      # local copy can relabel or annotate a released file; it keeps the released
-      # row's place in the dropdown
-      firstPos <- match(curatedIndex$filename, curatedIndex$filename)
-      keep <- !duplicated(curatedIndex$filename, fromLast = TRUE)
-      curatedIndex <- curatedIndex[keep, , drop = FALSE][order(firstPos[keep]), , drop = FALSE]
-      curatedIndex <- curatedIndex[file.exists(file.path("data/curated", curatedIndex$filename)), , drop = FALSE]
-      if (nrow(curatedIndex) == 0) curatedIndex <- NULL
-    }
+    curatedIndex <- readCuratedIndex()     # global.R
 
     ## Dropdown + load button shown under the upload control in "Load Data File".
     ## (Rendered in the server so the whole control disappears if there is no index.)
@@ -242,7 +192,10 @@ server <- function(input, output, session) {
                                           "), which is loaded with it."))),
         if ("selections" %in% names(chosen) && isTruthy(chosen$selections))
           tagList(br(), tags$small(paste0("Comes with saved selections (", chosen$selections,
-                                          "), which are applied when it loads."))))
+                                          "), which are applied when it loads."))),
+        if ("precomputed" %in% names(chosen) && isTruthy(chosen$precomputed))
+          tagList(br(), tags$small(paste("Comes with precomputed results, used whenever your",
+                                         "settings match the ones they were computed with."))))
     })
 
     ## Load the chosen curated file, replacing the current data (same as an upload).
@@ -250,21 +203,30 @@ server <- function(input, output, session) {
       req(curatedIndex, input$curatedDataFile)
       chosen <- curatedIndex[curatedIndex$filename == input$curatedDataFile, , drop = FALSE]
       req(nrow(chosen) == 1)
-      if (loadDataFile(file.path("data/curated", chosen$filename), chosen$label)) {
+      if (loadDataFile(file.path("data/curated", chosen$filename), chosen$label,
+                       chosen$filename, "curated")) {
         blankStudyPanelBriefly()   # tear down + rebuild the study criteria panel, as for uploads
         # optional column "sharing" in curated_index.csv: a sharing table for this
         # file, also in data/curated/ (see sharing_server.R)
-        if ("sharing" %in% names(chosen) && isTruthy(chosen$sharing) &&
-            file.exists(file.path("data/curated", chosen$sharing)))
-          loadSharingFile(file.path("data/curated", chosen$sharing), chosen$sharing)
-        else offerSharingTable(chosen$label)
+        hasSharing <- "sharing" %in% names(chosen) && isTruthy(chosen$sharing) &&
+          file.exists(file.path("data/curated", chosen$sharing))
+        if (hasSharing)
+          loadSharingFile(file.path("data/curated", chosen$sharing), chosen$sharing, "curated")
         # optional column "selections": a selections file saved by this app, also in
         # data/curated/, applied once the rebuilt study-criteria panel is live
         # (applySelectionsFile() in selections_server.R)
-        if ("selections" %in% names(chosen) && isTruthy(chosen$selections) &&
-            file.exists(file.path("data/curated", chosen$selections)))
+        hasSelections <- "selections" %in% names(chosen) && isTruthy(chosen$selections) &&
+          file.exists(file.path("data/curated", chosen$selections))
+        if (hasSelections)
           applySelectionsFile(file.path("data/curated", chosen$selections), chosen$selections,
                               "curated", "the selections that come with this file")
+        # optional column "precomputed": a folder in data/curated/ of precomputed
+        # results (models.RDS, plots.RDS, bmr.RDS, bml.RDS, as saved from "Saved Plots
+        # and Models"), attached now and read at first use (precomputed_server.R)
+        if ("precomputed" %in% names(chosen) && isTruthy(chosen$precomputed))
+          attachPrecomputedSet(file.path("curated", chosen$precomputed))
+        # offer whichever of the two the entry does not supply (loadedFiles_server.R)
+        offerCompanionFiles(chosen$label, sharing = !hasSharing, selections = !hasSelections)
         # the curated file is now the data source, so clear the upload control's
         # file name display (each chooser only shows a file name while it is the
         # current data source)
@@ -293,23 +255,9 @@ server <- function(input, output, session) {
       )
     })
   
-  observeEvent(input$recalculateButton, {
-    output$currentDataFile <- renderUI({
-      isolate({
-        myrvs$recalculatedSinceUpload <- 1
-        if (myrvs$nfiles > 0) {
-          p(
-            "The currently displayed results are from ", 
-            span(style = "white-space: nowrap", myrvs$currentInputFile)
-          )
-        } else {
-          p(if (defaultDataBuiltIn) "The currently displayed results are from Vasilev et al., 2018 plus updates as of 2023"
-            else paste("The currently displayed results are from", defaultDataLabel))
-        }
-      })
-    })
-  })
-  
+  ## the header above the recalculate button (output$currentDataFile) is in
+  ## loadedFiles_server.R
+
   ####################
   ##   tabPanel("Study criteria",    ## creating UI content for this tabPanel ##
   #
@@ -327,6 +275,7 @@ server <- function(input, output, session) {
     studyPanelHidden(TRUE)                              # blank the panel this flush
     domain <- getDefaultReactiveDomain()
     later::later(function() {                           # ...rebuild it ~0.3s later
+      if (is.null(domain) || domain$isClosed()) return()   # the session has ended
       withReactiveDomain(domain, studyPanelHidden(FALSE))
     }, 0.3)
   }
@@ -1058,7 +1007,7 @@ server <- function(input, output, session) {
     scaletau    <-  snap$scaletau
     mupriormean <-  snap$mupriormean
     # end of reactive values that are copied.
-    old_bma <- checkOldModels(myrvs$previousModels, MA=MA, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, mupriormean=mupriormean, prevMAsNoFactors = previousMAsNoFactors$MAs)
+    old_bma <- checkOldModels(cm <- useCache("models"), MA=MA, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, mupriormean=mupriormean, prevMAsNoFactors = cacheMAsNoFactors(cm))
     })
     ##
     #
@@ -1099,7 +1048,7 @@ server <- function(input, output, session) {
       scaletau    <-  snap$scaletau
       mupriormean <-  snap$mupriormean
       # end of reactive values that are copied.
-      old_bma <- checkOldModels(myrvs$previousModels, MA=MA, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, mupriormean=mupriormean, prevMAsNoFactors = previousMAsNoFactors$MAs)
+      old_bma <- checkOldModels(cm <- useCache("models"), MA=MA, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, mupriormean=mupriormean, prevMAsNoFactors = cacheMAsNoFactors(cm))
       if(isTruthy(old_bma)) bma <- old_bma  # retrieve previously calculated bma model
       else { #### if there is no prevously calculated bma model to retrieve, calculate a new one
         if (tauprior == "Half cauchy") {
@@ -1241,7 +1190,7 @@ server <- function(input, output, session) {
     tauprior <- snap$tauprior
     mupriorsd <- snap$mupriorsd
     scaletau <- snap$scaletau
-    old_plot <- checkOldPlots(myrvs$previousPlots, MA=MA_nofactors, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, robust=robust)
+    old_plot <- checkOldPlots(useCache("plots"), MA=MA_nofactors, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, robust=robust)
     if(!isTruthy(old_plot))  { # skip the shinyalert if that plot is already cached
       # block stale results until the user confirms (see the matching reset in the
       # bma modal above)
@@ -1277,7 +1226,7 @@ server <- function(input, output, session) {
     tauprior <- snap$tauprior
     mupriorsd <- snap$mupriorsd
     scaletau <- snap$scaletau
-    old_plot <- checkOldPlots(myrvs$previousPlots, MA=MA_nofactors, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, robust=robust)
+    old_plot <- checkOldPlots(useCache("plots"), MA=MA_nofactors, tauprior=tauprior, mupriorsd=mupriorsd, scaletau=scaletau, robust=robust)
     if(isTruthy(old_plot)) robustggplot <- old_plot  # retrieve previously calculated plot
     else {
       robustggplot <- NULL
@@ -1300,7 +1249,7 @@ server <- function(input, output, session) {
   #
   #### observer to clear the Saved Models when the button is pressed
   observeEvent(input$ClearModels, {
-    myrvs$previousModels <- list()
+    clearCache("models")
   })
   #
   #### section for uploading saved models from a file
@@ -1313,7 +1262,7 @@ server <- function(input, output, session) {
     })
     validate(need(fileExtension == "RDS" | fileExtension == "rds" | fileExtension == "Rds" , "Please upload an RDS file"))
     newrows_bma <- normalizeTauPriorLabels(readRDS(input$SavedModelsUp$datapath))
-    oldrows_bma <- myrvs$previousModels
+    oldrows_bma <- useCache("models")
     allrows_bma <- c(newrows_bma, oldrows_bma)
     myrvs$previousModels <- allrows_bma
     output$inputFileErrorBup <- renderUI(NULL) # remove error message if file uploaded successfully
@@ -1325,7 +1274,7 @@ server <- function(input, output, session) {
       "bayesmeta_models.RDS" 
     },
     content = function (file) {
-      saveRDS(myrvs$previousModels, file)
+      saveRDS(cacheForDownload("models"), file)
     }
   )
   #
@@ -1336,7 +1285,7 @@ server <- function(input, output, session) {
   #
   #### observer to clear the Saved plots when the button is pressed
   observeEvent(input$ClearPlots, {
-    myrvs$previousPlots <- list()
+    clearCache("plots")
   })
   #
   #### section for uploading saved Plots from a file
@@ -1349,7 +1298,7 @@ server <- function(input, output, session) {
     })
     validate(need(fileExtension == "RDS" | fileExtension == "rds" | fileExtension == "Rds" , "Please upload an RDS file"))
     newrows_bma <- normalizeTauPriorLabels(readRDS(input$SavedPlotsUp$datapath))
-    oldrows_bma <- myrvs$previousPlots
+    oldrows_bma <- useCache("plots")
     allrows_bma <- c(newrows_bma, oldrows_bma)
     myrvs$previousPlots <- allrows_bma
     output$inputFileErrorBup <- renderUI(NULL) # remove error message if file uploaded successfully
@@ -1361,7 +1310,7 @@ server <- function(input, output, session) {
       "BF_robustness_plots.RDS" 
     },
     content = function (file) {
-      saveRDS(myrvs$previousPlots, file)
+      saveRDS(cacheForDownload("plots"), file)
     }
   )
 
@@ -1415,8 +1364,7 @@ server <- function(input, output, session) {
       "currentData.xlsx" 
     },
     content = function (file) {
-      if (is.null(myrvs$currentInputFile)) {Source <- if (defaultDataBuiltIn) "Vasilev et al., 2018" else defaultDataLabel} else Source <- myrvs$currentInputFile
-      Source <- req(as.data.frame(Source))
+      Source <- loadedFilesTable()    # data set, data file, sharing table, selections file
       sheetList <- list(current_Data = myrvs$df.updated,
                         current_df = myrvs$df.reactive, 
                         selected_data = req(as.data.frame(MA())), 
@@ -1431,8 +1379,7 @@ server <- function(input, output, session) {
       "bayesmeta_call.xlsx" 
     },
     content = function (file) {
-      if (is.null(myrvs$currentInputFile)) {Source <- if (defaultDataBuiltIn) "Vasilev et al., 2018 plus 2023 updates" else defaultDataLabel} else Source <- myrvs$currentInputFile
-      Source <- req(as.data.frame(Source))
+      Source <- loadedFilesTable()    # data set, data file, sharing table, selections file
       Bayesmeta.Summary <- req(as.data.frame(bma()$summary))
       Bayesmeta.Summary$statistic <-   row.names(Bayesmeta.Summary) 
       Bayesmeta.Summary <- select(Bayesmeta.Summary, statistic, tau, mu, theta)
@@ -1590,6 +1537,12 @@ server <- function(input, output, session) {
 
   # optional sharing table: which effect sizes share data (structured V)
   source("sharing_server.R", local = T)
+
+  # what is loaded now, and what the displayed results are from
+  source("loadedFiles_server.R", local = T)
+
+  # precomputed results that come with the loaded data (attached at first use)
+  source("precomputed_server.R", local = T)
 
   # Bayesian multilevel (three-level, brms) tab
   source("bayesianMultilevel_server.R", local = T)

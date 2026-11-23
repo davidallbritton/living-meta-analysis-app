@@ -27,6 +27,33 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                   tags$meta(charset = "UTF-8")
                 ),
                 useShinyjs(),
+                ## Keep password managers from offering to fill the app's inputs (their
+                ## fill buttons cover the dropdown lists).  The app has no login or
+                ## address fields, so every text input gets each manager's "ignore"
+                ## marker, including inputs created later (selectize dropdowns, the
+                ## rebuilt study-criteria panel, added crosstabs).
+                tags$head(tags$script(HTML("
+                  (function () {
+                    var marks = {'data-1p-ignore': '', 'data-lpignore': 'true', 'data-bwignore': 'true',
+                                 'data-form-type': 'other', 'autocomplete': 'off'};
+                    var sel = 'input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=file]), textarea';
+                    function markOne(el) {
+                      if (el.hasAttribute('data-pm-ignored')) return;
+                      for (var k in marks) el.setAttribute(k, marks[k]);
+                      el.setAttribute('data-pm-ignored', '');
+                    }
+                    function mark(node) {
+                      if (node.nodeType !== 1) return;
+                      if (node.matches(sel)) markOne(node);
+                      node.querySelectorAll(sel).forEach(markOne);
+                    }
+                    document.addEventListener('DOMContentLoaded', function () {
+                      mark(document.body);
+                      new MutationObserver(function (records) {
+                        records.forEach(function (r) { r.addedNodes.forEach(mark); });
+                      }).observe(document.body, {childList: true, subtree: true});
+                    });
+                  })();"))),
                 titlePanel(title = div("A General Tool for Living Meta-Analysis (v1.6)"),
                            windowTitle = "A General Tool for Living Meta-Analysis (v1.6)"),
                 sidebarLayout(
@@ -39,7 +66,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
 
                     tabsetPanel(id = "dataSetupPanel", selected = "Study criteria",
                       tabPanel("Load Data File",
-                               br(),
+                               uiOutput("loadedFilesNow"),
                                fileInput("DataFileUp", label = "Upload your data file (.csv .xls or .xlsx)", accept = c(".xls", ".xlsx", ".csv")),
                                uiOutput("inputFileError"),
                                uiOutput("curatedDataChooser"),
@@ -58,8 +85,9 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                             '(or have the same ID); all other pairs, including pairs from the',
                                             'same paper, are independent.  Without a sharing table, every pair',
                                             'from the same paper is correlated at ρ.  Load the matching data',
-                                            'file first (the app offers to load its sharing table right after a',
-                                            'data file loads); loading another data file removes the sharing table.',
+                                            'file first (right after a data file loads, the app offers to load its',
+                                            'sharing table and selections); loading another data file removes the',
+                                            'sharing table.',
                                             'A copy of the app can load a sharing table at startup: see below.')),
                                fileInput("SharingUp", label = NULL,
                                          buttonLabel = "Load sharing table...",
@@ -70,7 +98,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                p('Save every left-panel selection (study criteria, moderator choice,',
                                  'and prior specifications), plus the Descriptives-tab table choices,',
                                  'to a file, or load a previously saved file to restore those selections.',
-                                 'Load the matching data file first, then the selections file, and press',
+                                 'Load the matching data file first, then the selections file (the app',
+                                 'offers to load one right after a data file loads), and press',
                                  '"(Re)Calculate Meta-Analysis" afterwards.'),
                                downloadButton("selectionsDown", "Save current selections (.json)"),
                                br(), br(),
@@ -85,13 +114,18 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                             tags$code("curated/mydata_selections.json"), '), or place the file at',
                                             tags$code("data/default_selections.json"),
                                             '; it is applied automatically at startup.',
-                                            'To make the copy open on another data set, place it at',
+                                            'To make the copy open on another data set, put the data file\'s name,',
+                                            'relative to', tags$code("data/"), ', on the first line of',
+                                            tags$code("data/default_data.txt"), '(for example',
+                                            tags$code("curated/mydata.csv"), '), or place it at',
                                             tags$code("data/default_data.Rda"), '(a data frame called', tags$code("df"),
-                                            ') with its display name in', tags$code("data/default_data_label.txt"),
+                                            '); an optional display name goes in', tags$code("data/default_data_label.txt"),
                                             '.  To load a sharing table with it, put the sharing table\'s file',
                                             'name, relative to', tags$code("data/"), ', on the first line of',
                                             tags$code("data/default_sharing.txt"), '(for example',
-                                            tags$code("curated/mydata_sharing.csv"), ').'))
+                                            tags$code("curated/mydata_sharing.csv"), ').  Precomputed results for',
+                                            'it (see', tags$code("data/curated/README.md"), ') are named the same way, as',
+                                            'a folder, in', tags$code("data/default_precomputed.txt"), '.'))
                       ),
                       tabPanel("Study criteria",
 
@@ -267,6 +301,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                  "in the current session and upload them in a future session.",
                                  "Uploaded models are added to the cache, so the matching analyses load instantly",
                                  "instead of asking for confirmation and recomputing.",
+                                 "Each download saves only the results computed from the data loaded now.",
                                  "(Frequentist results compute quickly and are not saved here.)"
                                ),
                                hr(),

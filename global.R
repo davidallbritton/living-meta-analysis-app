@@ -1,24 +1,5 @@
 ################### A General Tool for Living Meta-Analysis #################
 # v.1.6 2026.11.22
-#----
-# default data file for initial display, before user uploads their own data file.
-# A copy of the app can open on another data set instead (with
-# default selections and a default sharing table, this makes a copy that
-# opens on a published analysis): put it at data/default_data.Rda (a data frame
-# called "df" in the app's data-file format) and, optionally, its display name on
-# the first line of data/default_data_label.txt.
-if (file.exists("data/default_data.Rda")) {
-  load(file = "data/default_data.Rda")              # loads a dataframe called "df"
-  defaultDataBuiltIn <- FALSE
-  defaultDataLabel <- if (file.exists("data/default_data_label.txt"))
-    trimws(readLines("data/default_data_label.txt", n = 1, warn = FALSE, encoding = "UTF-8"))
-  else "data/default_data.Rda"
-} else {
-  load(file = "data/2023updatedData.Rda")           # loads a dataframe called "df"
-  defaultDataBuiltIn <- TRUE
-  defaultDataLabel <- "Vasilev et al. 2018 plus 2023 updates"
-}
-
 ####################################################################################
 
 # Load required packages and source helper functions #----
@@ -59,22 +40,135 @@ source("effect_sizes.R")
 source("metaRegressionFunctions.R")
 source("bayesianMultilevelFunctions.R")   # brms three-level model + compiled-template store
 
-
-################## Precalculated model/plot caches (loaded ONCE per R process) ###
-# Each session seeds its myrvs$previous* caches from these shared lists (see
-# server.R and bayesianMetaRegression_server.R).  Because R lists copy on write,
-# every session shares the same underlying model objects in memory: appending a
-# session's newly computed models copies only the list of pointers, never the
-# multi-MB cached entries themselves.  This keeps the memory cost of the
-# preloaded models constant per R process, no matter how many sessions connect
-# (previously each session called readRDS() itself, holding its own full copy).
-loadSeedRDS <- function(path) {
-  if (file.exists(path)) normalizeTauPriorLabels(readRDS(path)) else list()
+################## Curated data files (data/curated/) ##############################
+# The index of curated files: data/curated/curated_index.csv, then the optional
+# data/curated/curated_index_local.csv (same columns) for a local copy's extra
+# files.  A file listed in both keeps only its local row, in the released row's
+# place, so a local copy can relabel or annotate a released file.  Only files that
+# exist are kept; NULL if there are none.  See data/curated/README.md.
+readCuratedIndex <- function() {
+  files <- file.path("data/curated", c("curated_index.csv", "curated_index_local.csv"))
+  files <- files[file.exists(files)]
+  if (!length(files)) return(NULL)
+  idx <- as.data.frame(dplyr::bind_rows(lapply(files, function(f)
+    readr::read_csv(f, show_col_types = FALSE, col_types = readr::cols(.default = "c")))))
+  firstPos <- match(idx$filename, idx$filename)
+  keep <- !duplicated(idx$filename, fromLast = TRUE)
+  idx <- idx[keep, , drop = FALSE][order(firstPos[keep]), , drop = FALSE]
+  idx <- idx[file.exists(file.path("data/curated", idx$filename)), , drop = FALSE]
+  if (nrow(idx)) idx else NULL
 }
-defaultModelsSeed <- loadSeedRDS("data/defaultPrecalculatedModels.RDS")
-defaultPlotsSeed  <- loadSeedRDS("data/defaultPrecalculatedPlots.RDS")
-defaultBmrSeed    <- loadSeedRDS("data/defaultPrecalculatedBmrModels.RDS")
-defaultBmlSeed    <- loadSeedRDS("data/defaultPrecalculatedBmlModels.RDS")
+
+################## Default data file for initial display ###########################
+# Before a user loads a data file, the app shows a default data set: the built-in
+# data/2023updatedData.Rda, unless this app copy names its own.  A copy can open on
+# another data set (with default selections and a default sharing table, this makes
+# a copy that opens on a published analysis) in either of two ways:
+#   * data/default_data.txt: its first line names a data file in the app's format,
+#     relative to data/ (for example "curated/mydata.csv", so a curated entry and the
+#     startup default can use the same file).  It is read like an upload.
+#   * data/default_data.Rda: a data frame called "df" in the app's data-file format.
+# Its display name is the first line of data/default_data_label.txt if there is one,
+# else the curated index's label for that file, else the file name.
+#   defaultDataFile    the default data's file name, as shown in the app
+#   defaultDataSource  "built-in" or "default" (this copy's own default)
+#   defaultDataBuiltIn TRUE for the built-in data
+#   defaultDataLabel   the display name
+defaultDataFile <- NULL
+if (file.exists("data/default_data.txt")) {
+  f <- trimws(readLines("data/default_data.txt", n = 1, warn = FALSE, encoding = "UTF-8"))
+  df <- if (length(f) && nzchar(f) && file.exists(file.path("data", f)))
+    tryCatch(readDataFile(file.path("data", f)), error = function(e) {
+      warning("data/default_data.txt: ", f, " could not be used: ", conditionMessage(e), call. = FALSE)
+      NULL })
+  else { warning("data/default_data.txt names a file that is not in data/", call. = FALSE); NULL }
+  if (!is.null(df)) {
+    names(df) <- gsub(":", "_", names(df))          # as removeColons() does for uploads
+    defaultDataFile <- basename(f)
+    curated <- if (startsWith(f, "curated/")) readCuratedIndex()
+    curatedLabel <- if (!is.null(curated)) curated$label[curated$filename == basename(f)]
+    defaultDataLabel <- if (length(curatedLabel) == 1) curatedLabel else basename(f)
+  }
+}
+if (is.null(defaultDataFile) && file.exists("data/default_data.Rda")) {
+  load(file = "data/default_data.Rda")              # loads a dataframe called "df"
+  defaultDataFile <- "default_data.Rda"
+  defaultDataLabel <- "default_data.Rda"
+}
+if (is.null(defaultDataFile)) {
+  load(file = "data/2023updatedData.Rda")           # loads a dataframe called "df"
+  defaultDataFile <- "2023updatedData.Rda"
+  defaultDataLabel <- "Vasilev et al. 2018 plus 2023 updates"
+  defaultDataSource <- "built-in"
+  defaultDataBuiltIn <- TRUE
+} else {
+  defaultDataSource <- "default"
+  defaultDataBuiltIn <- FALSE
+  if (file.exists("data/default_data_label.txt"))
+    defaultDataLabel <- trimws(readLines("data/default_data_label.txt", n = 1, warn = FALSE,
+                                         encoding = "UTF-8"))
+}
+suppressWarnings(rm(f, curated, curatedLabel))
+
+
+################## Precomputed models and plots (shared by the R process) ##########
+# A data source can come with precomputed results, in the same four forms as the
+# caches of "Saved Plots and Models": bayesmeta models, Bayes-factor robustness
+# plots, Bayesian meta-regression models and Bayesian multilevel models.  A set of
+# them is identified by a setId:
+#   "built-in"            the built-in data's set: data/defaultPrecalculated*.RDS
+#   "<folder>"            a folder relative to data/ holding any of models.RDS,
+#                         plots.RDS, bmr.RDS and bml.RDS (each a list as saved by
+#                         the matching download) -- named by a curated entry's
+#                         "precomputed" column, or by data/default_precomputed.txt
+# A session attaches the set of the data it has loaded (precomputed_server.R).
+# Each file is read only when a session first looks in that cache, then kept here
+# and shared by every session (R lists copy on write, so a session adding its own
+# fits copies pointers, not the cached objects); it is dropped once no session has
+# the set attached.  So the built-in multilevel fits (about 290 MB in memory) are
+# never read unless someone fits a multilevel model on the built-in data.
+precomputedTypes <- c("models", "plots", "bmr", "bml")
+precomputedFiles <- function(setId) {
+  if (identical(setId, "built-in"))
+    c(models = "data/defaultPrecalculatedModels.RDS", plots = "data/defaultPrecalculatedPlots.RDS",
+      bmr = "data/defaultPrecalculatedBmrModels.RDS", bml = "data/defaultPrecalculatedBmlModels.RDS")
+  else setNames(file.path("data", setId, paste0(precomputedTypes, ".RDS")), precomputedTypes)
+}
+precomputedExists <- function(setId) !is.null(setId) && any(file.exists(precomputedFiles(setId)))
+precomputedStore <- new.env()     # "<setId>::<type>" -> list of cache entries
+precomputedUsers <- new.env()     # setId -> number of sessions with it attached
+precomputedEntries <- function(setId, type) {
+  key <- paste0(setId, "::", type)
+  if (is.null(precomputedStore[[key]])) {
+    f <- precomputedFiles(setId)[[type]]
+    precomputedStore[[key]] <- if (file.exists(f)) normalizeTauPriorLabels(readRDS(f)) else list()
+  }
+  precomputedStore[[key]]
+}
+acquirePrecomputed <- function(setId) {
+  n <- precomputedUsers[[setId]]
+  precomputedUsers[[setId]] <- if (is.null(n)) 1L else n + 1L
+}
+releasePrecomputed <- function(setId) {
+  n <- precomputedUsers[[setId]]
+  if (is.null(n)) return(invisible())
+  if (n <= 1L) {
+    rm(list = setId, envir = precomputedUsers)
+    keys <- intersect(paste0(setId, "::", precomputedTypes), ls(precomputedStore))
+    if (length(keys)) rm(list = keys, envir = precomputedStore)
+  } else precomputedUsers[[setId]] <- n - 1L
+}
+## the default data's set: the built-in one for the built-in data; for a configured
+## copy, the folder named on the first line of data/default_precomputed.txt
+## (relative to data/), if any
+defaultPrecomputedSet <- if (defaultDataBuiltIn) "built-in" else {
+  if (file.exists("data/default_precomputed.txt")) {
+    f <- trimws(readLines("data/default_precomputed.txt", n = 1, warn = FALSE, encoding = "UTF-8"))
+    if (length(f) && nzchar(f) && precomputedExists(f)) f
+    else { warning("data/default_precomputed.txt names no folder of precomputed results in data/",
+                   call. = FALSE); NULL }
+  }
+}
 
 
 

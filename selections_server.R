@@ -136,7 +136,12 @@ writeSelectionsJson <- function(file) {
          format   = 1,
          saved    = as.character(Sys.Date()),
          dataFile = currentDataName(),
+         dataFileName = myrvs$dataFile,       # the file's own name (v1.6; not checked on loading)
          sharingTable = if (is.null(myrvs$sharingTableName)) NA else myrvs$sharingTableName,
+         # the selections file these settings started from, if any, and whether they
+         # were changed after it was applied (v1.6; informational)
+         startedFromSelections = if (is.null(myrvs$selectionsFile)) NA else myrvs$selectionsFile,
+         changedSinceSelectionsLoaded = isolate(selectionsChanged()),
          selections   = collectSelections(),
          dataAtSave   = collectDataAtSave(),
          descriptives = collectDescriptives(),
@@ -265,6 +270,9 @@ observe({
   req(sel, myrvs$df.reactive, input$Design, !isTRUE(studyPanelHidden()))
   pendingSelections(NULL)
   applySelections(sel)
+  # remember which file the settings came from, for the loaded-files summary and
+  # its "changed since loading" note (loadedFiles_server.R)
+  recordSelectionsFile(attr(sel, "fileName"), attr(sel, "source"))
   checkStaleSelections(sel)
 })
 
@@ -366,13 +374,18 @@ readSelectionsFile <- function(path) {
   parsed
 }
 
-## the user uploads a selections file
-observeEvent(input$SelectionsUp, {
-  parsed <- readSelectionsFile(input$SelectionsUp$datapath)
+## A selections file the user uploads: from "Load selections..." in the "Load Data
+## File" tab, or from the dialog offered right after a data file loads
+## (offerCompanionFiles() in loadedFiles_server.R).  Warns when the file was saved for
+## another data file or another sharing table; checkSharing = FALSE skips the
+## sharing-table warning (the dialog shows the saved table's name instead, because
+## the user may be about to load it there).  Returns the parsed file, or NULL.
+loadSelectionsUpload <- function(path, name, checkSharing = TRUE) {
+  parsed <- readSelectionsFile(path)
   if (is.null(parsed)) {
     showNotification("This is not a selection-settings file saved by this app.",
                      type = "error", duration = 10)
-    return()
+    return(invisible(NULL))
   }
   if (!identical(parsed$dataFile, currentDataName()))
     showNotification(sprintf(paste('These selections were saved for the data file "%s", but the',
@@ -382,7 +395,7 @@ observeEvent(input$SelectionsUp, {
                      type = "warning", duration = 15)
   # files saved since v1.6 record the sharing table in use (null = none); older
   # files lack the entry, and nothing is checked
-  if ("sharingTable" %in% names(parsed)) {
+  if (checkSharing && "sharingTable" %in% names(parsed)) {
     saved <- if (length(parsed$sharingTable) && !is.na(parsed$sharingTable[1]))
                as.character(parsed$sharingTable[1]) else NULL
     now <- myrvs$sharingTableName
@@ -402,12 +415,15 @@ observeEvent(input$SelectionsUp, {
   }
   if (length(parsed$selections))
     pendingSelections(structure(parsed$selections, dataAtSave = parsed$dataAtSave,
-                                source = "upload"))
+                                source = "upload", fileName = name))
   # files saved before the descriptives block existed simply lack it: leave the tab alone
   if (!is.null(parsed$descriptives)) pendingDescriptives(parsed$descriptives)
   # likewise for the outputs block (absent in files saved by v1.3 and earlier)
   if (!is.null(parsed$outputs)) pendingOutputs(parsed$outputs)
-})
+  invisible(parsed)
+}
+observeEvent(input$SelectionsUp,
+             loadSelectionsUpload(input$SelectionsUp$datapath, input$SelectionsUp$name))
 
 ## Apply a selections file that belongs with the data just loaded: this app copy's
 ## default selections at startup (source "default"), or the selections named in a

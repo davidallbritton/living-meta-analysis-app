@@ -7,6 +7,48 @@
 
 ##################  Functions   ####################################################
 
+# Read a data file in the app's format (.csv, .xls or .xlsx) into a data frame:
+# checks for the four marker columns (stops with a message naming any that are
+# missing) and makes the selection numerics and the standard numeric columns
+# numeric.  Column names are left as they are (removeColons() handles colons).
+# Used for uploads, curated files and a configured copy's default data file, so
+# all three give the same data frame.
+readDataFile <- function(path) {
+  if (tolower(tools::file_ext(path)) %in% c("xlsx", "xls")) {
+    df <- as.data.frame(readxl::read_excel(path))
+  } else {
+    # the .csv should use UTF-8 encoding if it has non-ASCII characters
+    df <- as.data.frame(readr::read_csv(path, show_col_types = FALSE))
+  }
+  markers <- c("Begin.Selection.Factors", "End.Selection.Factors",
+               "Begin.Selection.Numerics", "End.Selection.Numerics")
+  missingMarkers <- setdiff(markers, names(df))
+  if (length(missingMarkers))
+    stop("it is missing the required marker column(s) ", paste(missingMarkers, collapse = ", "),
+         call. = FALSE)
+  start_col <- which(names(df) == "Begin.Selection.Numerics")
+  end_col <- which(names(df) == "End.Selection.Numerics")
+  df[, start_col:end_col] <- lapply(df[, start_col:end_col], function(x) as.numeric(as.character(x)))
+  for (col in intersect(c("Publication.Year", "N_Intervention", "N_Control", "N_Total"), names(df)))
+    df[[col]] <- as.numeric(as.character(df[[col]]))
+  df
+}
+
+# The cache entries (bayesmeta models, robustness plots, meta-regression or
+# multilevel models) computed from the data set df: those whose every row is a row
+# of df, matched on Paper.Number and the original effect size yi (to 10
+# significant digits, so platform rounding noise does not matter; aggregated rows
+# keep a source row's yi).  Used to save only the current data's results.
+entriesForData <- function(entries, df) {
+  key <- function(p, y) paste(as.character(p), formatC(as.numeric(y), digits = 10, format = "g"))
+  have <- key(df$Paper.Number, df$yi)
+  Filter(function(e) {
+    m <- e$MA
+    !is.null(m) && all(c("Paper.Number", "yi") %in% names(m)) &&
+      all(key(m$Paper.Number, m$yi) %in% have)
+  }, entries)
+}
+
 # Reformat the data.  returns a list
 reformat.df <- function(df.input) {
   df.original <- df.input

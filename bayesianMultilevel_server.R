@@ -32,8 +32,9 @@
 # Computational-cost handling mirrors bma()/bmr(): each tab only builds its
 # model while it is open, a NEW (uncached) model needs a confirmation (the
 # modal also warns about the one-time Stan compilation), and every fit is
-# cached in myrvs$previousBmlModels (seeded from the shared process-wide
-# defaultBmlSeed; downloadable in "Saved Plots and Models").
+# cached in myrvs$previousBmlModels (with the precomputed fits that come with
+# the data added at first use, precomputed_server.R; downloadable in "Saved
+# Plots and Models").
 #
 # This file is sourced (local = T) from server.R.
 ######################################################################################
@@ -43,7 +44,7 @@
 ## (shared across sessions via copy-on-write, like the other model caches);
 ## entries are keyed by data + priors + moderatorName ("" = overall model),
 ## so both tabs' models live side by side in the one cache
-myrvs$previousBmlModels <- defaultBmlSeed
+myrvs$previousBmlModels <- list()   # precomputed results are added at first use (precomputed_server.R)
 
 ## triggers (TRUE only after the user confirms the modal, or on a cache hit);
 ## both are reset by MA() on every recalculation
@@ -68,7 +69,7 @@ bmlPriorProblem <- function(snap) {
 
 ## cache lookup for a snapshot + moderator choice (moderatorName "" = overall)
 bmlCached <- function(MA, snap, moderatorName) {
-  checkOldBmlModels(myrvs$previousBmlModels, MA = MA, tauprior = snap$tauprior,
+  checkOldBmlModels(useCache("bml"), MA = MA, tauprior = snap$tauprior,
                     mupriorsd = snap$mupriorsd, scaletau = snap$scaletau,
                     mupriormean = snap$mupriormean, moderatorName = moderatorName,
                     rho = snap$rhoCHE, che = !isTRUE(snap$skipCHE),
@@ -268,17 +269,17 @@ output$rds_file.bml <- downloadHandler(
     "bayesian_multilevel_models.RDS"
   },
   content = function(file) {
-    saveRDS(myrvs$previousBmlModels, file)
+    saveRDS(cacheForDownload("bml"), file)
   }
 )
 
 observeEvent(input$SavedBmlModelsUp, {
   newrows_bml <- normalizeTauPriorLabels(readRDS(input$SavedBmlModelsUp$datapath))
-  myrvs$previousBmlModels <- c(myrvs$previousBmlModels, newrows_bml)
+  myrvs$previousBmlModels <- c(useCache("bml"), newrows_bml)
 })
 
 observeEvent(input$ClearBmlModels, {
-  myrvs$previousBmlModels <- list()
+  clearCache("bml")
 })
 
 

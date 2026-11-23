@@ -39,7 +39,9 @@ myrvs$sharingStatus <- NULL
 
 ## Read a sharing table from a path and make it the current one.  Returns TRUE
 ## on success; on failure keeps the previous table and shows the reason.
-loadSharingFile <- function(path, displayName) {
+## `source` says where it came from, for the loaded-files summary
+## (loadedFiles_server.R): "upload", "curated" or "default".
+loadSharingFile <- function(path, displayName, source = "upload") {
   st <- tryCatch(readSharingTable(path), error = function(e) e)
   if (inherits(st, "error")) {
     showNotification(paste0('The sharing table "', displayName, '" could not be used: ',
@@ -48,6 +50,7 @@ loadSharingFile <- function(path, displayName) {
   }
   myrvs$sharingTable <- st
   myrvs$sharingTableName <- displayName
+  myrvs$sharingSource <- source
   dataIds <- as.character(isolate(myrvs$df.reactive)$ID)
   notInData <- setdiff(unique(st$ID), dataIds)
   showNotification(paste0('Sharing table "', displayName, '" loaded: ', nrow(st),
@@ -63,6 +66,7 @@ loadSharingFile <- function(path, displayName) {
 clearSharingTable <- function() {
   myrvs$sharingTable <- NULL
   myrvs$sharingTableName <- NULL
+  myrvs$sharingSource <- NULL
   shinyjs::reset("SharingUp")
 }
 
@@ -78,7 +82,7 @@ observeEvent(myrvs$df.reactive, once = TRUE, {
                             "; no sharing table was loaded."), type = "warning", duration = 20)
     return()
   }
-  loadSharingFile(path, basename(f))
+  loadSharingFile(path, basename(f), "default")
 })
 
 observeEvent(input$SharingUp, {
@@ -152,27 +156,3 @@ output$sharingStatusLoad <- renderUI(sharingStatusUI(withButton = TRUE))
 output$sharingStatusDependence <- renderUI(sharingStatusUI())
 output$covarianceNoteFml <- renderUI({ MAml(); covarianceNote() })
 
-
-## After a data file is loaded (uploaded, or a curated file that names no sharing
-## table), offer to load its sharing table straight away.  Optional: closing the
-## dialog keeps the flat structure, and the table can still be loaded later in the
-## "Load Data File" tab.
-offerSharingTable <- function(dataName) {
-  showModal(modalDialog(
-    title = "Load a sharing table for this data file? (optional)",
-    p(paste0('If you have a sharing table for "', dataName, '", load it here.'),
-      "It says which effect sizes were computed from overlapping data (the same",
-      "participants, or a shared control group), so that the multilevel analyses",
-      "correlate only those effect sizes.  Without one, every pair of effect sizes from",
-      "the same paper is treated as correlated."),
-    p(tags$small("A .csv with columns", tags$code("ID"), "and", tags$code("unit"),
-                 ", one line per membership.  You can also load or remove one later in the",
-                 '"Load Data File" tab.')),
-    fileInput("SharingUpModal", label = NULL, buttonLabel = "Load sharing table...",
-              accept = ".csv"),
-    footer = modalButton("No sharing table"),
-    easyClose = TRUE))
-}
-observeEvent(input$SharingUpModal, {
-  if (loadSharingFile(input$SharingUpModal$datapath, input$SharingUpModal$name)) removeModal()
-})

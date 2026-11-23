@@ -24,12 +24,12 @@
 
 
 ## Store previously calculated bmr models so they are never recomputed unnecessarily.
-## Seeded from the process-wide cache loaded once in global.R (mirrors the bma() /
-## robustness-plot seeds in server.R), so the default dataset's Bayesian
-## meta-regressions load instantly instead of being rebuilt.  The seed entries are
+## Precomputed models that come with the loaded data are added at first use
+## (precomputed_server.R), so for example the built-in data's Bayesian
+## meta-regressions load instantly instead of being rebuilt.  Those entries are
 ## shared across sessions via copy-on-write; this session's additions never modify
-## the shared seed.
-myrvs$previousBmrModels <- defaultBmrSeed
+## the shared set.
+myrvs$previousBmrModels <- list()   # precomputed results are added at first use (precomputed_server.R)
 
 ## Trigger controlling when a bmr model may be built (set TRUE only after the
 ## user confirms the modal, or automatically when the request is already cached).
@@ -59,7 +59,7 @@ observe({
     mupriorsd     <- snap$mupriorsd
     scaletau      <- snap$scaletau
     mupriormean   <- snap$mupriormean
-    old_bmr <- checkOldBmrModels(myrvs$previousBmrModels, MA = MA, tauprior = tauprior,
+    old_bmr <- checkOldBmrModels(useCache("bmr"), MA = MA, tauprior = tauprior,
                                  mupriorsd = mupriorsd, scaletau = scaletau,
                                  mupriormean = mupriormean, moderatorName = moderatorName)
   })
@@ -127,7 +127,7 @@ bmrModel <- reactive({
     )
 
     # retrieve a cached model if we have one, otherwise build and cache a new one
-    old_bmr <- checkOldBmrModels(myrvs$previousBmrModels, MA = MA, tauprior = tauprior,
+    old_bmr <- checkOldBmrModels(useCache("bmr"), MA = MA, tauprior = tauprior,
                                  mupriorsd = mupriorsd, scaletau = scaletau,
                                  mupriormean = mupriormean, moderatorName = moderatorName)
     if (isTruthy(old_bmr)) {
@@ -228,7 +228,7 @@ output$bmrContrastOut <- renderUI({
 
 #### observer to clear the saved regression models when the button is pressed
 observeEvent(input$ClearBmrModels, {
-  myrvs$previousBmrModels <- list()
+  clearCache("bmr")
 })
 
 #### section for uploading saved regression models from a file
@@ -241,7 +241,7 @@ observeEvent(input$SavedBmrModelsUp, {
   })
   validate(need(fileExtension == "RDS" | fileExtension == "rds" | fileExtension == "Rds", "Please upload an RDS file"))
   newrows_bmr <- normalizeTauPriorLabels(readRDS(input$SavedBmrModelsUp$datapath))
-  oldrows_bmr <- myrvs$previousBmrModels
+  oldrows_bmr <- useCache("bmr")
   allrows_bmr <- c(newrows_bmr, oldrows_bmr)
   myrvs$previousBmrModels <- allrows_bmr
   output$inputFileErrorBmrUp <- renderUI(NULL) # remove error message if file uploaded successfully
@@ -253,6 +253,6 @@ output$rds_file.bmr <- downloadHandler(
     "bayesian_meta_regression_models.RDS"
   },
   content = function(file) {
-    saveRDS(myrvs$previousBmrModels, file)
+    saveRDS(cacheForDownload("bmr"), file)
   }
 )

@@ -188,6 +188,17 @@ makeCrosstabUnit <- function(id) {
 }
 makeCrosstabUnit(1L)
 
+## Back to one empty crosstab picker, with a FRESH id (so no earlier selection
+## lingers): called by loadDataFile() in server.R, because crosstabs chosen for the
+## previous data set would otherwise keep whichever of their variables happen to
+## exist in the new one.  A curated file's saved choices are restored after this.
+resetCrosstabs <- function() {
+  id <- nextCrosstabId(); nextCrosstabId(id + 1L)
+  makeCrosstabUnit(id)
+  crosstabInitialSel(list())
+  myCrosstabIds(id)
+}
+
 observeEvent(input$addCrosstab, {
   id <- nextCrosstabId()
   makeCrosstabUnit(id)
@@ -317,12 +328,10 @@ output$descriptivesDown <- downloadHandler(
   content = function(file) {
     d <- descSelectedData()
     sheetList <- list(
-      "Selection summary" = data.frame(
-        Item  = c("Data file", "Effect sizes selected", "Studies selected"),
-        Value = c(if (is.null(myrvs$currentInputFile)) paste0("default (", defaultDataLabel, ")")
-                  else myrvs$currentInputFile,
-                  nrow(d), length(unique(as.character(d$Paper))))
-      )
+      "Selection summary" = rbind(
+        loadedFilesTable(),                     # data, sharing table, selections file
+        data.frame(Item  = c("Effect sizes selected", "Studies selected"),
+                   Value = c(nrow(d), length(unique(as.character(d$Paper))))))
     )
     numTable <- descNumericSummary()
     if (!is.null(numTable)) sheetList[["Numeric summaries"]] <- numTable

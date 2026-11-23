@@ -8,13 +8,21 @@ at the repository root (which is why `shiny::runGitHub("living-meta-analysis-app
 ## Architecture
 
 - `global.R` loads packages, `source()`s the three helper files, loads the default
-  data (`data/2023updatedData.Rda` → `df`), and loads the **process-wide seed caches**
-  (`defaultModelsSeed`, `defaultPlotsSeed`, `defaultBmrSeed`, `defaultBmlSeed`) plus the
-  brms compiled-template store `bmlTemplates`.
+  data (`data/2023updatedData.Rda` → `df`, unless a configured copy names its own in
+  `data/default_data.txt` or supplies `data/default_data.Rda`; `defaultDataFile`,
+  `defaultDataSource`, `defaultDataLabel`), defines `readCuratedIndex()`, the
+  **process-wide store of precomputed results** (`precomputedEntries()`: a set's files
+  are read at first use and dropped once no session has the set attached; the built-in
+  data's set is `data/defaultPrecalculated*.RDS`), and the brms compiled-template store
+  `bmlTemplates`.
 - `server.R` sources, with `local = TRUE` (all share one environment):
   `codeGenerator.R` (+ `metaRegression_code_generator.R`, `descriptives_code_generator.R`),
   `descriptives_server.R`, `selections_server.R`, `bayesianMultilevel_server.R`,
-  `metaRegression_server.R`, `bayesianMetaRegression_server.R`, `sharing_server.R`.
+  `metaRegression_server.R`, `bayesianMetaRegression_server.R`, `sharing_server.R`,
+  `precomputed_server.R` (attaching the loaded data's precomputed results),
+  `loadedFiles_server.R` (the record of the data file, sharing table and selections file
+  in use: the "Loaded now" box, the "results are from" header, and the same record in
+  the downloads and the generated script's header).
 - Helper files (pure functions, also concatenated into the user-downloadable
   "HelperFunctions.R" bundle by `download_HelperFunctions` in server.R — keep them free of
   side effects): `HelperFunctions.R`, `metaRegressionFunctions.R`,
@@ -60,9 +68,11 @@ at the repository root (which is why `shiny::runGitHub("living-meta-analysis-app
    explicit matching container height); otherwise the image overflows the default 400px
    container and overlaps content below.  Plots inside `renderUI` get implicit fixed
    containers — use named outputs instead.
-5. **Per-session vs per-process memory**: the seed caches are loaded once in `global.R`
-   and assigned into each session's `myrvs` (copy-on-write shares the big objects).
-   Don't move `readRDS` back into the server function.
+5. **Per-session vs per-process memory**: precomputed results are read into the
+   process-wide store in `global.R` (at first use) and put into each session's `myrvs`
+   lists by `useCache()` (precomputed_server.R; copy-on-write shares the big objects).
+   Don't call `readRDS` on them in the server function.  Every cache lookup, download
+   and upload goes through `useCache(type)`, never `myrvs$previous*` directly.
 6. **Generated-code parity**: any change to models, guards, or settings must be mirrored
    in `codeGenerator.R` / `metaRegression_code_generator.R` (the downloaded script
    contains BOTH families behind `run_aggregated` / `run_multilevel` /

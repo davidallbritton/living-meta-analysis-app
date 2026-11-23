@@ -33,6 +33,17 @@ maintained source of updated data for living meta-analyses.
   .json saved with "Save current selections" in the app), applied when the data
   file is loaded, for example the selections of a published analysis.  Leave it
   empty, or leave the column out, to start with every study included.
+- `precomputed` — optional: the name of a folder in this folder holding
+  precomputed results for the data file, as saved from the app's "Saved Plots
+  and Models" tab, under these names (any of them may be left out):
+  `models.RDS` (bayesmeta models), `plots.RDS` (Bayes-factor robustness plots),
+  `bmr.RDS` (Bayesian meta-regression models) and `bml.RDS` (Bayesian multilevel
+  models).  A result is used whenever the data and settings match the ones it
+  was computed with, so the slow Bayesian fits for, say, a published analysis
+  appear at once.  The files are read only when first needed and released when
+  another data file is loaded.  Keep in each file only the results for this data
+  file: a download from "Saved Plots and Models" contains everything cached in
+  that session.
 
 Rows appear in the dropdown in the order they are listed here, so put the most
 recently updated files first.

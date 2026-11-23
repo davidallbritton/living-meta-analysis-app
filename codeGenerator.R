@@ -169,13 +169,18 @@ observeEvent(reactiveTriggers(), {  # was just MA(), but needs additional reacti
   addedRows <- if (!is.null(myrvs$df.updated) && !is.null(myrvs$df.original)) {
     nrow(myrvs$df.updated) - nrow(myrvs$df.original)
   } else 0
+  ## the data file, sharing table and selections file in use (loadedFiles_server.R)
+  loadedNote <- paste0("##     ", format(paste0(names(lf <- loadedFilesValues(isolate(loadedState()))), ":")),
+                       " ", lf, collapse = "\n")
   provenanceNote <- sprintf('
 ## Data provenance: the app session that generated this code STARTED from:
 ##     %s
+## Files in use when this code was generated:
+%s
 %s## The exact data that was analyzed (including any additions) can be saved from
 ## the app ("Downloads" tab -> current data file); set input_file below to that
 ## file to reproduce the session exactly.
-', dataSourceName,
+', dataSourceName, loadedNote,
     if (addedRows > 0) {
       sprintf('## NOTE: %d effect size(s) were then added via the "Add a Study" tab, so the\n## analyzed data is NOT identical to that starting file.\n', addedRows)
     } else "")
