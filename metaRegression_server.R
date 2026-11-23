@@ -21,9 +21,58 @@ output$moderatorSelection_ui <- renderUI({
       condition = "input.includeModerator == 'Yes'",
       radioButtons("moderator_variable", "Select one moderator variable",
                    choices = c("Design", Variable.Factor.Names)),
-      uiOutput("moderatorAggWarning")
+      uiOutput("moderatorAggWarning"),
+      uiOutput("contrastChooser_ui")
     ))
 })
+
+## Optional contrast between two levels of the moderator (level A minus level B),
+## reported by the two MULTILEVEL regression tabs.  It changes no model (the
+## Bayesian contrast comes from the fitted draws; the frequentist one is a linear
+## combination of the cell means), so it applies live, without recalculation.
+## A level wanted by a restored selections file (myrvs$contrastRestore) is
+## selected once the moderator's levels are on offer.
+myrvs$contrastRestore <- NULL
+output$contrastChooser_ui <- renderUI({
+  req(input$moderator_variable)
+  df <- myrvs$df.reactive
+  req(df, input$moderator_variable %in% names(df))
+  lv <- levels(droplevels(factor(as.character(df[[input$moderator_variable]]))))
+  wanted <- myrvs$contrastRestore
+  pick <- function(id, k) {
+    cur <- if (!is.null(wanted)) wanted[[k]] else isolate(input[[id]])
+    if (length(cur) && cur %in% lv) cur else ""
+  }
+  choices <- c("(none)" = "", lv)
+  tagList(
+    p(tags$b("Contrast between two levels (optional)"), br(),
+      tags$small("Reported in the two multilevel regression tabs: the difference between the",
+                 "two levels' means (A \u2212 B), with its interval, and in the Bayesian tab the",
+                 "posterior probability that it is above zero.  Applies without recalculation.")),
+    selectInput("contrastLevelA", "Level A", choices = choices, selected = pick("contrastLevelA", 1)),
+    selectInput("contrastLevelB", "Level B", choices = choices, selected = pick("contrastLevelB", 2))
+  )
+})
+## the inputs must exist even if the Moderator Selection tab is never opened, so
+## that saved selections always carry them (as for moderatorSelection_ui)
+outputOptions(output, "contrastChooser_ui", suspendWhenHidden = FALSE)
+## once the restored levels have been offered (or cannot be, because they are not
+## levels of the current moderator), stop forcing them
+observeEvent(list(input$contrastLevelA, input$contrastLevelB, input$moderator_variable), {
+  w <- myrvs$contrastRestore
+  if (is.null(w)) return()
+  df <- myrvs$df.reactive
+  v <- input$moderator_variable
+  lv <- if (!is.null(v) && v %in% names(df)) unique(as.character(df[[v]])) else character(0)
+  offered <- function(k, id) identical(input[[id]], if (w[[k]] %in% lv) w[[k]] else "")
+  if (offered(1, "contrastLevelA") && offered(2, "contrastLevelB")) myrvs$contrastRestore <- NULL
+}, ignoreInit = TRUE)
+
+## the chosen pair, or NULL if incomplete
+contrastLevels <- function() {
+  a <- input$contrastLevelA; b <- input$contrastLevelB
+  if (isTruthy(a) && isTruthy(b) && !identical(a, b)) c(a, b) else NULL
+}
 
 ## Live warning under the moderator choices: with "Aggregate over: Papers", a
 ## moderator that varies within one of the currently selected papers would be
@@ -211,6 +260,7 @@ output$metaRegressionMlOutputUI <- renderUI({
       condition = "input.includeModerator == 'Yes'",
       tagList(
         renderText(paste("Moderator variable is:  ", moderatorName)),
+        covarianceNote(),
         renderPlot({
           req(moderatorName)
           forestByGroup(MA = MAmlData, moderator = MAmlData[[moderatorName]],
@@ -219,10 +269,33 @@ output$metaRegressionMlOutputUI <- renderUI({
                         multilevel = TRUE,
                         # assumed within-paper sampling correlation, as of the
                         # last (Re)Calculate
-                        rho = req(myrvs$bayesSnapshot)$rhoCHE)
+                        rho = req(myrvs$bayesSnapshot)$rhoCHE,
+                        sharing = myrvs$bayesSnapshot$sharing)
         },
-        height = freq_forest_height_mlreg())
+        height = freq_forest_height_mlreg()),
+        uiOutput("cheContrastOut")
       )
     )
   )
+})
+
+
+## contrast between two moderator levels in the frequentist multilevel model
+output$cheContrastOut <- renderUI({
+  lv <- contrastLevels()
+  if (is.null(lv)) return(p(tags$small('To compare two levels, choose them under "Contrast between',
+                                       'two levels" in the "Moderator Selection" tab.')))
+  MAmlData <- MAml()
+  moderatorName <- input$moderator_variable
+  req(moderatorName %in% names(MAmlData))
+  snap <- req(myrvs$bayesSnapshot)
+  ct <- tryCatch(cheContrast(MAmlData, MAmlData[[moderatorName]], lv[1], lv[2],
+                             rho = snap$rhoCHE, sharing = snap$sharing),
+                 error = function(e) e)
+  if (inherits(ct, "error")) return(p(style = "color:#c0392b;", conditionMessage(ct)))
+  if (is.null(ct)) return(p("One of the chosen levels has no effect sizes in the current selection."))
+  tagList(h4("Contrast between two moderator levels"),
+          p(tags$small("Three-level CHE model with one mean per level (~ 0 + moderator);",
+                       "cluster-robust (CR2) standard error, Satterthwaite degrees of freedom.")),
+          renderTable(ct, digits = 3))
 })

@@ -23,6 +23,16 @@ maintained source of updated data for living meta-analyses.
 - `description` — one or two sentences shown under the dropdown and in the
   "Explanation" tab
 - `citation` — source citation (may be left empty)
+- `sharing` — optional: the name of a sharing table in this folder (a .csv
+  with columns `ID` and `unit`, one line per membership), loaded together with
+  the data file.  Effect sizes that share a unit get correlated sampling
+  errors in the multilevel models; all other pairs are independent.  Leave it
+  empty, or leave the column out, for the flat structure (every pair from the
+  same paper correlated).
 
 Rows appear in the dropdown in the order they are listed here, so put the most
 recently updated files first.
+
+A local copy can offer further files that are not part of the release: list them
+in `curated_index_local.csv` (same columns), which the app reads after
+`curated_index.csv`, and keep that file and its data files out of version control.

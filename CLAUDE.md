@@ -1,7 +1,7 @@
 # living-meta-analysis-app — guidance for Claude Code sessions
 
 This repository **is** the Shiny app "A General Tool for Living Meta-Analysis"
-(v1.5.2). It is the primary, public development repository — the app source lives
+(v1.6). It is the primary, public development repository — the app source lives
 at the repository root (which is why `shiny::runGitHub("living-meta-analysis-app",
 "davidallbritton")` works). Work directly here; there is no separate mirror.
 
@@ -14,7 +14,7 @@ at the repository root (which is why `shiny::runGitHub("living-meta-analysis-app
 - `server.R` sources, with `local = TRUE` (all share one environment):
   `codeGenerator.R` (+ `metaRegression_code_generator.R`, `descriptives_code_generator.R`),
   `descriptives_server.R`, `selections_server.R`, `bayesianMultilevel_server.R`,
-  `metaRegression_server.R`, `bayesianMetaRegression_server.R`.
+  `metaRegression_server.R`, `bayesianMetaRegression_server.R`, `sharing_server.R`.
 - Helper files (pure functions, also concatenated into the user-downloadable
   "HelperFunctions.R" bundle by `download_HelperFunctions` in server.R — keep them free of
   side effects): `HelperFunctions.R`, `metaRegressionFunctions.R`,
@@ -30,7 +30,9 @@ at the repository root (which is why `shiny::runGitHub("living-meta-analysis-app
   multilevel analyses (`fmaMl()` = CHE via `fitMultilevelCHE`, brms `bmlModel()`/
   `bmlRegModel()`) use `MAml()`.  Both families have their own tabs and are always
   available — never re-introduce mode-gating between them.
-- `MA()` also stores `myrvs$bayesSnapshot` (priors + moderator at recalculation time).
+- `MA()` also stores `myrvs$bayesSnapshot` (priors, moderator, rho and the optional
+  sharing table at recalculation time; the sharing table is loaded by `sharing_server.R`
+  and turned into V by `buildSamplingV()` in HelperFunctions.R).
   **All Bayesian pipelines read settings ONLY from this snapshot**, so settings changes
   do nothing until "(Re)Calculate" — except the robustness Yes/No toggle, which is
   deliberately live.  It also stores `myrvs$moderatorVariesWithinPapers` (Papers mode
@@ -69,7 +71,7 @@ at the repository root (which is why `shiny::runGitHub("living-meta-analysis-app
 
 ## Conventions
 
-- Version header `# v.1.5.2 2026.11.16` in the main .R files — bump all of them together,
+- Version header `# v.1.6 2026.11.22` in the main .R files — bump all of them together,
   plus the app title, the Explanation tab's "This updated version" text and "Updated:" date,
   and README.md's citation, when releasing.  Keep
   `CITATION.cff` / `.zenodo.json` version fields in step with releases.

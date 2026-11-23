@@ -18,8 +18,15 @@
 # The returned object keeps class rma.mv (plus robust.rma), so forest(),
 # funnel(), predict(), sigma2, QE etc. all work as for a plain rma.mv fit.
 # `mods` optionally adds a moderator formula (e.g. ~ moderator).
-fitMultilevelCHE <- function(d, sl = d$study, rho = 0.5, mods = NULL) {
-  V <- metafor::vcalc(vi = d$var, cluster = d$Paper, obs = seq_len(nrow(d)), rho = rho)
+# `sharing` optionally supplies a sharing table (readSharingTable(), in
+# HelperFunctions.R): only effect sizes that share data are then correlated at
+# rho, instead of every within-paper pair (see buildSamplingV()).
+fitMultilevelCHE <- function(d, sl = d$study, rho = 0.5, mods = NULL, sharing = NULL) {
+  V <- buildSamplingV(d, rho = rho, sharing = sharing)
+  if (!is.null(sharing)) {
+    assertVAligned(V, d)
+    V <- matrix(as.numeric(V), nrow(d), nrow(d))   # plain matrix for rma.mv
+  }
   # rma.mv() rejects an explicitly NULL mods argument, so branch instead
   model <- if (is.null(mods)) {
     metafor::rma.mv(yi = es, V = V, random = ~ 1 | Paper/ID, data = d, slab = sl)
@@ -29,6 +36,30 @@ fitMultilevelCHE <- function(d, sl = d$study, rho = 0.5, mods = NULL) {
   }
   # robust() evaluates `cluster` inside the model's data, so use the bare column name
   metafor::robust(model, cluster = Paper, clubSandwich = TRUE)
+}
+
+## Difference between two moderator levels' means (levelA - levelB) in the CHE
+## model with cell-means coding (~ 0 + moderator): estimate, SE, CI and test with
+## cluster-robust (CR2) standard errors and Satterthwaite degrees of freedom.
+## NULL if either level is absent from these rows.
+cheContrast <- function(d, moderator, levelA, levelB, rho = 0.5, sharing = NULL) {
+  d$moderator <- droplevels(factor(as.character(moderator)))
+  lv <- levels(d$moderator)
+  if (!all(c(levelA, levelB) %in% lv) || identical(levelA, levelB)) return(NULL)
+  # (robust() cannot form its omnibus test that ALL cell means are zero when there
+  # are few papers per level; that test is not used here, so its warning is muffled)
+  m <- withCallingHandlers(
+    fitMultilevelCHE(d, rho = rho, mods = ~ 0 + moderator, sharing = sharing),
+    warning = function(w) if (grepl("omnibus Wald test", conditionMessage(w)))
+      invokeRestart("muffleWarning"))
+  # with cell-means coding the coefficients are in the factor's level order
+  cv <- rep(0, length(lv)); cv[match(levelA, lv)] <- 1; cv[match(levelB, lv)] <- -1
+  a <- stats::anova(m, X = matrix(cv, nrow = 1))
+  est <- as.numeric(a$Xb); se <- as.numeric(a$se); df <- as.numeric(a$ddf)
+  data.frame(Contrast = paste(levelA, "\u2212", levelB), Estimate = est, SE = se,
+             `95% CI lower` = est - stats::qt(.975, df) * se,
+             `95% CI upper` = est + stats::qt(.975, df) * se,
+             df = df, t = est / se, p = as.numeric(a$pval), check.names = FALSE)
 }
 
 ##############################################################################
@@ -59,7 +90,7 @@ mlabfun <- function(text, x) {
 ###### start of forestByGroup() function
 forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
                           header="Study",addpred=TRUE, caterpillar=F,
-                          multilevel=FALSE, rho=0.5,
+                          multilevel=FALSE, rho=0.5, sharing=NULL,
          ##                 col="black", border="black",
                           ...) {
   ## additional arguments that might be useful: xlim, psize, xlab
@@ -70,10 +101,11 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
   # multilevel: fit three-level rma.mv models (effect sizes nested in papers;
   # MA must then hold the UNaggregated rows with Paper and ID columns)
   # rho: assumed within-paper sampling correlation, used only when multilevel
+  # sharing: optional sharing table (see buildSamplingV()), used only when multilevel
 
   # model fitter shared by the overall model and the subgroup models
   fitOne <- function(d, sl) {
-    if (multilevel) fitMultilevelCHE(d, sl, rho = rho)   # CHE + cluster-robust inference
+    if (multilevel) fitMultilevelCHE(d, sl, rho = rho, sharing = sharing)   # CHE + cluster-robust inference
     else rma(d$es, d$var, slab = sl, test = "adhoc")       # Knapp-Hartung, truncated at 1
   }
   overallLabel  <- if (multilevel) "Multilevel Model for All Studies" else "RE Model for All Studies"
@@ -207,7 +239,7 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
   # cluster-robust F test of the subgroup differences; two-level: the F test
   # from the ad hoc Knapp-Hartung adjustment)
   fmaMod <- if (multilevel) {
-    fitMultilevelCHE(MA, mods = ~ moderator, rho = rho)
+    fitMultilevelCHE(MA, mods = ~ moderator, rho = rho, sharing = sharing)
   } else {
     rma(MA$es, MA$var, mods = ~ moderator, test = "adhoc")
   }

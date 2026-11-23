@@ -8,9 +8,13 @@
 #   - Study criteria: aggregation, live counts, Design, Publication.Year,
 #     N_Intervention, the data file's own numeric sliders and factor checkboxes,
 #     and the include/exclude-specific-studies list
-#   - Moderator Selection: includeModerator, moderator_variable
+#   - Moderator Selection: includeModerator, moderator_variable, and the two
+#     levels of the optional contrast (contrastLevelA, contrastLevelB)
 #   - Prior specifications: mupriormean, mupriorsd, robust, tauprior, scaletau
 #   - Dependence (rho): rhoCHE, skipCHE
+#   - the NAME of the sharing table in use, if any ("sharingTable"; null when none).
+#     Its contents are not saved: on loading, the app only warns if the sharing
+#     table now loaded differs from the one recorded (sharing_server.R).
 #   - Descriptives tab: the ticked factor/numeric variables and the variables of
 #     every crosstab (a "descriptives" block, applied by descriptives_server.R)
 #   - Output tabs marked "Include this tab in the analysis" (an "outputs" block; see
@@ -22,7 +26,10 @@
 # selections against an updated data file.  Restoring is EXACT: factor levels or
 # studies that were not ticked when saved stay unticked, and levels/studies/variables
 # that no longer exist are skipped (reported in a notification).  New studies or
-# levels added to the data since the save are therefore NOT ticked automatically.
+# levels added to the data since the save are therefore NOT ticked automatically;
+# instead (v1.6) a dialog lists every filter that leaves out rows only because the
+# data changed since the save, and offers to include them (checkStaleSelections).
+# Files record the data's ranges and levels at save time ("dataAtSave") for this.
 #
 # A selections file placed at data/default_selections.json in the app directory is
 # applied automatically at startup (only while the default data set is loaded).
@@ -40,7 +47,7 @@
 
 ## display name of the current data set (same string the descriptives download uses)
 currentDataName <- function() {
-  if (is.null(myrvs$currentInputFile)) "default (Vasilev et al. 2018 plus 2023 updates)"
+  if (is.null(myrvs$currentInputFile)) paste0("default (", defaultDataLabel, ")")
   else myrvs$currentInputFile
 }
 
@@ -50,7 +57,7 @@ selectionInputIds <- function() {
     "Design", "Publication.Year", "N_Intervention",
     myrvs$Variable.Numeric.Names, myrvs$Variable.Factor.Names,
     "included",
-    "includeModerator", "moderator_variable",
+    "includeModerator", "moderator_variable", "contrastLevelA", "contrastLevelB",
     "mupriormean", "mupriorsd", "robust", "tauprior", "scaletau",
     "rhoCHE", "skipCHE")
 }
@@ -69,6 +76,15 @@ collectSelections <- function() {
 ## selected, or when the tab was never opened), so loading a file also clears a
 ## Descriptives tab that had selections -- the restore stays exact.
 collectDescriptives <- function() {
+  ## a restored block that has not reached the Descriptives tab yet (its choosers
+  ## render only once the tab is opened, or once rendering of hidden outputs has
+  ## caught up) is still the current choice: save it as restored, not as empty
+  pd <- pendingDescriptives()
+  if (!is.null(pd))
+    return(list(factors   = as.character(unlist(pd$factors)),
+                numerics  = as.character(unlist(pd$numerics)),
+                crosstabs = Filter(function(v) length(v) >= 2,
+                                   normalizeCrosstabList(pd$crosstabs))))
   cts <- lapply(myCrosstabIds(), function(id) input[[paste0("crosstabVars_", id)]])
   # complete crosstabs only; length >= 2 also keeps every saved crosstab a json
   # ARRAY (auto_unbox would turn a 1-variable crosstab into a bare string,
@@ -86,6 +102,24 @@ collectDescriptives <- function() {
 collectOutputs <- function() as.character(includedTabValues())
 
 
+## The data's full range of every range slider and full level set of every
+## checklist at save time (v1.6).  On loading, this tells a level or a range that
+## is NEW since the save (left out only because it did not exist then) from one
+## the user deliberately excluded; see staleSelectionCases().
+collectDataAtSave <- function() {
+  df <- myrvs$df.reactive
+  sliders <- c("Publication.Year", "N_Intervention", myrvs$Variable.Numeric.Names)
+  checks  <- c("Design", myrvs$Variable.Factor.Names)
+  rng <- function(v) {
+    x <- suppressWarnings(as.numeric(df[[v]]))
+    if (!length(x) || all(is.na(x))) NULL else range(x, na.rm = TRUE)
+  }
+  list(ranges = setNames(lapply(sliders, rng), sliders),
+       levels = c(setNames(lapply(checks, function(v) dataLevels(df, v)), checks),
+                  list(included = dataLevels(df, "Paper.and.Exp"))))
+}
+## dataLevels() and staleSelectionCases() are in HelperFunctions.R
+
 ## ---- Save: download the current selections as a .json file ----
 
 ## file-name and body of the selection-settings file, shared by the two download
@@ -99,7 +133,9 @@ writeSelectionsJson <- function(file) {
          format   = 1,
          saved    = as.character(Sys.Date()),
          dataFile = currentDataName(),
+         sharingTable = if (is.null(myrvs$sharingTableName)) NA else myrvs$sharingTableName,
          selections   = collectSelections(),
+         dataAtSave   = collectDataAtSave(),
          descriptives = collectDescriptives(),
          outputs      = collectOutputs()),
     file, auto_unbox = TRUE, pretty = TRUE, digits = NA)
@@ -187,6 +223,12 @@ applySelections <- function(sel) {
   ## moderator
   applyRadio("includeModerator", c("No", "Yes"))
   applyRadio("moderator_variable", c("Design", fN))
+  ## contrast levels (v1.6): offered once the moderator's levels are rendered, so
+  ## hand them to the chooser (metaRegression_server.R) rather than updating now
+  if (!is.null(sel$contrastLevelA) || !is.null(sel$contrastLevelB)) {
+    one <- function(x) { x <- as.character(unlist(x)); if (length(x)) x[1] else "" }
+    myrvs$contrastRestore <- list(one(sel$contrastLevelA), one(sel$contrastLevelB))
+  }
 
   ## priors ("Half student t" was the pre-v1.1 label for the half-normal tau prior)
   if (identical(as.character(unlist(sel$tauprior)), "Half student t")) sel$tauprior <- "Half normal"
@@ -218,6 +260,63 @@ observe({
   req(sel, myrvs$df.reactive, input$Design)
   pendingSelections(NULL)
   applySelections(sel)
+  checkStaleSelections(sel)
+})
+
+## After restoring: list filters that exclude rows only because the data changed
+## since the file was saved, and offer to include those rows.  A default
+## selections file saved before v1.6 (no record of the data at save time) gets a
+## notification instead of the dialog, so that a configured copy does not open
+## with a dialog listing its deliberate exclusions on every start.
+myrvs$staleCases <- NULL
+checkStaleSelections <- function(sel) {
+  atSave <- attr(sel, "dataAtSave")
+  cases <- staleSelectionCases(sel, atSave, myrvs$df.reactive,
+                               sliders = c("Publication.Year", "N_Intervention",
+                                           myrvs$Variable.Numeric.Names),
+                               checks = c("Design", myrvs$Variable.Factor.Names))
+  myrvs$staleCases <- cases
+  if (is.null(cases)) return()
+  if (is.null(atSave) && identical(attr(sel, "source"), "default")) {
+    showNotification(paste("data/default_selections.json was saved before v1.6, so the app cannot",
+                           "tell whether its filters leave out rows that are new since it was saved.",
+                           "Check the Study criteria panel, then save the selections again to record the data."),
+                     type = "warning", duration = 20)
+    return()
+  }
+  tab <- data.frame(Filter = cases$id, `What the saved setting does` = cases$what,
+                    `Rows it leaves out` = cases$rows, check.names = FALSE)
+  showModal(modalDialog(
+    title = "The restored selections leave out rows that may be new",
+    p(if (!is.null(atSave))
+        paste("These filters exclude effect sizes only because the data changed after the",
+              "selections were saved: a range saved at the full extent of the data of the",
+              "time, or values that did not exist then.  Choices made against the data as it",
+              "was are not listed.")
+      else
+        paste("This selections file was saved before v1.6 and does not record the data it was",
+              "saved with, so new values cannot be told from deliberate exclusions.  Every",
+              "restored filter that leaves out rows is listed; include only those that were",
+              "not meant to exclude anything.")),
+    renderTable(tab),
+    footer = tagList(actionButton("staleKeep", "Keep as saved"),
+                     actionButton("staleInclude", "Include them", class = "btn-primary")),
+    size = "l", easyClose = FALSE))
+}
+observeEvent(input$staleKeep, { removeModal(); myrvs$staleCases <- NULL })
+observeEvent(input$staleInclude, {
+  cases <- myrvs$staleCases
+  removeModal()
+  req(cases)
+  for (i in seq_len(nrow(cases))) {
+    if (cases$type[i] == "range")
+      updateSliderInput(session, cases$id[i], value = cases$value[[i]])
+    else
+      updateCheckboxGroupInput(session, cases$id[i], selected = cases$value[[i]])
+  }
+  myrvs$staleCases <- NULL
+  showNotification('Rows included.  Press "(Re)Calculate Meta-Analysis" to update the results.',
+                   type = "message", duration = 8)
 })
 
 ## ---- Load: apply the "included output tabs" block ----
@@ -276,7 +375,29 @@ observeEvent(input$SelectionsUp, {
                                    'please review the Study criteria panel.'),
                              parsed$dataFile, currentDataName()),
                      type = "warning", duration = 15)
-  if (length(parsed$selections)) pendingSelections(parsed$selections)
+  # files saved since v1.6 record the sharing table in use (null = none); older
+  # files lack the entry, and nothing is checked
+  if ("sharingTable" %in% names(parsed)) {
+    saved <- if (length(parsed$sharingTable) && !is.na(parsed$sharingTable[1]))
+               as.character(parsed$sharingTable[1]) else NULL
+    now <- myrvs$sharingTableName
+    if (!identical(saved, now))
+      showNotification(
+        if (is.null(saved))
+          sprintf(paste('These selections were saved without a sharing table, but "%s" is loaded.',
+                        'Remove it in the "Load Data File" tab to reproduce the saved analysis.'), now)
+        else if (is.null(now))
+          sprintf(paste('These selections were saved with the sharing table "%s", which is not',
+                        'loaded.  Load it in the "Load Data File" tab to reproduce the saved analysis.'),
+                  saved)
+        else
+          sprintf(paste('These selections were saved with the sharing table "%s", but "%s" is',
+                        'loaded.'), saved, now),
+        type = "warning", duration = 20)
+  }
+  if (length(parsed$selections))
+    pendingSelections(structure(parsed$selections, dataAtSave = parsed$dataAtSave,
+                                source = "upload"))
   # files saved before the descriptives block existed simply lack it: leave the tab alone
   if (!is.null(parsed$descriptives)) pendingDescriptives(parsed$descriptives)
   # likewise for the outputs block (absent in files saved by v1.3 and earlier)
@@ -297,7 +418,9 @@ observeEvent(myrvs$df.reactive, once = TRUE, {
   }
   showNotification("Applying this app copy's default selections (data/default_selections.json).",
                    type = "message", duration = 8)
-  if (length(parsed$selections)) pendingSelections(parsed$selections)
+  if (length(parsed$selections))
+    pendingSelections(structure(parsed$selections, dataAtSave = parsed$dataAtSave,
+                                source = "default"))
   if (!is.null(parsed$descriptives)) pendingDescriptives(parsed$descriptives)
   if (!is.null(parsed$outputs)) pendingOutputs(parsed$outputs)
 })

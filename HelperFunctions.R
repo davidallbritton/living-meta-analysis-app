@@ -1,7 +1,7 @@
 #######################################################################################
 ################### A General Tool for BAYESIAN META-ANALYSIS #######################
 #######################################################################################
-# v.1.5.2 2026.11.16
+# v.1.6 2026.11.22
 
 ################### Helper functions #################################################
 
@@ -351,6 +351,203 @@ sameMAData <- function(a, b, tolerance = 1e-10) {
     }
   }
   TRUE
+}
+
+##############################################################################
+################ Structured sampling covariance (sharing table) ##############
+## By default the multilevel models correlate the sampling errors of EVERY pair
+## of effect sizes from the same paper at rho (metafor::vcalc, "flat").  A
+## sharing table states instead which effect sizes were computed from
+## overlapping data, so that only those pairs are correlated.
+##
+## Format: a .csv with columns ID and unit, one line per membership.  ID is the
+## data file's ID column; unit is any label.  An effect size may belong to
+## several units (e.g. its own sample AND a control group it shares with other
+## treatment arms), which a partition such as vcalc(subgroup =) cannot express.
+##
+## Rule: two effect sizes have correlated sampling errors (at rho) if and only if
+## they belong to at least one unit in common, or have the same ID.  Every other
+## pair is independent, including pairs from different experiments of one paper.
+## The diagonal is always the effect sizes' own sampling variances.  Effect sizes
+## absent from the table are therefore independent of all others.
+
+## Read and check a sharing table.  Returns a data frame with character columns
+## ID and unit (blank lines and exact duplicates removed); stops with a message
+## the app can show if the file cannot be used.
+readSharingTable <- function(path) {
+  st <- utils::read.csv(path, colClasses = "character", check.names = FALSE,
+                        strip.white = TRUE, na.strings = c("", "NA"))
+  names(st) <- trimws(names(st))
+  if (!all(c("ID", "unit") %in% names(st)))
+    stop("a sharing table needs the columns ID and unit (found: ",
+         paste(names(st), collapse = ", "), ")")
+  st <- st[!is.na(st$ID) & !is.na(st$unit), c("ID", "unit")]
+  if (!nrow(st)) stop("the sharing table has no complete ID/unit lines")
+  st <- unique(st)
+  rownames(st) <- NULL
+  st
+}
+
+## The 0/1 "shares data" matrix for effect sizes with the given IDs, in that
+## order (diagonal 0).  IDs are compared as character.
+sharingAdjacency <- function(ids, sharing) {
+  ids <- as.character(ids)
+  n <- length(ids)
+  st <- sharing[as.character(sharing$ID) %in% ids, , drop = FALSE]
+  A <- outer(ids, ids, "==")                       # same ID always shares
+  if (nrow(st)) {
+    units <- unique(as.character(st$unit))
+    ## membership matrix: effect-size rows x units
+    M <- matrix(0, n, length(units))
+    idRows <- split(seq_len(n), ids)
+    for (k in seq_len(nrow(st))) {
+      M[idRows[[as.character(st$ID[k])]], match(as.character(st$unit[k]), units)] <- 1
+    }
+    A <- A | (tcrossprod(M) > 0)
+  }
+  diag(A) <- FALSE
+  A * 1
+}
+
+## The largest common rho for which the structured covariance is positive
+## definite.  The correlation matrix is I + rho * A, which is positive definite
+## exactly when rho < -1 / (smallest eigenvalue of A); scaling by the standard
+## errors does not change that.  Dropping effect sizes can only raise the
+## ceiling (eigenvalue interlacing).  Inf when nothing is shared.
+sharingRhoCeiling <- function(A) {
+  if (!any(A != 0)) return(Inf)
+  -1 / min(eigen(A, symmetric = TRUE, only.values = TRUE)$values)
+}
+
+## Known sampling covariance matrix of the effect sizes in d (columns ID, var,
+## Paper), in the row order of d.
+##   sharing = NULL: the flat structure, returned exactly as metafor::vcalc()
+##     gives it (every within-paper pair at rho).
+##   sharing = a table from readSharingTable(): the structured covariance, as a
+##     plain matrix with attributes "ids" (the IDs it was built for, in order),
+##     "rhoCeiling", "nUnmatched" (effect sizes not in the table) and "nShared"
+##     (pairs correlated).  Stops if rho is at or above the ceiling: no joint
+##     distribution has those correlations, so the selection, the table or rho
+##     must change.
+buildSamplingV <- function(d, rho = 0.5, sharing = NULL) {
+  n <- nrow(d)
+  if (is.null(sharing))
+    return(metafor::vcalc(vi = d$var, cluster = d$Paper, obs = seq_len(n), rho = rho))
+  ids <- as.character(d$ID)
+  A <- sharingAdjacency(ids, sharing)
+  ceiling <- sharingRhoCeiling(A)
+  if (rho > 0 && rho >= ceiling - 1e-8)
+    stop(sprintf(paste("with this sharing table and selection, rho must be below %.3f",
+                       "for the sampling covariance matrix to be positive definite",
+                       "(rho = %s was set).  Lower rho, or check the sharing table."),
+                 ceiling, format(rho)))
+  s <- sqrt(as.numeric(d$var))
+  V <- (diag(n) + rho * A) * outer(s, s)
+  attr(V, "ids") <- ids
+  attr(V, "rhoCeiling") <- ceiling
+  attr(V, "nUnmatched") <- sum(!ids %in% as.character(sharing$ID))
+  attr(V, "nShared") <- sum(A) / 2
+  V
+}
+
+## brms::fcor() matches a covariance matrix to the data BY POSITION and checks no
+## labels, so a misaligned matrix gives plausible-looking wrong results with no
+## error.  Check, immediately before fitting, that V is square, symmetric, the
+## size of d, and (when it records them) built for d's IDs in d's order.
+assertVAligned <- function(V, d) {
+  V <- as.matrix(V)
+  ok <- nrow(V) == ncol(V) && nrow(V) == nrow(d) &&
+        isTRUE(all.equal(unname(V), unname(t(V)), check.attributes = FALSE)) &&
+        (is.null(attr(V, "ids")) || identical(attr(V, "ids"), as.character(d$ID)))
+  if (!ok) stop("internal error: the sampling covariance matrix does not match the data rows")
+  invisible(TRUE)
+}
+
+## Summary of how a sharing table applies to a set of effect sizes (columns ID,
+## Paper), for the app's status line: rows matched and unmatched, pairs
+## correlated, the rho ceiling, and the number of table IDs not in the data.
+sharingSummary <- function(d, sharing, allIds = d$ID) {
+  ids <- as.character(d$ID)
+  A <- sharingAdjacency(ids, sharing)
+  list(nRows = length(ids),
+       nUnmatched = sum(!ids %in% as.character(sharing$ID)),
+       nShared = sum(A) / 2,
+       rhoCeiling = sharingRhoCeiling(A),
+       nTableIdsNotInData = length(setdiff(unique(as.character(sharing$ID)),
+                                           as.character(allIds))))
+}
+
+## Cache key for the part of a sharing table that applies to the effect sizes
+## with the given IDs: NULL for the flat structure, otherwise the sorted
+## memberships of those IDs (character(0) if none apply, which is still the
+## structured model -- all of them independent -- and so differs from NULL).
+sharingKey <- function(sharing, ids) {
+  if (is.null(sharing)) return(NULL)
+  st <- sharing[as.character(sharing$ID) %in% as.character(ids), , drop = FALSE]
+  sort(paste(as.character(st$ID), as.character(st$unit), sep = "\t"))
+}
+
+##############################################################################
+################ Restored selections against changed data ####################
+## The levels of a data column, as the selection checklists offer them
+dataLevels <- function(df, v) {
+  lv <- levels(df[[v]])
+  if (is.null(lv)) sort(unique(as.character(df[[v]]))) else lv
+}
+
+## Filters in a restored selections list that exclude rows of the CURRENT data
+## although (as far as the file can tell) nobody chose to exclude them: a range
+## slider saved at the full range of the data of the time, which the data now
+## extend beyond, and checklist levels that did not exist when the file was saved.
+## Files saved before v1.6 have no record of the data at save time
+## (atSave = NULL); then every restored filter that excludes rows is listed, since
+## deliberate exclusions and new values cannot be told apart.  Returns a data
+## frame (one row per filter) with the values that would include those rows.
+staleSelectionCases <- function(sel, atSave, df, sliders, checks) {
+  out <- list()
+  for (v in intersect(sliders, names(sel))) {
+    s <- suppressWarnings(as.numeric(unlist(sel[[v]])))
+    x <- suppressWarnings(as.numeric(df[[v]]))
+    if (length(s) != 2 || anyNA(s) || !length(x)) next
+    n <- sum(x < s[1] | x > s[2], na.rm = TRUE)
+    if (!n) next
+    old <- if (!is.null(atSave)) suppressWarnings(as.numeric(unlist(atSave$ranges[[v]])))
+    if (length(old) == 2) {
+      tol <- 1e-9 * max(1, abs(old))
+      if (!(s[1] <= old[1] + tol && s[2] >= old[2] - tol)) next   # a deliberate range
+      what <- sprintf("saved at the full range of the data then (%s to %s); the data now run from %s to %s",
+                      format(old[1]), format(old[2]), format(min(x, na.rm = TRUE)), format(max(x, na.rm = TRUE)))
+    } else {
+      what <- sprintf("saved as %s to %s; the data run from %s to %s",
+                      format(s[1]), format(s[2]), format(min(x, na.rm = TRUE)), format(max(x, na.rm = TRUE)))
+    }
+    out[[length(out) + 1]] <- list(id = v, type = "range", what = what, rows = n,
+                                   value = list(c(min(s[1], x, na.rm = TRUE), max(s[2], x, na.rm = TRUE))))
+  }
+  for (v in intersect(c(checks, "included"), names(sel))) {
+    col <- if (v == "included") "Paper.and.Exp" else v
+    if (!col %in% names(df)) next
+    lv <- dataLevels(df, col)
+    saved <- as.character(unlist(sel[[v]]))
+    missing <- setdiff(lv, saved)
+    if (!is.null(atSave) && !is.null(atSave$levels)) {
+      oldLv <- as.character(unlist(atSave$levels[[v]]))
+      if (!length(oldLv) && is.null(atSave$levels[[v]])) next    # not recorded for this filter
+      missing <- setdiff(missing, oldLv)
+    }
+    if (!length(missing)) next
+    n <- sum(as.character(df[[col]]) %in% missing)
+    if (!n) next
+    what <- paste0(if (!is.null(atSave)) "new since the save: " else "not ticked: ",
+                   paste(utils::head(missing, 6), collapse = "; "),
+                   if (length(missing) > 6) sprintf("; and %d more", length(missing) - 6) else "")
+    out[[length(out) + 1]] <- list(id = v, type = "levels", what = what, rows = n,
+                                   value = list(union(intersect(lv, saved), missing)))
+  }
+  if (!length(out)) return(NULL)
+  data.frame(id = vapply(out, `[[`, "", "id"), type = vapply(out, `[[`, "", "type"),
+             what = vapply(out, `[[`, "", "what"), rows = vapply(out, `[[`, 0, "rows"),
+             value = I(lapply(out, function(o) o$value[[1]])), stringsAsFactors = FALSE)
 }
 
 checkOldModels <- function(listPrevious, MA, tauprior, mupriorsd, scaletau, mupriormean, prevMAsNoFactors) {

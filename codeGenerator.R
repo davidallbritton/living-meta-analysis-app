@@ -7,7 +7,7 @@
 ########################################
 # David Allbritton
 # December 2023
-# v.1.5.2 2026.11.16
+# v.1.6 2026.11.22
 ########################################
 
 ############### functions for generating the code ############
@@ -17,6 +17,25 @@ escapeAndDQuote <- function(x) {  # replacement for dQuote for strings that cont
   # Now wrap the string with double quotes
   dquotedEscaped <- paste0("\"", escaped, "\"")
   return(dquotedEscaped)
+}
+
+## R code assigning sharingTable: NULL (flat structure) or the snapshot's table
+## as a data frame literal.  encodeString() escapes quotes and backslashes.
+sharingTableCode <- function(snap) {
+  st <- snap$sharing
+  head <- '
+## Sharing table (the app\'s "Load Data File" tab): which effect sizes were
+## computed from overlapping data.  NULL = the flat structure, in which every
+## pair of effect sizes from the same paper is correlated at rhoCHE.  Otherwise
+## the multilevel models correlate, at rhoCHE, only effect sizes that share a
+## unit (or have the same ID); all other pairs are independent.  See
+## buildSamplingV() in the downloaded HelperFunctions.R.  (The aggregation for
+## the standard two-level analyses is not affected.)'
+  if (is.null(st)) return(paste0(head, "\nsharingTable <- NULL\n#"))
+  q <- function(x) paste(encodeString(as.character(x), quote = '"'), collapse = ",\n    ")
+  paste0(head, "\n## Recorded from: ", gsub("[\r\n]", " ", snap$sharingName),
+         "\nsharingTable <- data.frame(\n  ID = c(", q(st$ID), "),\n  unit = c(",
+         q(st$unit), "),\n  stringsAsFactors = FALSE)\n#")
 }
 
 #  check_for_bad_chars -- in HelperFunctions.R
@@ -143,7 +162,7 @@ observeEvent(reactiveTriggers(), {  # was just MA(), but needs additional reacti
   ## extended via "Add a Study", so we never claim the analyzed data equals that
   ## file -- the "current data" download is the authoritative copy.
   dataSourceName <- if (is.null(myrvs$currentInputFile)) {
-    "the app default data set (Vasilev et al. 2018 plus 2023 updates)"
+    paste0("the app default data set (", defaultDataLabel, ")")
   } else {
     myrvs$currentInputFile
   }
@@ -201,6 +220,20 @@ skipCHE <- %s
   )
   # Add that to the string that contains the non-reactive R code that will be output
   code_for_MA <- paste0(code_for_MA, code_for_MA.inputs)
+  #
+  ## the sharing table (structured sampling covariance) as of the last
+  ## recalculation, written out in full so the script stands alone
+  code_for_MA <- paste0(code_for_MA, sharingTableCode(myrvs$bayesSnapshot))
+  #
+  ## the two moderator levels chosen for the contrast (live, like the moderator)
+  contrastChosen <- c(input$contrastLevelA, input$contrastLevelB)
+  code_for_MA <- paste0(code_for_MA, '
+## Contrast between two levels of the moderator (level A minus level B), reported
+## by the multilevel regressions; NULL = none chosen
+contrastLevels <- ', if (length(contrastChosen) == 2 && all(nzchar(contrastChosen)) &&
+                          contrastChosen[1] != contrastChosen[2])
+    paste0("c(", paste(encodeString(contrastChosen, quote = '"'), collapse = ", "), ")") else "NULL",
+  '\n#')
   #
   ##############
   ## Write the code for filtering based on user-defined variable selection factors
@@ -501,7 +534,7 @@ if (run_aggregated == "Yes") {
 # (requires the clubSandwich package)
 if (run_multilevel == "Yes") {
 @@LABEL:frequentist_multilevel@@
-  fma_multilevel <- fitMultilevelCHE(MA_multilevel, rho = rhoCHE)
+  fma_multilevel <- fitMultilevelCHE(MA_multilevel, rho = rhoCHE, sharing = sharingTable)
   output$freq_forest_multilevel <- create_freq_forest(fma_multilevel)
   output$freq_funnel_multilevel <- funnel(fma_multilevel, xlab = "Observed outcome")
 }
@@ -605,6 +638,7 @@ if (calculate_bma == "Yes") {   # needs proper bayesmeta priors and aggregated d
 #   Requires the brms package, a Half cauchy or Half normal tau prior, and a
 #   proper (filled-in) mu prior.
 calculate_brms <- "No"   ## set to "Yes" to run the (slow) Bayesian multilevel models
+run_ppc <- "No"          ## set to "Yes" for the posterior predictive checks (slower still)
 bmlModeratorName <- %s    ## moderator for the multilevel regression ("" = none chosen)
 if (run_multilevel == "Yes" && calculate_brms == "Yes") {
   properMuPrior <- length(mupriormean) == 1 && !is.na(mupriormean) &&
@@ -614,21 +648,44 @@ if (run_multilevel == "Yes" && calculate_brms == "Yes") {
     ## overall model
     bml <- fitBayesianMultilevel(bmlData(MA_multilevel), tauprior = tauprior,
                                  scaletau = scaletau, mupriormean = mupriormean,
-                                 mupriorsd = mupriorsd, rho = rhoCHE, che = !skipCHE)
+                                 mupriorsd = mupriorsd, rho = rhoCHE, che = !skipCHE,
+                                 sharing = sharingTable)
     cat(bmlDiagnosticsText(bml), "\\n")
-    print(bmlSummaryTable(bml))
+    print(cbind(bmlSummaryTable(bml), bmlHdiTable(bml)[, c("HDI lower", "HDI upper")]))
+    print(bmlPredictionTable(bml))     ## prediction interval for a new study
     print(bmlForestPlot(bml))
     print(bmlDensityPlot(bml))
+    print(bmlShrinkageForest(bmlShrinkage(bml)))   ## observed vs shrunken estimates
+    print(bmlTriplot(bmlMeanDraws(bml)[, 1], mupriormean, mupriorsd, "Hedges\' g: overall mean"))
+    if (run_ppc == "Yes") {   ## mixed posterior predictive checks (new effect sizes; new papers)
+      print(bmlPpcTable(bml, bmlMixedReplicates(bml, "es", seed = 4242, ndraws = 1000)))
+      print(bmlPpcTable(bml, bmlMixedReplicates(bml, "paper", seed = 4242, ndraws = 1000)))
+    }
 @@LABEL:bayesian_multilevel_regression@@
     ## per-group model (multilevel regression), if a moderator was chosen
     if (nzchar(bmlModeratorName)) {
       bmlReg <- fitBayesianMultilevel(bmlData(MA_multilevel, moderatorName = bmlModeratorName),
                                       tauprior = tauprior, scaletau = scaletau,
                                       mupriormean = mupriormean, mupriorsd = mupriorsd,
-                                      rho = rhoCHE, che = !skipCHE)
+                                      rho = rhoCHE, che = !skipCHE,
+                                      sharing = sharingTable)
       cat(bmlDiagnosticsText(bmlReg), "\\n")
-      print(bmlSummaryTable(bmlReg))
+      print(cbind(bmlSummaryTable(bmlReg), bmlHdiTable(bmlReg)[, c("HDI lower", "HDI upper")]))
+      print(bmlPredictionTable(bmlReg))  ## prediction interval per level
       print(bmlForestPlot(bmlReg))
+      print(bmlShrinkageForest(bmlShrinkage(bmlReg)))
+      if (length(contrastLevels) == 2) {   ## level A - level B from the draws, with P(> 0)
+        bmlRegContrast <- bmlContrast(bmlReg, contrastLevels[1], contrastLevels[2])
+        if (!is.null(bmlRegContrast)) {
+          print(bmlRegContrast$table)
+          print(bmlTriplot(bmlRegContrast$draws, 0, sqrt(2) * mupriorsd,
+                           paste("Hedges\' g:", contrastLevels[1], "-", contrastLevels[2])))
+        }
+      }
+      if (run_ppc == "Yes") {
+        print(bmlPpcTable(bmlReg, bmlMixedReplicates(bmlReg, "es", seed = 4242, ndraws = 1000)))
+        print(bmlPpcTable(bmlReg, bmlMixedReplicates(bmlReg, "paper", seed = 4242, ndraws = 1000)))
+      }
     }
   } else {
     cat("Bayesian multilevel skipped: needs a Half cauchy or Half normal tau prior",
@@ -709,6 +766,8 @@ source("descriptives_code_generator.R", local = T)
 ## adding additional reactives to trigger updating the R code before downloading it
 ## this will replace MA() as the trigger for the observeEvent above
 reactiveTriggers <- reactive(list(MA(), metaRegCode(), bmrCode(), descriptivesCode(),
-                                  includedTabValues()))
+                                  includedTabValues(),
+                                  ## the contrast levels apply live (no recalculation)
+                                  input$contrastLevelA, input$contrastLevelB))
 
 

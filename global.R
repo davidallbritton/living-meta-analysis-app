@@ -1,8 +1,23 @@
 ################### A General Tool for Living Meta-Analysis #################
-# v.1.5.2 2026.11.16
+# v.1.6 2026.11.22
 #----
-# default data file for initial display, before user uploads their own data file:
-load(file = "data/2023updatedData.Rda")             # loads a dataframe called "df"
+# default data file for initial display, before user uploads their own data file.
+# A copy of the app can open on another data set instead (with
+# data/default_selections.json and data/default_sharing.csv, this makes a copy that
+# opens on a published analysis): put it at data/default_data.Rda (a data frame
+# called "df" in the app's data-file format) and, optionally, its display name on
+# the first line of data/default_data_label.txt.
+if (file.exists("data/default_data.Rda")) {
+  load(file = "data/default_data.Rda")              # loads a dataframe called "df"
+  defaultDataBuiltIn <- FALSE
+  defaultDataLabel <- if (file.exists("data/default_data_label.txt"))
+    trimws(readLines("data/default_data_label.txt", n = 1, warn = FALSE, encoding = "UTF-8"))
+  else "data/default_data.Rda"
+} else {
+  load(file = "data/2023updatedData.Rda")           # loads a dataframe called "df"
+  defaultDataBuiltIn <- TRUE
+  defaultDataLabel <- "Vasilev et al. 2018 plus 2023 updates"
+}
 
 ####################################################################################
 

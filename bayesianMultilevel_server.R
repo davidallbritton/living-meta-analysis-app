@@ -1,7 +1,7 @@
 #######################################################################################
 ################### A General Tool for Living Meta-Analysis #################
 #######################################################################################
-# v.1.5.2 2026.11.16
+# v.1.6 2026.11.22
 #
 ################### Bayesian Multilevel panels (server) ###############################
 #
@@ -71,7 +71,8 @@ bmlCached <- function(MA, snap, moderatorName) {
   checkOldBmlModels(myrvs$previousBmlModels, MA = MA, tauprior = snap$tauprior,
                     mupriorsd = snap$mupriorsd, scaletau = snap$scaletau,
                     mupriormean = snap$mupriormean, moderatorName = moderatorName,
-                    rho = snap$rhoCHE, che = !isTRUE(snap$skipCHE))
+                    rho = snap$rhoCHE, che = !isTRUE(snap$skipCHE),
+                    sharingKey = sharingKey(snap$sharing, MA$ID))
 }
 
 ## fit (or retrieve) the model for a snapshot + moderator choice, caching new fits
@@ -86,9 +87,14 @@ bmlFitOrCache <- function(MA, snap, moderatorName) {
                           mupriormean = snap$mupriormean, mupriorsd = snap$mupriorsd,
                           ## CHE on by default, matching the frequentist
                           ## multilevel tabs; the sidebar escape hatch turns it off
-                          rho = snap$rhoCHE, che = !isTRUE(snap$skipCHE)),
+                          rho = snap$rhoCHE, che = !isTRUE(snap$skipCHE),
+                          sharing = snap$sharing),
     error = function(e) e)
   if (inherits(newbml, "error")) {
+    ## a sharing table that cannot give a positive-definite covariance at this rho
+    ## is a property of the design and the setting, not of the server
+    if (grepl("positive definite", conditionMessage(newbml)))
+      validate(need(FALSE, paste0("The model was not fitted: ", conditionMessage(newbml))))
     validate(need(FALSE, paste0(
       "The Bayesian multilevel model could not be fit on this server (",
       conditionMessage(newbml), ").  Stan model compilation often fails on hosted ",
@@ -98,7 +104,8 @@ bmlFitOrCache <- function(MA, snap, moderatorName) {
   newrow <- list(MA = MA, tauprior = snap$tauprior, mupriorsd = snap$mupriorsd,
                  scaletau = snap$scaletau, mupriormean = snap$mupriormean,
                  moderatorName = moderatorName, rho = snap$rhoCHE,
-                 che = !isTRUE(snap$skipCHE), bml = newbml)
+                 che = !isTRUE(snap$skipCHE),
+                 sharingKey = sharingKey(snap$sharing, MA$ID), bml = newbml)
   myrvs$previousBmlModels[length(myrvs$previousBmlModels) + 1] <- list(newrow)
   newbml
 }
@@ -178,14 +185,21 @@ output$bmlContent <- renderUI({
   fit <- bmlModel()
   tagList(
     bmlSkipWarning(myrvs$bayesSnapshot),
+    if (!isTRUE(myrvs$bayesSnapshot$skipCHE)) covarianceNote(),
     p(tags$b("Overall model (no moderator), using the priors as of the last recalculation.")),
     p(tags$small(bmlDiagnosticsText(fit))),
     h4("Posterior summary:"),
-    renderTable(bmlSummaryTable(fit), digits = 3),
+    renderTable(bmlSummaryWithHdi(fit), digits = 3),
+    p(tags$small("2.5% and 97.5%: equal-tailed 95% credible interval; HDI: the shortest",
+                 "interval holding 95% of the posterior.")),
+    h4("Prediction interval for a new study's true effect:"),
+    renderTable(bmlPredictionTable(fit), digits = 3),
+    p(tags$small(bmlPredictionNote)),
     h4("Per-paper posterior estimates (95% CrI):"),
     plotOutput("bmlForestOut", height = "auto"),
     h4("Posterior densities:"),
     plotOutput("bmlDensOut", height = "350px"),
+    bmlExtrasUI("bml"),
     br()
   )
 })
@@ -223,15 +237,24 @@ output$bmlRegContent <- renderUI({
   moderatorName <- isolate(myrvs$bayesSnapshot$moderatorName)
   tagList(
     bmlSkipWarning(myrvs$bayesSnapshot),
+    if (!isTRUE(myrvs$bayesSnapshot$skipCHE)) covarianceNote(),
     p(tags$b(paste0("Moderator: ", moderatorName,
                     " (per-group posterior means), using the settings as of the last recalculation."))),
     p(tags$small(bmlDiagnosticsText(fit))),
     h4("Posterior summary:"),
-    renderTable(bmlSummaryTable(fit), digits = 3),
+    renderTable(bmlSummaryWithHdi(fit), digits = 3),
+    p(tags$small("2.5% and 97.5%: equal-tailed 95% credible interval; HDI: the shortest",
+                 "interval holding 95% of the posterior.")),
+    h4("Contrast between two moderator levels:"),
+    uiOutput("bmlRegContrastOut"),
+    h4("Prediction intervals for a new study's true effect, per level:"),
+    renderTable(bmlPredictionTable(fit), digits = 3),
+    p(tags$small(bmlPredictionNote)),
     h4("Per-group posterior means (95% CrI):"),
     plotOutput("bmlRegForestOut", height = "300px"),
     h4("Posterior densities:"),
     plotOutput("bmlRegDensOut", height = "350px"),
+    bmlExtrasUI("bmlReg"),
     br()
   )
 })
@@ -256,4 +279,122 @@ observeEvent(input$SavedBmlModelsUp, {
 
 observeEvent(input$ClearBmlModels, {
   myrvs$previousBmlModels <- list()
+})
+
+
+## ---- reporting extras shared by both tabs (v1.6) ----
+
+bmlPredictionNote <- paste(
+  "The range in which the true effect of a new effect size from a new paper is expected",
+  "to fall with 95% probability: the posterior of the mean plus both sources of",
+  "heterogeneity (between papers and within papers).  Computed exactly from the posterior",
+  "draws, without further simulation.")
+
+## posterior summary with the 95% HDI appended
+bmlSummaryWithHdi <- function(fit) {
+  cbind(bmlSummaryTable(fit), bmlHdiTable(fit)[, c("HDI lower", "HDI upper")])
+}
+
+## the extras section: shrinkage forest, triplot, and posterior predictive checks
+## on request.  prefix "bml" = overall tab (model bmlModel()), "bmlReg" =
+## regression tab (bmlRegModel()).
+bmlExtrasUI <- function(prefix) {
+  tagList(
+    h4("Observed and shrunken estimates:"),
+    p(tags$small("Each effect size's observed value with its 95% sampling interval (open",
+                 "circle, grey), and the model's posterior estimate of its true effect with",
+                 "its 95% credible interval (filled circle, black).")),
+    plotOutput(paste0(prefix, "ShrinkOut"), height = "auto"),
+    h4("Prior, likelihood and posterior:"),
+    if (prefix == "bmlReg") uiOutput("bmlRegTriplotChooser"),
+    plotOutput(paste0(prefix, "TriplotOut"), height = "350px"),
+    uiOutput(paste0(prefix, "TriplotNote")),
+    h4("Posterior predictive checks:"),
+    p(tags$small("Replicates the data from the fitted model with NEW random effects: new",
+                 "effect-size-level effects, and (second table) new papers as well, so that the",
+                 "replicates carry the heterogeneity the model claims.  The posterior predictive",
+                 "p (ppp) is the share of replicates whose statistic is at least the observed",
+                 "one; values near 0 or 1 flag misfit.  1,000 replicates, seed 4242.")),
+    actionButton(paste0(prefix, "PpcButton"), "Run posterior predictive checks"),
+    uiOutput(paste0(prefix, "PpcOut"))
+  )
+}
+
+bmlExtrasServer <- function(prefix, model) {
+  output[[paste0(prefix, "ShrinkOut")]] <- renderPlot({
+    bmlShrinkageForest(bmlShrinkage(model()))
+  }, height = function() max(300, nrow(MAml()) * 13 + 120))
+
+  triplotTarget <- reactive({
+    fit <- model(); snap <- myrvs$bayesSnapshot
+    md <- bmlMeanDraws(fit)
+    target <- if (prefix == "bml") colnames(md)[1] else {
+      t0 <- input$bmlRegTriplotTarget
+      if (!isTruthy(t0)) colnames(md)[1] else t0 }
+    if (identical(target, "contrast")) {
+      lv <- contrastLevels()
+      ct <- if (!is.null(lv)) bmlContrast(fit, lv[1], lv[2])
+      validate(need(!is.null(ct), "Choose two levels of this model's moderator for the contrast."))
+      list(draws = ct$draws, prior = bmlTriplotPrior("contrast", snap$mupriormean, snap$mupriorsd),
+           label = paste0("Hedges' g: ", lv[1], " − ", lv[2]))
+    } else {
+      validate(need(target %in% colnames(md), "Choose a parameter."))
+      list(draws = md[, target], prior = bmlTriplotPrior("mean", snap$mupriormean, snap$mupriorsd),
+           label = paste0("Hedges' g: ", target))
+    }
+  })
+  output[[paste0(prefix, "TriplotOut")]] <- renderPlot({
+    tt <- triplotTarget()
+    bmlTriplot(tt$draws, tt$prior[["mean"]], tt$prior[["sd"]], tt$label)
+  }, height = 350)
+  output[[paste0(prefix, "TriplotNote")]] <- renderUI({
+    tt <- triplotTarget()
+    v <- attr(bmlTriplot(tt$draws, tt$prior[["mean"]], tt$prior[["sd"]], tt$label), "values")
+    p(tags$small(sprintf(paste("Prior Normal(%s, %.3g).  The prior supplies %.1f%% of the",
+                               "posterior precision (normal approximation)."),
+                         format(v[["priorMean"]]), v[["priorSd"]],
+                         100 * v[["priorShareOfPrecision"]])))
+  })
+
+  ## posterior predictive checks: only on request (they redraw the data 2 x 1,000 times)
+  ppc <- eventReactive(input[[paste0(prefix, "PpcButton")]], {
+    fit <- model()
+    withProgress(message = "Replicating the data...", value = 0.1, {
+      es <- bmlPpcTable(fit, bmlMixedReplicates(fit, "es", seed = 4242, ndraws = 1000))
+      incProgress(0.45)
+      pa <- bmlPpcTable(fit, bmlMixedReplicates(fit, "paper", seed = 4242, ndraws = 1000))
+      list(es = es, paper = pa)
+    })
+  })
+  output[[paste0(prefix, "PpcOut")]] <- renderUI({
+    r <- ppc()
+    tagList(p(tags$b("New effect-size-level effects:")), renderTable(r$es, digits = 3),
+            p(tags$b("New papers and new effect-size-level effects:")), renderTable(r$paper, digits = 3))
+  })
+}
+bmlExtrasServer("bml", bmlModel)
+bmlExtrasServer("bmlReg", bmlRegModel)
+
+output$bmlRegTriplotChooser <- renderUI({
+  fit <- bmlRegModel()
+  lv <- colnames(bmlMeanDraws(fit))
+  ch <- c(setNames(lv, paste("mean:", lv)),
+          if (!is.null(contrastLevels())) c("contrast (A − B)" = "contrast"))
+  selectInput("bmlRegTriplotTarget", "Parameter", choices = ch,
+              selected = if (!is.null(contrastLevels())) "contrast" else lv[1])
+})
+
+output$bmlRegContrastOut <- renderUI({
+  fit <- bmlRegModel()
+  lv <- contrastLevels()
+  if (is.null(lv)) return(p(tags$small('To compare two levels, choose them under "Contrast between',
+                                       'two levels" in the "Moderator Selection" tab.')))
+  ct <- bmlContrast(fit, lv[1], lv[2])
+  if (is.null(ct)) return(p(tags$small(paste0(
+    "The chosen levels are not both in this model (fitted for the moderator \"",
+    isolate(myrvs$bayesSnapshot$moderatorName), "\" at the last recalculation).  Choose two of its",
+    " levels, or recalculate after changing the moderator."))))
+  tagList(renderTable(ct$table, digits = 3),
+          p(tags$small("Computed from the posterior draws of the two level means.  P(> 0): the",
+                       "posterior probability that level A's mean exceeds level B's.")))
 })

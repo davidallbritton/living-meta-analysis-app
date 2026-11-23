@@ -1,7 +1,7 @@
 #######################################################################################
 ################### A General Tool for Living Meta-Analysis #################
 #######################################################################################
-# v.1.5.2 2026.11.16
+# v.1.6 2026.11.22
 # feature (2026-07-14): selection-factor checkboxes show live "[n ES, k studies]" count badges.
 
 ################### Shiny App SERVER ###################################
@@ -152,6 +152,8 @@ server <- function(input, output, session) {
       myrvs$recalculatedSinceUpload <- 0
       myrvs$currentInputFile <- display_name
       myrvs$uiRendered  <- FALSE    # to keep recalculate button inactive until UI loaded
+      # a sharing table's IDs belong to the previous data set (sharing_server.R)
+      clearSharingTable()
       # a moderator chosen for the previous data set may not exist (or have enough
       # groups) in the new one, so switch the moderator off; the moderator radio
       # buttons themselves are rebuilt from the new data by moderatorSelection_ui
@@ -190,9 +192,16 @@ server <- function(input, output, session) {
     ## data/curated/curated_index.csv (columns: filename, label, date,
     ## description, citation), which also controls the display order.
     ## See data/curated/README.md for how to add a file to the collection.
+    ## An optional data/curated/curated_index_local.csv (same columns) lists further
+    ## files after those, for a local copy whose extra files are not part of the
+    ## release (keep it and its files out of version control).
     curatedIndex <- NULL
-    if (file.exists("data/curated/curated_index.csv")) {
-      curatedIndex <- readr::read_csv("data/curated/curated_index.csv", show_col_types = FALSE) %>% as.data.frame()
+    curatedFiles <- file.path("data/curated", c("curated_index.csv", "curated_index_local.csv"))
+    curatedFiles <- curatedFiles[file.exists(curatedFiles)]
+    if (length(curatedFiles)) {
+      curatedIndex <- dplyr::bind_rows(lapply(curatedFiles, function(f)
+        readr::read_csv(f, show_col_types = FALSE, col_types = readr::cols(.default = "c")))) %>%
+        as.data.frame()
       curatedIndex <- curatedIndex[file.exists(file.path("data/curated", curatedIndex$filename)), , drop = FALSE]
       if (nrow(curatedIndex) == 0) curatedIndex <- NULL
     }
@@ -230,6 +239,11 @@ server <- function(input, output, session) {
       req(nrow(chosen) == 1)
       if (loadDataFile(file.path("data/curated", chosen$filename), chosen$label)) {
         blankStudyPanelBriefly()   # tear down + rebuild the study criteria panel, as for uploads
+        # optional column "sharing" in curated_index.csv: a sharing table for this
+        # file, also in data/curated/ (see sharing_server.R)
+        if ("sharing" %in% names(chosen) && isTruthy(chosen$sharing) &&
+            file.exists(file.path("data/curated", chosen$sharing)))
+          loadSharingFile(file.path("data/curated", chosen$sharing), chosen$sharing)
         # the curated file is now the data source, so clear the upload control's
         # file name display (each chooser only shows a file name while it is the
         # current data source)
@@ -268,7 +282,8 @@ server <- function(input, output, session) {
             span(style = "white-space: nowrap", myrvs$currentInputFile)
           )
         } else {
-          p("The currently displayed results are from Vasilev et al., 2018 plus updates as of 2023")
+          p(if (defaultDataBuiltIn) "The currently displayed results are from Vasilev et al., 2018 plus updates as of 2023"
+            else paste("The currently displayed results are from", defaultDataLabel))
         }
       })
     })
@@ -889,6 +904,9 @@ server <- function(input, output, session) {
       ## multilevel models only (they are the slow ones).  Statistically wrong --
       ## see the warning banner the bml tabs show when it is on.
       skipCHE = isTRUE(input$skipCHE == "Yes"),
+      ## optional sharing table (sharing_server.R): NULL = the flat structure
+      sharing = myrvs$sharingTable,
+      sharingName = myrvs$sharingTableName,
       moderatorName = if (isTRUE(input$includeModerator == "Yes") &&
                           isTruthy(input$moderator_variable)) input$moderator_variable else ""
     )
@@ -951,6 +969,10 @@ server <- function(input, output, session) {
     # metafor requires unique study labels; multi-ES experiments repeat Paper.and.Exp
     MAml_new$study <- make.unique(as.character(MAml_new$Paper.and.Exp))
     myrvs$MAmultilevel <- MAml_new
+    # how the sharing table (if any) applies to these rows: shown in the
+    # Dependence tab and under the multilevel results (sharing_server.R)
+    myrvs$sharingStatus <- if (is.null(myrvs$bayesSnapshot$sharing)) NULL else
+      sharingSummary(MAml_new, myrvs$bayesSnapshot$sharing, allIds = df$ID)
     #
     # replace ID with Paper.Number if aggregating over papers:
     if (input$aggregation == "Papers") {
@@ -1372,7 +1394,7 @@ server <- function(input, output, session) {
       "currentData.xlsx" 
     },
     content = function (file) {
-      if (is.null(myrvs$currentInputFile)) {Source <- "Vasilev et al., 2018"} else Source <- myrvs$currentInputFile
+      if (is.null(myrvs$currentInputFile)) {Source <- if (defaultDataBuiltIn) "Vasilev et al., 2018" else defaultDataLabel} else Source <- myrvs$currentInputFile
       Source <- req(as.data.frame(Source))
       sheetList <- list(current_Data = myrvs$df.updated,
                         current_df = myrvs$df.reactive, 
@@ -1388,7 +1410,7 @@ server <- function(input, output, session) {
       "bayesmeta_call.xlsx" 
     },
     content = function (file) {
-      if (is.null(myrvs$currentInputFile)) {Source <- "Vasilev et al., 2018 plus 2023 updates"} else Source <- myrvs$currentInputFile
+      if (is.null(myrvs$currentInputFile)) {Source <- if (defaultDataBuiltIn) "Vasilev et al., 2018 plus 2023 updates" else defaultDataLabel} else Source <- myrvs$currentInputFile
       Source <- req(as.data.frame(Source))
       Bayesmeta.Summary <- req(as.data.frame(bma()$summary))
       Bayesmeta.Summary$statistic <-   row.names(Bayesmeta.Summary) 
@@ -1445,7 +1467,7 @@ server <- function(input, output, session) {
   # cluster-robust (CR2/Satterthwaite) tests and confidence intervals.
   fmaMl <- reactive({
     snap <- req(myrvs$bayesSnapshot)   # rho as of the last recalculation
-    fitMultilevelCHE(MAml(), rho = snap$rhoCHE)
+    fitMultilevelCHE(MAml(), rho = snap$rhoCHE, sharing = snap$sharing)
   })
   
   # Forest plot panel height
@@ -1544,6 +1566,9 @@ server <- function(input, output, session) {
   # Save / load the left-panel selection settings (and apply
   # data/default_selections.json at startup if this app copy has one)
   source("selections_server.R", local = T)
+
+  # optional sharing table: which effect sizes share data (structured V)
+  source("sharing_server.R", local = T)
 
   # Bayesian multilevel (three-level, brms) tab
   source("bayesianMultilevel_server.R", local = T)

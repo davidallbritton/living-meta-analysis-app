@@ -39,7 +39,11 @@ observe({   #update the meta-regression plot code when a moderator is selected
   ## multilevel (CHE) version (unaggregated data):
   if (run_multilevel == "Yes") {
     forestByGroup(MA=MA_multilevel, moderator=MA_multilevel[["', moderatorChosen, '"]],
-                  ', sharedArgs, ', multilevel=TRUE, rho=rhoCHE)
+                  ', sharedArgs, ', multilevel=TRUE, rho=rhoCHE, sharing=sharingTable)
+    ## contrast between two moderator levels (A - B), CR2 / Satterthwaite
+    if (length(contrastLevels) == 2)
+      print(cheContrast(MA_multilevel, MA_multilevel[["', moderatorChosen, '"]],
+                        contrastLevels[1], contrastLevels[2], rho = rhoCHE, sharing = sharingTable))
   }')
   
   isolate({   # this updates the reactive value so it can be used outside this "observe" block

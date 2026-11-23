@@ -197,6 +197,10 @@ observeEvent(input$addCrosstab, {
 
 ## The whole crosstab section: one picker + table per current id, then the Add
 ## button.  Re-renders when a crosstab is added/removed or the data set changes;
+## render the choosers even while the Descriptives tab is hidden, so restored
+## choices are applied, and saved, without the tab having to be opened first
+outputOptions(output, "descriptivesChooser", suspendWhenHidden = FALSE)
+
 ## isolate() keeps each picker's current selection across those re-renders
 ## (selectize itself drops any selected variable that no longer exists).
 output$crosstabChooser <- renderUI({
@@ -315,7 +319,7 @@ output$descriptivesDown <- downloadHandler(
     sheetList <- list(
       "Selection summary" = data.frame(
         Item  = c("Data file", "Effect sizes selected", "Studies selected"),
-        Value = c(if (is.null(myrvs$currentInputFile)) "default (Vasilev et al. 2018 plus 2023 updates)"
+        Value = c(if (is.null(myrvs$currentInputFile)) paste0("default (", defaultDataLabel, ")")
                   else myrvs$currentInputFile,
                   nrow(d), length(unique(as.character(d$Paper))))
       )
@@ -338,3 +342,7 @@ output$descriptivesDown <- downloadHandler(
     writexl::write_xlsx(sheetList, file)
   }
 )
+
+## like descriptivesChooser above: the crosstab pickers (and the "Add another
+## crosstab" button that signals they are bound) render while the tab is hidden
+outputOptions(output, "crosstabChooser", suspendWhenHidden = FALSE)
