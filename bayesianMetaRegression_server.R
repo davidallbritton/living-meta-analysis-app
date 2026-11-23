@@ -189,15 +189,16 @@ output$bmrForestUI <- renderUI({
   moderator <- MA[[input$moderator_variable]]
   renderPlot({
     efac <- if (is.null(input$bmrEfac)) 0.3 else input$bmrEfac
-    forestBmrByGroup(bmrModel(), MA = MA, moderator = moderator, xlab = "Hedges' g",
+    forestBmrByGroup(bmrIntervals(bmrModel(), ciType()), MA = MA, moderator = moderator, xlab = "Hedges' g",
                      efac = efac)
   }, height = bmrForestHeight())
 })
 
 # Marginal posterior summary (tau + one column per moderator group)
 output$bmrSummary <- renderPrint({
-  bmrModel()$summary
+  bmrSummaryTable(bmrModel(), ciType())
 })
+output$bmrIntervalNote <- renderUI(p(tags$small(intervalNote(ciType()))))
 
 ## contrast between two moderator levels (A - B): exact posterior from the fit
 output$bmrContrastOut <- renderUI({
@@ -207,17 +208,15 @@ output$bmrContrastOut <- renderUI({
                                        'two levels" in the "Moderator Selection" tab.')))
   MA <- isolate(MA())
   moderatorName <- isolate(myrvs$bayesSnapshot$moderatorName)
-  ct <- bmrContrast(fit, MA[[moderatorName]], lv[1], lv[2])
+  ct <- bmrContrast(fit, MA[[moderatorName]], lv[1], lv[2], ciType())
   if (is.null(ct)) return(p(tags$small(paste0(
     "The chosen levels are not both in this model (fitted for the moderator \"", moderatorName,
     "\" at the last recalculation).  Choose two of its levels, or recalculate after changing",
     " the moderator."))))
   tagList(renderTable(ct, digits = 3),
           p(tags$small("The posterior of the difference between the two levels' means, computed",
-                       "exactly from the fitted model (no simulation).  2.5% and 97.5%: equal-tailed",
-                       "95% interval; HDI: the shortest 95% interval (the kind bayesmeta reports",
-                       "in the summary above).  P(> 0): the posterior",
-                       "probability that level A's mean exceeds level B's.")))
+                       "exactly from the fitted model (no simulation).  P(> 0): the posterior",
+                       "probability that level A's mean exceeds level B's.", intervalNote(ciType()))))
 })
 
 

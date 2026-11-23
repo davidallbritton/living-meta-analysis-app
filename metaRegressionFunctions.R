@@ -167,7 +167,7 @@ rmaContrast <- function(MA, moderator, levelA, levelB) {
 ## the moderator with bmrLevels(), the same function buildBmrModel() uses to name the
 ## coefficients, and must match the fit's coefficient names exactly after make.names
 ## and in the same order.  NULL if they do not, or if either level is not among them.
-bmrContrast <- function(fit, moderator, levelA, levelB) {
+bmrContrast <- function(fit, moderator, levelA, levelB, type = "hdi") {
   lv <- bmrLevels(moderator)
   if (!identical(make.names(lv), as.character(fit$variables)) ||
       !all(c(levelA, levelB) %in% lv) || identical(levelA, levelB)) return(NULL)
@@ -179,16 +179,32 @@ bmrContrast <- function(fit, moderator, levelA, levelB) {
                     numeric(1)))
   m  <- sum(w * mu)
   cdf <- function(x) sum(w * stats::pnorm(x, mu, sd))
-  brk <- c(min(mu - 8 * sd), max(mu + 8 * sd))
-  qf <- function(p) stats::uniroot(function(x) cdf(x) - p, brk, tol = 1e-10)$root
-  q <- vapply(c(.025, .975), qf, numeric(1))
-  ## highest-density (shortest) 95% interval, the kind bayesmeta itself reports:
-  ## the lower tail probability a that minimises the width q(a + .95) - q(a)
-  a <- stats::optimize(function(a) qf(a + .95) - qf(a), c(1e-6, .05 - 1e-6), tol = 1e-8)$minimum
-  data.frame(Contrast = paste(levelA, "\u2212", levelB), `Posterior mean` = m,
-             SD = sqrt(sum(w * (sd^2 + mu^2)) - m^2),
-             `2.5%` = q[1], `97.5%` = q[2], `HDI lower` = qf(a), `HDI upper` = qf(a + .95),
-             `P(> 0)` = 1 - cdf(0), check.names = FALSE)
+  ## the 95% interval of the chosen kind from the mixture's CDF (cdfInterval())
+  iv <- cdfInterval(cdf, c(min(mu - 8 * sd), max(mu + 8 * sd)), type)
+  tab <- data.frame(Contrast = paste(levelA, "\u2212", levelB), `Posterior mean` = m,
+                    SD = sqrt(sum(w * (sd^2 + mu^2)) - m^2),
+                    lower = iv[["lower"]], upper = iv[["upper"]],
+                    `P(> 0)` = 1 - cdf(0), check.names = FALSE)
+  names(tab)[4:5] <- intervalNames(type)
+  tab
+}
+
+## A bmr() fit with its reported 95% intervals (tau and each coefficient, the
+## summary rows "95% lower" / "95% upper") of the chosen kind; nothing refitted.
+bmrIntervals <- function(fit, type = "hdi") {
+  m <- intervalMethod(type)
+  if (identical(fit$interval.type, m)) return(fit)
+  r <- c("95% lower", "95% upper")
+  fit$summary[r, "tau"] <- fit$post.interval(tau.level = .95, method = m)
+  for (j in seq_along(fit$variables))
+    fit$summary[r, fit$variables[j]] <- fit$post.interval(beta.level = .95, which.beta = j, method = m)
+  fit$interval.type <- m
+  fit
+}
+bmrSummaryTable <- function(fit, type = "hdi") {
+  s <- bmrIntervals(fit, type)$summary
+  rownames(s)[match(c("95% lower", "95% upper"), rownames(s))] <- intervalNames(type)
+  s
 }
 
 ##############################################################################

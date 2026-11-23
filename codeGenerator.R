@@ -238,7 +238,11 @@ skipCHE <- %s
 contrastLevels <- ', if (length(contrastChosen) == 2 && all(nzchar(contrastChosen)) &&
                           contrastChosen[1] != contrastChosen[2])
     paste0("c(", paste(encodeString(contrastChosen, quote = '"'), collapse = ", "), ")") else "NULL",
-  '\n#')
+  '
+## The kind of 95% credible interval every Bayesian result reports: "hdi"
+## (highest density, the shortest interval) or "eti" (equal-tailed, 2.5% to 97.5%)
+interval_type <- "', intervalType(input$intervalType), '"
+#')
   #
   ##############
   ## Write the code for filtering based on user-defined variable selection factors
@@ -552,7 +556,7 @@ if (calculate_bma == "Yes") {
 
 @@LABEL:bayesian_forest_plot@@
 # Forest Plot panel
-output$forest <-  forestplot.bayesmeta(bma, xlab = "Hedges g")
+output$forest <-  forestplot.bayesmeta(bayesmetaIntervals(bma, interval_type), xlab = "Hedges g")
 # output$forest
 
 @@LABEL:bayesian_funnel_plot@@
@@ -571,7 +575,7 @@ output$statistics_panel <-  capture.output({
   cat("\n\n")
   cat("Marginal posterior summary:")
   cat("\n")
-  print( bma$summary)
+  print(bayesmetaSummaryTable(bma, interval_type))
   cat("\n")
   cat("Maximum-likelihood:")
   cat("\n")
@@ -656,11 +660,11 @@ if (run_multilevel == "Yes" && calculate_brms == "Yes") {
                                  mupriorsd = mupriorsd, rho = rhoCHE, che = !skipCHE,
                                  sharing = sharingTable)
     cat(bmlDiagnosticsText(bml), "\\n")
-    print(cbind(bmlSummaryTable(bml), bmlHdiTable(bml)[, c("HDI lower", "HDI upper")]))
-    print(bmlPredictionTable(bml))     ## prediction interval for a new study
-    print(bmlForestPlot(bml))
+    print(bmlSummaryTable(bml, interval_type))
+    print(bmlPredictionTable(bml, type = interval_type))     ## prediction interval for a new study
+    print(bmlForestPlot(bml, interval_type))
     print(bmlDensityPlot(bml))
-    print(bmlShrinkageForest(bmlShrinkage(bml)))   ## observed vs shrunken estimates
+    print(bmlShrinkageForest(bmlShrinkage(bml, interval_type)))   ## observed vs shrunken estimates
     print(bmlTriplot(bmlMeanDraws(bml)[, 1], mupriormean, mupriorsd, "Hedges\' g: overall mean"))
     if (run_ppc == "Yes") {   ## mixed posterior predictive checks (new effect sizes; new papers)
       print(bmlPpcTable(bml, bmlMixedReplicates(bml, "es", seed = 4242, ndraws = 1000)))
@@ -675,12 +679,12 @@ if (run_multilevel == "Yes" && calculate_brms == "Yes") {
                                       rho = rhoCHE, che = !skipCHE,
                                       sharing = sharingTable)
       cat(bmlDiagnosticsText(bmlReg), "\\n")
-      print(cbind(bmlSummaryTable(bmlReg), bmlHdiTable(bmlReg)[, c("HDI lower", "HDI upper")]))
-      print(bmlPredictionTable(bmlReg))  ## prediction interval per level
-      print(bmlForestPlot(bmlReg))
-      print(bmlShrinkageForest(bmlShrinkage(bmlReg)))
+      print(bmlSummaryTable(bmlReg, interval_type))
+      print(bmlPredictionTable(bmlReg, type = interval_type))  ## prediction interval per level
+      print(bmlForestPlot(bmlReg, interval_type))
+      print(bmlShrinkageForest(bmlShrinkage(bmlReg, interval_type)))
       if (length(contrastLevels) == 2) {   ## level A - level B from the draws, with P(> 0)
-        bmlRegContrast <- bmlContrast(bmlReg, contrastLevels[1], contrastLevels[2])
+        bmlRegContrast <- bmlContrast(bmlReg, contrastLevels[1], contrastLevels[2], interval_type)
         if (!is.null(bmlRegContrast)) {
           print(bmlRegContrast$table)
           print(bmlTriplot(bmlRegContrast$draws, 0, sqrt(2) * mupriorsd,
@@ -773,6 +777,8 @@ source("descriptives_code_generator.R", local = T)
 reactiveTriggers <- reactive(list(MA(), metaRegCode(), bmrCode(), descriptivesCode(),
                                   includedTabValues(),
                                   ## the contrast levels apply live (no recalculation)
-                                  input$contrastLevelA, input$contrastLevelB))
+                                  input$contrastLevelA, input$contrastLevelB,
+                                  ## so does the kind of credible interval
+                                  input$intervalType))
 
 

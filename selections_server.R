@@ -10,7 +10,7 @@
 #     and the include/exclude-specific-studies list
 #   - Moderator Selection: includeModerator, moderator_variable, and the two
 #     levels of the optional contrast (contrastLevelA, contrastLevelB)
-#   - Prior specifications: mupriormean, mupriorsd, robust, tauprior, scaletau
+#   - Prior specifications: mupriormean, mupriorsd, intervalType, robust, tauprior, scaletau
 #   - Dependence (rho): rhoCHE, skipCHE
 #   - the NAME of the sharing table in use, if any ("sharingTable"; null when none).
 #     Its contents are not saved: on loading, the app only warns if the sharing
@@ -61,7 +61,7 @@ selectionInputIds <- function() {
     myrvs$Variable.Numeric.Names, myrvs$Variable.Factor.Names,
     "included",
     "includeModerator", "moderator_variable", "contrastLevelA", "contrastLevelB",
-    "mupriormean", "mupriorsd", "robust", "tauprior", "scaletau",
+    "mupriormean", "mupriorsd", "intervalType", "robust", "tauprior", "scaletau",
     "rhoCHE", "skipCHE")
 }
 
@@ -243,6 +243,7 @@ applySelections <- function(sel) {
   applyNumeric("mupriormean")
   applyNumeric("mupriorsd")
   applyRadio("robust", c("No", "Yes"))
+  applyRadio("intervalType", c("hdi", "eti"))
   applyRadio("tauprior", c("Half cauchy", "Half normal", "uniform", "sqrt", "Jeffreys",
                            "BergerDeely", "conventional", "DuMouchel", "shrinkage", "I2"))
   applyNumeric("scaletau")

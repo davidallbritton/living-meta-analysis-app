@@ -72,6 +72,66 @@ fitBayesmeta <- function(MA, tauprior, scaletau, mupriormean, mupriorsd) {
   bayesmeta::bayesmeta(y = y, sigma = sigma, labels = labels, tau.prior = tp, mu.prior = mp)
 }
 
+# ---- Credible intervals for every Bayesian result ----
+# The app reports one kind of 95% credible interval, chosen in "Prior
+# specifications" (input$intervalType, a display setting that refits nothing):
+#   "hdi"  highest-density interval: the shortest interval holding 95% of the
+#          posterior (the default; bayesmeta's own "shortest" intervals)
+#   "eti"  equal-tailed interval: the 2.5% and 97.5% quantiles
+intervalType <- function(type) if (identical(type, "eti")) "eti" else "hdi"
+intervalNames <- function(type)
+  if (intervalType(type) == "eti") c("2.5%", "97.5%") else c("HDI lower", "HDI upper")
+intervalNote <- function(type) {
+  if (intervalType(type) == "eti") "Intervals: 95% equal-tailed (the 2.5% and 97.5% quantiles of the posterior)."
+  else "Intervals: 95% highest-density (the shortest interval holding 95% of the posterior)."
+}
+# bayesmeta / bmr name for the same choice
+intervalMethod <- function(type) if (intervalType(type) == "eti") "central" else "shortest"
+
+# The interval from posterior draws (HDI: exact for a unimodal posterior)
+drawsInterval <- function(x, type = "hdi", level = 0.95) {
+  x <- as.numeric(x)
+  if (intervalType(type) == "eti")
+    return(stats::setNames(unname(stats::quantile(x, c((1 - level) / 2, 1 - (1 - level) / 2))),
+                           c("lower", "upper")))
+  x <- sort(x); n <- length(x); k <- ceiling(level * n)
+  w <- x[k:n] - x[seq_len(n - k + 1)]
+  j <- which.min(w)
+  c(lower = x[j], upper = x[j + k - 1])
+}
+
+# The interval of a distribution given by its CDF (a mixture, for example), with
+# `brk` bracketing its support: quantiles by root-finding; the HDI as the
+# shortest interval, by minimising its width over the lower tail probability
+cdfInterval <- function(cdf, brk, type = "hdi", level = 0.95) {
+  qf <- function(p) stats::uniroot(function(x) cdf(x) - p, brk, tol = 1e-10)$root
+  if (intervalType(type) == "eti") return(c(lower = qf((1 - level) / 2), upper = qf(1 - (1 - level) / 2)))
+  a <- stats::optimize(function(a) qf(a + level) - qf(a), c(1e-6, 1 - level - 1e-6), tol = 1e-8)$minimum
+  c(lower = qf(a), upper = qf(a + level))
+}
+
+# A bayesmeta fit with its reported 95% intervals of the chosen kind: the summary
+# (tau, mu, and theta = the prediction for a new study) and each study's shrunken
+# estimate (x$theta, used by the forest plot).  Nothing is refitted.
+bayesmetaIntervals <- function(x, type = "hdi") {
+  m <- intervalMethod(type)
+  if (identical(x$interval.type, m)) return(x)
+  r <- c("95% lower", "95% upper")
+  x$summary[r, "tau"]   <- x$post.interval(tau.level = .95, method = m)
+  x$summary[r, "mu"]    <- x$post.interval(mu.level = .95, method = m)
+  x$summary[r, "theta"] <- x$post.interval(theta.level = .95, predict = TRUE, method = m)
+  for (i in seq_len(ncol(x$theta)))
+    x$theta[r, i] <- x$post.interval(theta.level = .95, individual = i, method = m)
+  x$interval.type <- m
+  x
+}
+# its summary table for display, the interval rows named by their kind
+bayesmetaSummaryTable <- function(x, type = "hdi") {
+  s <- bayesmetaIntervals(x, type)$summary
+  rownames(s)[match(c("95% lower", "95% upper"), rownames(s))] <- intervalNames(type)
+  s
+}
+
 # Reformat the data.  returns a list
 reformat.df <- function(df.input) {
   df.original <- df.input

@@ -243,19 +243,19 @@ checkOldBmlModels <- function(listPrevious, MA, tauprior, mupriorsd, scaletau,
 ## ---- output builders (all work from the fitted brmsfit) ----
 
 ## posterior summary table: one row per mean parameter (overall mu, or each
-## moderator group), plus the two heterogeneity SDs
-bmlSummaryTable <- function(fit) {
-  fx <- brms::fixef(fit)                      # Estimate, Est.Error, Q2.5, Q97.5
-  rn <- rownames(fx)
-  rn[rn == "Intercept"] <- "µ (overall mean)"
-  rn <- sub("^moderator", "mean: ", rn)
-  sds <- rbind(summary(fit)$random$Paper[1, , drop = FALSE],
-               summary(fit)$random$ID[1, , drop = FALSE])
-  out <- data.frame(Parameter = c(rn, "τ between papers (sd)", "τ within papers (sd)"),
-                    rbind(fx[, c("Estimate", "Est.Error", "Q2.5", "Q97.5"), drop = FALSE],
-                          as.matrix(sds[, c("Estimate", "Est.Error", "l-95% CI", "u-95% CI")])),
+## moderator group), plus the two heterogeneity SDs; posterior mean, SD and the
+## 95% interval of the chosen kind (type: "hdi" or "eti", see intervalNames())
+bmlSummaryTable <- function(fit, type = "hdi") {
+  md <- bmlMeanDraws(fit)
+  dr <- cbind(md, bmlTauDraws(fit))
+  iv <- t(apply(dr, 2, drawsInterval, type = type))
+  out <- data.frame(Parameter = c(if (identical(colnames(md), "µ (overall mean)")) colnames(md)
+                                  else paste0("mean: ", colnames(md)),
+                                  "τ between papers (sd)", "τ within papers (sd)"),
+                    `Posterior mean` = colMeans(dr), SD = apply(dr, 2, stats::sd),
+                    lower = iv[, "lower"], upper = iv[, "upper"],
                     check.names = FALSE, row.names = NULL)
-  names(out) <- c("Parameter", "Posterior mean", "SD", "2.5%", "97.5%")
+  names(out)[4:5] <- intervalNames(type)
   out
 }
 
@@ -275,22 +275,23 @@ bmlDiagnosticsText <- function(fit) {
           bmlSettings$adapt_delta, bmlSettings$seed)
 }
 
-## per-paper posterior estimates (mu + u_paper) for the forest plot;
-## only for the no-moderator model
-bmlForestData <- function(fit) {
-  co <- coef(fit)$Paper[, , "Intercept"]
-  data.frame(Paper = rownames(co),
-             Estimate = co[, "Estimate"], Lower = co[, "Q2.5"], Upper = co[, "Q97.5"],
-             row.names = NULL)
+## per-paper posterior estimates (mu + u_paper) with 95% intervals of the chosen
+## kind, for the forest plot; only for the no-moderator model
+bmlForestData <- function(fit, type = "hdi") {
+  dr <- stats::coef(fit, summary = FALSE)$Paper[, , "Intercept"]
+  iv <- t(apply(dr, 2, drawsInterval, type = type))
+  data.frame(Paper = colnames(dr), Estimate = colMeans(dr),
+             Lower = iv[, "lower"], Upper = iv[, "upper"], row.names = NULL)
 }
+intervalWords <- function(type) if (intervalType(type) == "eti") "95% equal-tailed CrI" else "95% HDI"
 
 ## forest plot: per-paper posterior means and 95% credible intervals with the
 ## overall posterior mean (dashed) and zero (grey) reference lines; for the
 ## moderator model the rows are the per-group means instead
-bmlForestPlot <- function(fit) {
+bmlForestPlot <- function(fit, type = "hdi") {
   fx <- brms::fixef(fit)
   if ("Intercept" %in% rownames(fx)) {
-    fd <- bmlForestData(fit)
+    fd <- bmlForestData(fit, type)
     fd <- fd[order(fd$Estimate), ]
     fd$Paper <- factor(fd$Paper, levels = fd$Paper)
     overall <- fx["Intercept", "Estimate"]
@@ -299,19 +300,22 @@ bmlForestPlot <- function(fit) {
       geom_vline(xintercept = overall, color = "#D55E00", linetype = "dashed") +
       geom_linerange(aes(xmin = Lower, xmax = Upper), color = "grey40") +
       geom_point(size = 1.6, color = "#0072B2") +
-      labs(x = "Hedges' g (posterior mean and 95% CrI per paper)", y = NULL,
+      labs(x = paste0("Hedges' g (posterior mean and ", intervalWords(type), " per paper)"), y = NULL,
            caption = "dashed line: overall posterior mean µ") +
       theme_minimal_hgrid(10)
   } else {
-    gd <- data.frame(Group = sub("^moderator", "", rownames(fx)),
-                     Estimate = fx[, "Estimate"], Lower = fx[, "Q2.5"], Upper = fx[, "Q97.5"])
+    md <- bmlMeanDraws(fit)
+    iv <- t(apply(md, 2, drawsInterval, type = type))
+    gd <- data.frame(Group = colnames(md), Estimate = colMeans(md),
+                     Lower = iv[, "lower"], Upper = iv[, "upper"])
     gd <- gd[order(gd$Estimate), ]
     gd$Group <- factor(gd$Group, levels = gd$Group)
     ggplot(gd, aes(x = Estimate, y = Group)) +
       geom_vline(xintercept = 0, color = "grey60") +
       geom_linerange(aes(xmin = Lower, xmax = Upper), color = "grey40") +
       geom_point(size = 2.4, color = "#D55E00") +
-      labs(x = "Hedges' g (posterior mean and 95% CrI per moderator group)", y = NULL) +
+      labs(x = paste0("Hedges' g (posterior mean and ", intervalWords(type), " per moderator group)"),
+           y = NULL) +
       theme_minimal_hgrid(12)
   }
 }
@@ -329,28 +333,20 @@ bmlDensityPlot <- function(fit) {
 ## the posterior predictive replicates, which take an explicit seed.
 
 ## The shortest interval holding `level` of the draws (highest-density interval;
-## exact for a unimodal posterior).  Reported beside the equal-tailed interval.
-bmlHdi <- function(x, level = 0.95) {
-  x <- sort(as.numeric(x)); n <- length(x); k <- ceiling(level * n)
-  w <- x[k:n] - x[seq_len(n - k + 1)]
-  j <- which.min(w)
-  c(lower = x[j], upper = x[j + k - 1])
-}
+## exact for a unimodal posterior); see drawsInterval() (HelperFunctions.R)
+bmlHdi <- function(x, level = 0.95) drawsInterval(x, "hdi", level)
 
 ## Prediction interval for the TRUE effect of a new effect size in a new paper:
 ## the mean plus both heterogeneity sources.  Given one draw it is
 ## Normal(mu, sqrt(tau_paper^2 + tau_es^2)); across draws it is the mixture of
-## those normals, whose quantiles are found by root-finding on the mixture CDF.
-## No extra random numbers are drawn, so the interval is the same every time
-## for the same fit.
-bmlPredictionInterval <- function(mu, tauPaper, tauEs, level = 0.95) {
+## those normals; the interval of the chosen kind comes from its CDF
+## (cdfInterval()).  No extra random numbers are drawn, so the interval is the
+## same every time for the same fit.
+bmlPredictionInterval <- function(mu, tauPaper, tauEs, level = 0.95, type = "eti") {
   s   <- sqrt(tauPaper^2 + tauEs^2)
-  p   <- c((1 - level) / 2, 1 - (1 - level) / 2)
   cdf <- function(x) mean(stats::pnorm(x, mu, s))
-  brk <- c(min(mu - 6 * s), max(mu + 6 * s))
-  q   <- vapply(p, function(pp)
-    stats::uniroot(function(x) cdf(x) - pp, brk, tol = 1e-8)$root, numeric(1))
-  c(mean = mean(mu), lower = q[1], upper = q[2])
+  q   <- cdfInterval(cdf, c(min(mu - 6 * s), max(mu + 6 * s)), type, level)
+  c(mean = mean(mu), lower = q[["lower"]], upper = q[["upper"]])
 }
 
 ## Draws of the mean parameter(s), one column per mean: "µ (overall mean)" for
@@ -374,22 +370,12 @@ bmlTauDraws <- function(fit) {
   cbind(paper = m[, "sd_Paper__Intercept"], es = m[, "sd_ID__Intercept"])
 }
 
-## 95% highest-density intervals for the parameters of bmlSummaryTable(), in its
-## row order
-bmlHdiTable <- function(fit) {
-  dr <- cbind(bmlMeanDraws(fit), bmlTauDraws(fit))
-  h <- t(apply(dr, 2, bmlHdi))
-  data.frame(Parameter = bmlSummaryTable(fit)$Parameter,
-             `HDI lower` = h[, "lower"], `HDI upper` = h[, "upper"],
-             check.names = FALSE, row.names = NULL)
-}
-
 ## Prediction interval per mean parameter (overall, or per moderator level, each
 ## with the model's common heterogeneity SDs)
-bmlPredictionTable <- function(fit, level = 0.95) {
+bmlPredictionTable <- function(fit, level = 0.95, type = "hdi") {
   md <- bmlMeanDraws(fit); td <- bmlTauDraws(fit)
   rows <- lapply(colnames(md), function(g)
-    bmlPredictionInterval(md[, g], td[, "paper"], td[, "es"], level))
+    bmlPredictionInterval(md[, g], td[, "paper"], td[, "es"], level, type))
   out <- data.frame(Mean = colnames(md), do.call(rbind, rows), row.names = NULL)
   names(out) <- c(if (ncol(md) == 1) "Parameter" else "Moderator level",
                   "Posterior mean", sprintf("%g%% PI lower", 100 * level),
@@ -398,21 +384,20 @@ bmlPredictionTable <- function(fit, level = 0.95) {
 }
 
 ## Difference between two moderator levels' means (levelA - levelB) from the
-## draws: posterior mean, SD, equal-tailed and highest-density 95% intervals, and
-## the posterior probability that the difference is above zero.  NULL if either
+## draws: posterior mean, SD, the 95% interval of the chosen kind, and the
+## posterior probability that the difference is above zero.  NULL if either
 ## level is not in the fitted model.
-bmlContrast <- function(fit, levelA, levelB) {
+bmlContrast <- function(fit, levelA, levelB, type = "hdi") {
   md <- bmlMeanDraws(fit)
   if (!all(c(levelA, levelB) %in% colnames(md)) || identical(levelA, levelB)) return(NULL)
   x <- md[, levelA] - md[, levelB]
-  h <- bmlHdi(x)
-  list(draws = x,
-       table = data.frame(Contrast = paste(levelA, "−", levelB),
-                          `Posterior mean` = mean(x), SD = stats::sd(x),
-                          `2.5%` = unname(stats::quantile(x, .025)),
-                          `97.5%` = unname(stats::quantile(x, .975)),
-                          `HDI lower` = h[["lower"]], `HDI upper` = h[["upper"]],
-                          `P(> 0)` = mean(x > 0), check.names = FALSE))
+  h <- drawsInterval(x, type)
+  tab <- data.frame(Contrast = paste(levelA, "−", levelB),
+                    `Posterior mean` = mean(x), SD = stats::sd(x),
+                    lower = h[["lower"]], upper = h[["upper"]],
+                    `P(> 0)` = mean(x > 0), check.names = FALSE)
+  names(tab)[4:5] <- intervalNames(type)
+  list(draws = x, table = tab)
 }
 
 ## Posterior predictive replicates with NEW random effects ("mixed" predictive
@@ -472,22 +457,24 @@ bmlSamplingVar <- function(fit) {
 
 ## Each effect size's observed value and 95% sampling interval beside its
 ## posterior (shrunken) true effect and 95% credible interval
-bmlShrinkage <- function(fit) {
+bmlShrinkage <- function(fit, type = "hdi") {
   th <- brms::posterior_epred(fit)
+  iv <- t(apply(th, 2, drawsInterval, type = type))
   d  <- fit$data
   data.frame(ID = as.character(d$ID), Paper = as.character(d$Paper),
              Group = if ("moderator" %in% names(d)) as.character(d$moderator) else "",
              observed = d$es, se = sqrt(bmlSamplingVar(fit)),
              posterior = colMeans(th),
-             lower = apply(th, 2, stats::quantile, .025),
-             upper = apply(th, 2, stats::quantile, .975),
-             stringsAsFactors = FALSE, row.names = NULL)
+             lower = iv[, "lower"], upper = iv[, "upper"],
+             stringsAsFactors = FALSE, row.names = NULL) |>
+    structure(intervalType = type)
 }
 
 ## Forest plot of bmlShrinkage(): each effect size's observed value with its 95%
 ## sampling interval (open circle, grey) and its posterior estimate with its 95%
 ## credible interval (filled circle, black), grouped by moderator level if any
 bmlShrinkageForest <- function(sh) {
+  ty <- if (is.null(attr(sh, "intervalType"))) "hdi" else attr(sh, "intervalType")
   sh <- sh[order(sh$Group, sh$Paper, sh$observed), ]
   ## one row per effect size, labelled by its paper (repeats made unique with
   ## invisible trailing spaces, so a paper's rows share its label)
@@ -505,7 +492,8 @@ bmlShrinkageForest <- function(sh) {
                position = position_nudge(y = -0.2)) +
     labs(x = "Hedges' g", y = NULL,
          caption = paste("open circle, grey: observed effect size and 95% sampling interval;",
-                         "filled circle, black: posterior estimate and 95% credible interval")) +
+                         "filled circle, black: posterior estimate and",
+                         intervalWords(ty))) +
     theme_minimal(base_size = 9) +
     theme(panel.grid.major.y = element_blank(), panel.grid.minor = element_blank())
   if (any(nzchar(sh$Group)))

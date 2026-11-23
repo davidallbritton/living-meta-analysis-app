@@ -155,7 +155,7 @@ bmlModel <- reactive({
 ## the plots are named outputs with height = "auto" containers, so the tall
 ## per-paper forest cannot overlap the content below it
 output$bmlForestOut <- renderPlot({
-  bmlForestPlot(bmlModel())
+  bmlForestPlot(bmlModel(), ciType())
 }, height = function() max(400, length(unique(as.character(MAml()$Paper))) * 14 + 120))
 output$bmlDensOut <- renderPlot({ bmlDensityPlot(bmlModel()) }, height = 350)
 
@@ -190,13 +190,12 @@ output$bmlContent <- renderUI({
     p(tags$b("Overall model (no moderator), using the priors as of the last recalculation.")),
     p(tags$small(bmlDiagnosticsText(fit))),
     h4("Posterior summary:"),
-    renderTable(bmlSummaryWithHdi(fit), digits = 3),
-    p(tags$small("2.5% and 97.5%: equal-tailed 95% credible interval; HDI: the shortest",
-                 "interval holding 95% of the posterior.")),
+    renderTable(bmlSummaryTable(fit, ciType()), digits = 3),
+    p(tags$small(intervalNote(ciType()))),
     h4("Prediction interval for a new study's true effect:"),
-    renderTable(bmlPredictionTable(fit), digits = 3),
-    p(tags$small(bmlPredictionNote)),
-    h4("Per-paper posterior estimates (95% CrI):"),
+    renderTable(bmlPredictionTable(fit, type = ciType()), digits = 3),
+    p(tags$small(bmlPredictionNote, intervalNote(ciType()))),
+    h4(paste0("Per-paper posterior estimates (", intervalWords(ciType()), "):")),
     plotOutput("bmlForestOut", height = "auto"),
     h4("Posterior densities:"),
     plotOutput("bmlDensOut", height = "350px"),
@@ -230,7 +229,7 @@ bmlRegModel <- reactive({
   isolate(bmlFitOrCache(MAml(), snap, snap$moderatorName))
 })
 
-output$bmlRegForestOut <- renderPlot({ bmlForestPlot(bmlRegModel()) }, height = 300)
+output$bmlRegForestOut <- renderPlot({ bmlForestPlot(bmlRegModel(), ciType()) }, height = 300)
 output$bmlRegDensOut <- renderPlot({ bmlDensityPlot(bmlRegModel()) }, height = 350)
 
 output$bmlRegContent <- renderUI({
@@ -243,15 +242,14 @@ output$bmlRegContent <- renderUI({
                     " (per-group posterior means), using the settings as of the last recalculation."))),
     p(tags$small(bmlDiagnosticsText(fit))),
     h4("Posterior summary:"),
-    renderTable(bmlSummaryWithHdi(fit), digits = 3),
-    p(tags$small("2.5% and 97.5%: equal-tailed 95% credible interval; HDI: the shortest",
-                 "interval holding 95% of the posterior.")),
+    renderTable(bmlSummaryTable(fit, ciType()), digits = 3),
+    p(tags$small(intervalNote(ciType()))),
     h4("Contrast between two moderator levels:"),
     uiOutput("bmlRegContrastOut"),
     h4("Prediction intervals for a new study's true effect, per level:"),
-    renderTable(bmlPredictionTable(fit), digits = 3),
-    p(tags$small(bmlPredictionNote)),
-    h4("Per-group posterior means (95% CrI):"),
+    renderTable(bmlPredictionTable(fit, type = ciType()), digits = 3),
+    p(tags$small(bmlPredictionNote, intervalNote(ciType()))),
+    h4(paste0("Per-group posterior means (", intervalWords(ciType()), "):")),
     plotOutput("bmlRegForestOut", height = "300px"),
     h4("Posterior densities:"),
     plotOutput("bmlRegDensOut", height = "350px"),
@@ -291,11 +289,6 @@ bmlPredictionNote <- paste(
   "heterogeneity (between papers and within papers).  Computed exactly from the posterior",
   "draws, without further simulation.")
 
-## posterior summary with the 95% HDI appended
-bmlSummaryWithHdi <- function(fit) {
-  cbind(bmlSummaryTable(fit), bmlHdiTable(fit)[, c("HDI lower", "HDI upper")])
-}
-
 ## the extras section: shrinkage forest, triplot, and posterior predictive checks
 ## on request.  prefix "bml" = overall tab (model bmlModel()), "bmlReg" =
 ## regression tab (bmlRegModel()).
@@ -323,7 +316,7 @@ bmlExtrasUI <- function(prefix) {
 
 bmlExtrasServer <- function(prefix, model) {
   output[[paste0(prefix, "ShrinkOut")]] <- renderPlot({
-    bmlShrinkageForest(bmlShrinkage(model()))
+    bmlShrinkageForest(bmlShrinkage(model(), ciType()))
   }, height = function() max(300, nrow(MAml()) * 13 + 120))
 
   triplotTarget <- reactive({
@@ -390,12 +383,13 @@ output$bmlRegContrastOut <- renderUI({
   lv <- contrastLevels()
   if (is.null(lv)) return(p(tags$small('To compare two levels, choose them under "Contrast between',
                                        'two levels" in the "Moderator Selection" tab.')))
-  ct <- bmlContrast(fit, lv[1], lv[2])
+  ct <- bmlContrast(fit, lv[1], lv[2], ciType())
   if (is.null(ct)) return(p(tags$small(paste0(
     "The chosen levels are not both in this model (fitted for the moderator \"",
     isolate(myrvs$bayesSnapshot$moderatorName), "\" at the last recalculation).  Choose two of its",
     " levels, or recalculate after changing the moderator."))))
   tagList(renderTable(ct$table, digits = 3),
           p(tags$small("Computed from the posterior draws of the two level means.  P(> 0): the",
-                       "posterior probability that level A's mean exceeds level B's.")))
+                       "posterior probability that level A's mean exceeds level B's.",
+                       intervalNote(ciType()))))
 })

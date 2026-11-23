@@ -54,6 +54,11 @@ server <- function(input, output, session) {
   myrvs$previousPlots <- list()
   myrvs$previousModels <- list()
 
+  ## the kind of 95% credible interval every Bayesian result reports ("hdi" or
+  ## "eti"; "Prior specifications" tab).  A display setting: it refits nothing and
+  ## applies at once (see intervalType() in HelperFunctions.R)
+  ciType <- reactive(intervalType(input$intervalType))
+
   myrvs$nfiles <- 0
     observe({
     if(is.null(input$DataFileUp)){   #this trigger works because input$DataFileUp gets initialized to null when the app first loads, which triggers the observer
@@ -1121,10 +1126,16 @@ server <- function(input, output, session) {
   # Forest plot panel height
   forest_height <- reactive(length(bma()$y) * 25 + 200)
   
+  # the bma() model with its 95% intervals of the chosen kind (recomputed from the
+  # fitted posterior, nothing refitted; bayesmeta's own default is the HDI)
+  bmaShown <- reactive(bayesmetaIntervals(bma(), ciType()))
+
   # Forest Plot panel
   output$forest <- renderPlot({
-    forestplot.bayesmeta(bma(), xlab = "Hedges' g")
+    forestplot.bayesmeta(bmaShown(), xlab = "Hedges' g")
   }, height = forest_height)
+  output$forestIntervalNote <- renderUI(p(tags$small(intervalNote(ciType()),
+    "Shown for each study's shrunken estimate, the mean and the prediction.")))
   
   # Funnel Plot panel
   output$funnel <- renderPlot({
@@ -1135,8 +1146,10 @@ server <- function(input, output, session) {
     bma()$bayesfactor[1,]
   })
   output$summary <- renderPrint({
-    bma()$summary
+    bayesmetaSummaryTable(bma(), ciType())
   })
+  output$summaryIntervalNote <- renderUI(p(tags$small(intervalNote(ciType()),
+    "theta: the prediction for a new study.")))
   output$ML <- renderPrint({
     bma()$ML
   })
@@ -1370,7 +1383,7 @@ server <- function(input, output, session) {
     },
     content = function (file) {
       Source <- loadedFilesTable()    # data set, data file, sharing table, selections file
-      Bayesmeta.Summary <- req(as.data.frame(bma()$summary))
+      Bayesmeta.Summary <- req(as.data.frame(bayesmetaSummaryTable(bma(), ciType())))
       Bayesmeta.Summary$statistic <-   row.names(Bayesmeta.Summary) 
       Bayesmeta.Summary <- select(Bayesmeta.Summary, statistic, tau, mu, theta)
       Bayesmeta.Call <- capture.output(bma()$call) %>% paste(collapse = "") %>% as.data.frame() 

@@ -100,15 +100,16 @@ if (calculate_bma == "Yes") {   # reuse the same on/off switch used for the bma(
                             mupriormean = mupriormean, mupriorsd = mupriorsd)
 
   ## marginal posterior summary (tau + one column per moderator group)
-  print(bmrModel$summary)
+  print(bmrSummaryTable(bmrModel, interval_type))
 
   ## grouped forest plot with a Bayesian posterior polygon per moderator group
-  forestBmrByGroup(bmrModel, MA = MA_aggregated, moderator = MA_aggregated[["%s"]],
+  forestBmrByGroup(bmrIntervals(bmrModel, interval_type), MA = MA_aggregated, moderator = MA_aggregated[["%s"]],
                    xlab = "Hedges g", efac = %s)
 
   ## contrast between two moderator levels (A - B): exact posterior, with P(> 0)
   if (length(contrastLevels) == 2)
-    print(bmrContrast(bmrModel, MA_aggregated[["%s"]], contrastLevels[1], contrastLevels[2]))
+    print(bmrContrast(bmrModel, MA_aggregated[["%s"]], contrastLevels[1], contrastLevels[2],
+                      interval_type))
 }
 ', moderatorChosen, moderatorChosen, efacBmr, moderatorChosen)
 
