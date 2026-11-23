@@ -85,6 +85,9 @@ at the repository root (which is why `shiny::runGitHub("living-meta-analysis-app
   plus the app title, the Explanation tab's "This updated version" text and "Updated:" date,
   and README.md's citation, when releasing.  Keep
   `CITATION.cff` / `.zenodo.json` version fields in step with releases.
+- Record each release's changes in the version history at the top of `global.R`.  The
+  Explanation tab's "This updated version" list says only what is new compared with the
+  app described in the 2024 paper, not what changed between releases.
 - The automated test suite is maintained in the author's private working repository and
   is not part of this published tree.  Boot-check with `shiny::runApp` before finishing.
 - Deployment is via rsconnect to shinyapps.io; `rsconnect/` is gitignored (deployment

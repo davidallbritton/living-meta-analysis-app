@@ -1,6 +1,81 @@
 ################### A General Tool for Living Meta-Analysis #################
 # v.1.6 2026.11.22
 ####################################################################################
+#
+# Version history.  The Explanation tab lists only what is new compared with the app
+# described in the 2024 paper; the changes between releases are recorded here.
+#
+# v1.3 (earliest in this repository) and v1.4
+#   Meta-regression with a categorical moderator (frequentist and Bayesian); the
+#   Descriptives tab; live study counts in the selection criteria; the curated
+#   collection of data files; saving and loading of selection settings; multilevel
+#   analyses (frequentist CHE and Bayesian brms three-level models, each with a
+#   moderator-regression variant) in their own tabs beside the standard aggregated
+#   ones, with downloadable R code for both families.  v1.4: the "Include this tab in
+#   the analysis" checkbox on each results tab, which marks the tab in the tab strip,
+#   labels its section of the downloaded R code, and is saved in the selections file.
+#
+# v1.5
+#   The standard (aggregated) frequentist random-effects models -- the overall model,
+#   the subgroup models and the test of subgroup differences -- use Knapp-Hartung
+#   tests and intervals with the scaling factor truncated at 1 (metafor test =
+#   "adhoc") instead of Wald z tests, so their intervals are never narrower, and
+#   usually wider, than in v1.4.  The test of subgroup differences is reported as an
+#   F test with both degrees of freedom in both regression tabs (the multilevel test
+#   was already an F test but had been labelled Q).  Multilevel and Bayesian models
+#   unchanged; the stated fitting times of the Bayesian multilevel models corrected.
+#
+# v1.5.1
+#   Precomputed Bayesian results for the default data also load instantly with
+#   "Aggregate over" set to Papers (rounding differences between computers had
+#   stopped them from matching, see sameMAData()); on the hosted app the Bayesian
+#   multilevel models for the default data are precomputed too.  No results change.
+#
+# v1.5.2
+#   A within-subject study entered in "Add a Study" from means with both SDs gets the
+#   mean difference divided by sqrt((SD1^2 + SD2^2)/2) (metafor SMCRPH), with the
+#   variance for unequal SDs; earlier versions divided by the SD of the difference
+#   scores (SMCC), a different metric that inflated these effect sizes whenever
+#   r > .5.  Standard errors entered for a within-subject study are converted to SDs
+#   with the total N.  Studies added earlier keep their stored values.  The
+#   Explanation tab states the metric of each effect-size measure and lists
+#   references.  Uploaded and curated data files analyse as before.
+#
+# v1.6
+#   * Sharing table (sharing_server.R): an optional structured sampling covariance
+#     for the multilevel models -- only effect sizes computed from overlapping data
+#     are correlated; the largest valid rho for the selection is shown, and fits
+#     above it are refused.  Without a sharing table these models are as in v1.5.2.
+#   * Regression tabs: a contrast between two chosen moderator levels (Bayesian tabs
+#     with P(> 0)).  In both frequentist regression tabs each subgroup's estimate now
+#     comes from one shared model with a mean per level (fitCheCellMeans() /
+#     fitRmaCellMeans(), the model the test of subgroup differences already used)
+#     instead of a separate model per subgroup, so these estimates differ from
+#     v1.5.2; the standard tab still shows each subgroup's own heterogeneity, for
+#     description, and a table of the estimates is added under each plot.
+#   * Bayesian multilevel tabs: HDIs, prediction intervals, a shrinkage forest plot,
+#     a prior-likelihood-posterior plot and posterior predictive checks.
+#   * Selections: restored selections that leave out rows only because the data
+#     changed since saving get a dialog offering to include them; saved files record
+#     the data at save time.  Loading a data file resets the output-tab ticks and the
+#     Descriptives crosstabs.
+#   * Data files: one reader for uploads, curated files and a configured copy's
+#     default (readDataFile()); curated entries can bring a sharing table, saved
+#     selections and precomputed results (index columns sharing, selections,
+#     precomputed; a local index can override the released one); a configured copy
+#     names its defaults in data/default_data.txt, default_sharing.txt,
+#     default_selections.txt and default_precomputed.txt.  After a data file loads,
+#     one dialog offers its sharing table and selections.
+#   * Loaded-files record (loadedFiles_server.R): a "Loaded now" box, a header naming
+#     the files the displayed results come from, and the same record in the
+#     downloads and the R script's header.
+#   * Precomputed results (precomputed_server.R): read at first use, attached per
+#     data source and released when the data changes; "Saved Plots and Models"
+#     downloads keep only the current data's results; saved models no longer carry
+#     the session or the brms template store (fitBayesmeta(), tauPriorFunction()).
+#   * Inputs carry password-manager "ignore" markers (ui.R).
+#
+####################################################################################
 
 # Load required packages and source helper functions #----
 library(purrr)
