@@ -27,6 +27,8 @@ observe({   #update the meta-regression plot code when a moderator is selected
   if (run_aggregated == "Yes") {
     forestByGroup(MA=MA_aggregated, moderator=MA_aggregated[["', moderatorChosen, '"]],
                   ', sharedArgs, ', multilevel=FALSE)
+    ## the overall model\'s heterogeneity and the test for subgroup differences
+    cat(forestByGroupStats(MA_aggregated, MA_aggregated[["', moderatorChosen, '"]]), sep = "\n")
     ## each level\'s mean from the shared model (one tau^2 for all levels,
     ## Knapp-Hartung), with each level\'s own heterogeneity for description
     print(rmaCellMeans(MA_aggregated, MA_aggregated[["', moderatorChosen, '"]]))
@@ -47,6 +49,8 @@ observe({   #update the meta-regression plot code when a moderator is selected
   if (run_multilevel == "Yes") {
     forestByGroup(MA=MA_multilevel, moderator=MA_multilevel[["', moderatorChosen, '"]],
                   ', sharedArgs, ', multilevel=TRUE, rho=rhoCHE, sharing=sharingTable)
+    cat(forestByGroupStats(MA_multilevel, MA_multilevel[["', moderatorChosen, '"]], multilevel = TRUE,
+                           rho = rhoCHE, sharing = sharingTable), sep = "\n")
     ## each level\'s mean from one model with a mean per level (CR2 / Satterthwaite)
     print(cheCellMeans(MA_multilevel, MA_multilevel[["', moderatorChosen, '"]],
                        rho = rhoCHE, sharing = sharingTable))

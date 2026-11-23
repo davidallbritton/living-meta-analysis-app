@@ -188,7 +188,9 @@ output$metaRegressionOutputUI <- renderUI({
       condition = "input.includeModerator == 'Yes'",
       tagList(
         renderText(paste("Moderator variable is:  ", moderatorName)),
-        renderPlot({
+        # a minimum width: on a narrower window the plot scrolls sideways instead
+        # of squeezing its labels into the diamonds
+        div(style = "overflow-x: auto;", div(style = "min-width: 900px;", renderPlot({
           plot_args <- list(
             MA = MA,
             moderator = moderator,
@@ -218,7 +220,13 @@ output$metaRegressionOutputUI <- renderUI({
           ## For caterpillar plot, caterpillar=TRUE (not slab=NA)
           ## You can also add any other arguments that forest() allows
         }, 
-        height = freq_forest_height_mod()),    
+        height = freq_forest_height_mod()))),
+        # the overall model's statistics and the test for subgroup differences,
+        # as text that wraps with the window (forestByGroupStats())
+        renderUI({
+          st <- tryCatch(forestByGroupStats(MA, moderator), error = function(e) NULL)
+          if (!is.null(st)) p(tags$small(st[["overall"]], br(), st[["test"]]))
+        }),
         uiOutput("rmaCellMeansOut"),
         uiOutput("rmaContrastOut"),
         
@@ -279,7 +287,7 @@ output$metaRegressionMlOutputUI <- renderUI({
           "test for subgroup differences and the contrast: ONE shared three-level model with",
           "a mean for each subgroup and the same between-paper and within-paper variances for",
           "all of them (CR2 cluster-robust inference).")),
-        renderPlot({
+        div(style = "overflow-x: auto;", div(style = "min-width: 900px;", renderPlot({
           req(moderatorName)
           forestByGroup(MA = MAmlData, moderator = MAmlData[[moderatorName]],
                         col = "red", border = "red",
@@ -290,7 +298,15 @@ output$metaRegressionMlOutputUI <- renderUI({
                         rho = req(myrvs$bayesSnapshot)$rhoCHE,
                         sharing = myrvs$bayesSnapshot$sharing)
         },
-        height = freq_forest_height_mlreg()),
+        height = freq_forest_height_mlreg()))),
+        renderUI({
+          req(moderatorName)
+          snap <- req(myrvs$bayesSnapshot)
+          st <- tryCatch(forestByGroupStats(MAmlData, MAmlData[[moderatorName]], multilevel = TRUE,
+                                            rho = snap$rhoCHE, sharing = snap$sharing),
+                         error = function(e) NULL)
+          if (!is.null(st)) p(tags$small(st[["overall"]], br(), st[["test"]]))
+        }),
         uiOutput("cheCellMeansOut"),
         uiOutput("cheContrastOut")
       )

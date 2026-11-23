@@ -284,7 +284,6 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
   spaceAbove <- 2
   groupSpace <-  spaceBelow + spaceAbove     # space around each group for group summary; 2 above and 2 below
   belowGroup <- -1.5   # how far below the group data to put the group summary
-  belowPlot <-  -2.5     # how far below plot to put the meta-regression summary
   topSpace  <-  2      # how much room to leave at the top for labels
   #
   ### Things you probably do not want to change:
@@ -332,7 +331,7 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
   args_list$ylim <- c(-2, totalHeight)
   args_list$order <- moderator
   args_list$rows <- rowsVector
-  args_list$mlab <- mlabfun(overallLabel, fma)
+  args_list$mlab <- overallLabel    # its statistics: forestByGroupStats()
   args_list$header <- header
   args_list$addpred <- addpred
   if(caterpillar) args_list$slab <- NA
@@ -404,28 +403,39 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
   }
   
 
-  # add model testing moderator (multilevel: CHE model, so QM/QMp below are the
-  # cluster-robust F test of the subgroup differences; two-level: the F test
-  # from the ad hoc Knapp-Hartung adjustment)
-  fmaMod <- if (multilevel) {
-    fitMultilevelCHE(MA, mods = ~ moderator, rho = rho, sharing = sharing)
-  } else {
-    rma(MA$es, MA$var, mods = ~ moderator, test = "adhoc")
-  }
-  #
-  ### add text for the test of subgroup differences (an F test with two df
-  ### unless the model used z tests, in which case QM is chi-square)
-  testStat <- if (fmaMod$test == "z") {
-    bquote(paste(Q[M], " = ", .(fmtx(fmaMod$QM, digits=2)), ", df = ", .(fmaMod$QMdf[1])))
-  } else {
-    bquote(paste(F, "(", .(fmaMod$QMdf[1]), ", ", .(fmtx(fmaMod$QMdf[2], digits=1)), ") = ",
-                 .(fmtx(fmaMod$QM, digits=2))))
-  }
-  text(usr[1], belowPlot, pos=4, cex=cex, xpd=TRUE,
-       bquote(paste("Test for subgroup differences (shared model): ", .(testStat), ", ",
-                    .(fmtp(fmaMod$QMp, digits=2, pname="p", add0=TRUE, sep=TRUE, equal=TRUE)))))
+  # The statistics of the overall model and the test for subgroup differences are
+  # not drawn in the plot, where they collided with the diamonds and the x axis on
+  # narrow screens: forestByGroupStats() gives them as text to print beside it.
+  invisible(NULL)
 }
 ###### end of forestByGroup() function
+
+## The statistics that go with forestByGroup()'s plot, as plain text: the
+## heterogeneity of the model for all studies without the moderator (its bottom
+## diamond), and the test for subgroup differences from the shared model (an F
+## test with both degrees of freedom; Q_M, chi-square, if the model used z tests).
+forestByGroupStats <- function(MA, moderator, multilevel = FALSE, rho = 0.5, sharing = NULL) {
+  d <- MA
+  d$moderator <- droplevels(factor(as.character(moderator)))
+  pv <- function(p) fmtp(p, digits = 3, pname = "p", add0 = TRUE, sep = TRUE, equal = TRUE)
+  if (multilevel) {
+    fma <- fitMultilevelCHE(d, rho = rho, sharing = sharing)
+    fmaMod <- fitMultilevelCHE(d, mods = ~ moderator, rho = rho, sharing = sharing)
+    overall <- sprintf("Multilevel model for all studies, no moderator: Q = %s, df = %d, %s; \u03c3\u00b2 between papers = %s, \u03c3\u00b2 within papers = %s",
+                       fmtx(fma$QE, digits = 2), fma$k - fma$p, pv(fma$QEp),
+                       fmtx(fma$sigma2[1], digits = 2), fmtx(fma$sigma2[2], digits = 2))
+  } else {
+    fma <- metafor::rma(d$es, d$var, test = "adhoc")
+    fmaMod <- metafor::rma(es, var, mods = ~ moderator, data = d, test = "adhoc")
+    overall <- sprintf("RE model for all studies, no moderator: Q = %s, df = %d, %s; I\u00b2 = %s%%, \u03c4\u00b2 = %s",
+                       fmtx(fma$QE, digits = 2), fma$k - fma$p, pv(fma$QEp),
+                       fmtx(fma$I2, digits = 1), fmtx(fma$tau2, digits = 2))
+  }
+  stat <- if (fmaMod$test == "z") sprintf("Q_M = %s, df = %d", fmtx(fmaMod$QM, digits = 2), fmaMod$QMdf[1])
+          else sprintf("F(%d, %s) = %s", fmaMod$QMdf[1], fmtx(fmaMod$QMdf[2], digits = 1), fmtx(fmaMod$QM, digits = 2))
+  c(overall = overall,
+    test = sprintf("Test for subgroup differences (shared model): %s, %s", stat, pv(fmaMod$QMp)))
+}
 
 
 ##################### Bayesian meta-regression with one categorical moderator
