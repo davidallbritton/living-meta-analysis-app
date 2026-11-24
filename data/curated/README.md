@@ -67,3 +67,17 @@ If an entry (the same data file with the same selections file, or with none in
 both) is listed in both, the row in `curated_index_local.csv` replaces the one in
 `curated_index.csv`, so a local copy can, for example, give a released file a
 sharing table.
+
+**Local files are deployed unless you exclude them.**  "Local" means only "not in
+git": `rsconnect::deployApp()` uploads every file in the app folder and ignores
+`.gitignore` and `.git/info/exclude` (the release relies on this to ship the
+default data's git-ignored `bml.RDS` and `plots.RDS`).  So in a folder that also
+holds a project's local files, a deployment of the public app would include
+`curated_index_local.csv`, which can mark that project's data as the default, and
+every local data file.  To prevent this, list each local file and folder in
+`data/curated/.rscignore`: one name per line, no wildcards, and only names in
+this folder (rsconnect's rules).  Keep `.rscignore` itself out of git, and add
+each new local file to it.  Check what would be uploaded with
+`rsconnect::listDeploymentFiles(".")`.  A configured copy that is meant to deploy
+its local index and files (a published project's living version) needs no
+`.rscignore` for them.

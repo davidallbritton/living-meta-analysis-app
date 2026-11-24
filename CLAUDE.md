@@ -101,6 +101,16 @@ at the repository root (which is why `shiny::runGitHub("living-meta-analysis-app
   precomputed folder (for the default data,
   `data/curated/vasilev_reading_noise_2023_update_precomputed/bml.RDS`; fit locally,
   download from Saved Plots and Models) so cached requests need no server-side Stan.
+- **Deploying uploads git-ignored files.**  rsconnect bundles every file in the folder
+  except those named in a `.rscignore` (it ignores `.gitignore`).  A working copy that
+  also holds a project's local curated files (`curated_index_local.csv`, its data,
+  sharing tables, selections, precomputed folders) must list each of them in
+  `data/curated/.rscignore` (one name per line, no wildcards, that folder only; the file
+  itself stays out of git), or a public deployment would publish them and could open on
+  the project's data.  Before deploying, check `rsconnect::listDeploymentFiles(".")`.
+  When adding a local curated file, add it to `.rscignore` too.  A configured copy built
+  to deploy its own local files (a project's living version) is the exception.  See
+  `data/curated/README.md`.
 
 ## Roadmap: open items by difficulty
 
