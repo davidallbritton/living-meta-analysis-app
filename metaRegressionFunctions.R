@@ -581,5 +581,138 @@ forestBmrByGroup <- function(bmr, MA, moderator, slab = MA$study, cex = 1,
 
 
 ##############################################################################
+################ Small-study effects: funnel plots and Egger tests ##########
+# Funnel plots and regression tests for small-study effects that respect the
+# dependence among a paper's effect sizes (the method of the frequentist
+# multilevel tabs).  A plain funnel of every effect size treats several effect
+# sizes from one paper as several independent studies; here each paper is ONE
+# point, its effect sizes combined under the model's own sampling covariance.
+
+## Fewer papers than this and a regression test cannot separate chance from
+## asymmetry (Sterne et al., 2011); the per-level panels are not drawn either.
+smallStudyMinPapers <- 10
+
+## One point per paper (within each level of `group`, if given): the paper's effect
+## sizes combined by generalized least squares under the sampling covariance V the
+## CHE model uses (buildSamplingV(): the sharing table and rho), est =
+## (1'W y)/(1'W 1) with W = V^-1 and variance 1/(1'W 1), so the point carries the
+## precision the model gives the paper.  d: unaggregated rows (es, var, Paper, ID).
+funnelPoints <- function(d, group = NULL, rho = 0.5, sharing = NULL) {
+  V <- as.matrix(buildSamplingV(d, rho = rho, sharing = sharing))
+  g <- if (is.null(group)) rep("all effect sizes", nrow(d)) else as.character(group)
+  key <- paste(as.character(d$Paper), g, sep = "\r")
+  rows <- lapply(unique(key), function(k) {
+    i <- which(key == k)
+    W <- solve(V[i, i, drop = FALSE]); den <- sum(W)
+    data.frame(paper = as.character(d$Paper[i[1]]), group = g[i[1]], k = length(i),
+               est = sum(W %*% d$es[i]) / den, var = 1 / den, stringsAsFactors = FALSE)
+  })
+  out <- do.call(rbind, rows)
+  out$se <- sqrt(out$var)
+  out[order(out$group, out$paper), , drop = FALSE]
+}
+
+## Two funnel panels side by side on a common x axis, so each point sits at the
+## same place in both: (a) centred on the model's estimate, with the pseudo-95%
+## region (the conventional funnel plot: do the imprecise points fall to one
+## side?); (b) contour-enhanced, with the regions where a point's own result is
+## significant against no effect at p < .10, .05 and .01 (does a gap follow the
+## significance boundary?).  Both regions carry sampling error only.
+## pts: est, var, se (funnelPoints(), or one row per aggregated study).
+## setLayout = FALSE draws the two panels into a layout the caller has set up
+## (e.g. par(mfrow = c(nLevels, 2)) for one row per level), with the label in
+## the panel titles.
+funnelPair <- function(pts, centre, label = NULL, xlab = "Hedges' g (paper aggregate)",
+                       centreName = "the model's estimate", setLayout = TRUE) {
+  smax <- max(pts$se)
+  xl <- range(c(c(-1, 1) * stats::qnorm(.995) * smax,
+                centre + c(-1, 1) * stats::qnorm(.975) * smax, pts$est))
+  xl <- xl + c(-1, 1) * 0.04 * diff(xl)
+  if (setLayout) {
+    op <- graphics::par(mfrow = c(1, 2), oma = c(0, 0, if (is.null(label)) 0 else 2, 0))
+    on.exit(graphics::par(op))
+  }
+  ttl <- function(t) if (!setLayout && !is.null(label)) paste0(label, "\n", t) else t
+  metafor::funnel(x = pts$est, vi = pts$var, refline = centre, level = 95,
+                  shade = "white", back = "gray95", hlines = NULL, xlim = xl,
+                  xlab = xlab, main = ttl(paste("(a) Centred on", centreName)))
+  metafor::funnel(x = pts$est, vi = pts$var, refline = 0, level = c(90, 95, 99),
+                  shade = c("white", "gray60", "gray80"), back = "gray95", hlines = NULL,
+                  xlim = xl, xlab = xlab, main = ttl("(b) Significance contours about zero"))
+  graphics::abline(v = centre, lty = 2, lwd = 1.4, col = "gray30")
+  if (setLayout && !is.null(label)) graphics::mtext(label, outer = TRUE, font = 2, cex = 1.2)
+  invisible(xl)
+}
+
+## Every paper-by-level point on one scale, each centred on its own level's
+## inverse-variance weighted mean (of that level's plotted points), so levels
+## with different means do not read as asymmetry.  A picture of precision and
+## spread, not a test: no significance contours.
+funnelResiduals <- function(pts, label = NULL) {
+  ctr <- vapply(split(pts, pts$group), function(p) sum(p$est / p$var) / sum(1 / p$var), numeric(1))
+  r <- pts$est - as.numeric(ctr[pts$group])
+  lv <- names(sort(table(pts$group), decreasing = TRUE))
+  pal <- grDevices::hcl.colors(length(lv), "Dark 3")
+  metafor::funnel(x = r, vi = pts$var, refline = 0, level = 95, back = "gray95",
+                  shade = "white", hlines = NULL, pch = 21, col = "black",
+                  bg = pal[match(pts$group, lv)],
+                  xlab = "Hedges' g (paper aggregate), centred on its level's mean", main = label)
+  graphics::legend("topleft", legend = lv, pt.bg = pal, pch = 21, bty = "n", cex = 0.85, pt.cex = 1.1)
+  invisible(data.frame(pts, centre = as.numeric(ctr[pts$group]), residual = r))
+}
+
+## TRUE when d has a usable g-free sampling variance column, vi_gfree: the
+## variance evaluated at an effect size of zero, which does not depend on the
+## effect size itself (optional data-file column).
+hasGfreeVariance <- function(d) {
+  "vi_gfree" %in% names(d) && {
+    v <- suppressWarnings(as.numeric(as.character(d$vi_gfree)))
+    length(v) == nrow(d) && !anyNA(v) && all(v > 0)
+  }
+}
+
+## Modified Egger regression inside the CHE model: the same random effects and
+## sampling covariance as fitMultilevelCHE(), with a standard error added as a
+## moderator, and CR2 cluster-robust inference (Satterthwaite df).  The covariate
+## is the g-free standard error, sqrt(vi_gfree), when the data file has that
+## column; for a standardized mean difference the ordinary standard error depends
+## on g itself, so a regression on it finds a slope by construction (Pustejovsky &
+## Rodgers, 2019), and it is used only as a fallback, with a note.
+cheEgger <- function(d, rho = 0.5, sharing = NULL) {
+  gfree <- hasGfreeVariance(d)
+  d$seCovariate <- sqrt(if (gfree) as.numeric(as.character(d$vi_gfree)) else as.numeric(d$var))
+  m <- fitMultilevelCHE(d, rho = rho, mods = ~ seCovariate, sharing = sharing)
+  i <- which(rownames(m$beta) == "seCovariate")
+  data.frame(Covariate = if (gfree) "g-free SE (vi_gfree)" else "SE (no vi_gfree column)",
+             Slope = m$beta[i], SE = m$se[i], `95% CI lower` = m$ci.lb[i],
+             `95% CI upper` = m$ci.ub[i], df = m$ddf[i], t = m$zval[i], p = m$pval[i],
+             `Effect sizes` = nrow(d), Papers = length(unique(as.character(d$Paper))),
+             check.names = FALSE, row.names = NULL)
+}
+
+## The same test for each level of a moderator with at least smallStudyMinPapers
+## papers, each fitted to that level's effect sizes alone (NULL if none qualifies).
+cheEggerByLevel <- function(d, moderator, rho = 0.5, sharing = NULL) {
+  lv <- levels(droplevels(factor(as.character(moderator))))
+  nPap <- vapply(lv, function(l) length(unique(as.character(d$Paper[moderator == l]))), integer(1))
+  ok <- lv[nPap >= smallStudyMinPapers]
+  if (!length(ok)) return(NULL)
+  do.call(rbind, lapply(ok, function(l)
+    cbind(Level = l, cheEgger(d[moderator == l, , drop = FALSE], rho = rho, sharing = sharing))))
+}
+
+## Egger's regression test for the standard (aggregated) model: metafor::regtest()
+## on the model as fitted (Knapp-Hartung, so a t test), with the standard error as
+## predictor, and the limit estimate (the predicted effect at SE = 0).
+rmaEgger <- function(fit) {
+  r <- metafor::regtest(fit)
+  data.frame(Predictor = "SE", Slope = r$fit$beta[2], SE = r$fit$se[2],
+             statistic = r$zval, df = if (is.null(r$dfs)) NA_real_ else r$dfs, p = r$pval,
+             `Limit estimate` = r$est, `Limit 95% CI lower` = r$ci.lb, `Limit 95% CI upper` = r$ci.ub,
+             Studies = fit$k, check.names = FALSE, row.names = NULL)
+}
+
+
+##############################################################################
 ################ End of Functions for meta-regression ########################
 

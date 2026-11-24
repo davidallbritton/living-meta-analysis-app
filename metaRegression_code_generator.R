@@ -58,6 +58,17 @@ observe({   #update the meta-regression plot code when a moderator is selected
     if (length(contrastLevels) == 2)
       print(cheContrast(MA_multilevel, MA_multilevel[["', moderatorChosen, '"]],
                         contrastLevels[1], contrastLevels[2], rho = rhoCHE, sharing = sharingTable))
+    ## small-study effects by level: funnel plots (one point per paper) and the
+    ## modified Egger test for each level with at least smallStudyMinPapers papers,
+    ## then every paper-by-level point centred on its level\'s mean
+    modLevels <- as.character(MA_multilevel[["', moderatorChosen, '"]])
+    pts <- funnelPoints(MA_multilevel, modLevels, rho = rhoCHE, sharing = sharingTable)
+    cm <- cheCellMeans(MA_multilevel, modLevels, rho = rhoCHE, sharing = sharingTable)
+    for (l in names(which(table(pts$group) >= smallStudyMinPapers)))
+      funnelPair(pts[pts$group == l, ], centre = cm$Estimate[cm$Level == l], label = l,
+                 centreName = "the level mean")
+    print(cheEggerByLevel(MA_multilevel, modLevels, rho = rhoCHE, sharing = sharingTable))
+    funnelResiduals(pts)
   }')
   
   isolate({   # this updates the reactive value so it can be used outside this "observe" block

@@ -1494,15 +1494,67 @@ server <- function(input, output, session) {
   output$freq_forest_ml <- renderPlot({
     drawFreqForest(fmaMl())
   }, height = freq_forest_height_ml)
+  ## one point per paper, its effect sizes combined under the model's sampling
+  ## covariance (funnelPoints(), metaRegressionFunctions.R), not one per effect size
   output$freq_funnel_ml <- renderPlot({
-    funnel(fmaMl(), xlab = "Observed outcome")
+    snap <- req(myrvs$bayesSnapshot)
+    pts <- funnelPoints(MAml(), rho = snap$rhoCHE, sharing = snap$sharing)
+    funnelPair(pts, centre = as.numeric(fmaMl()$b[1]))
+  })
+  output$freq_egger_ml <- renderUI({
+    d <- MAml(); snap <- req(myrvs$bayesSnapshot)
+    nPap <- length(unique(as.character(d$Paper)))
+    if (nPap < smallStudyMinPapers)
+      return(p(tags$small(sprintf(paste("Egger's regression test: not run, %d papers (at least %d",
+                                        "are needed to separate chance from asymmetry)."),
+                                  nPap, smallStudyMinPapers))))
+    e <- tryCatch(cheEgger(d, rho = snap$rhoCHE, sharing = snap$sharing), error = function(e) e)
+    if (inherits(e, "error")) return(p(style = "color:#c0392b;", conditionMessage(e)))
+    eggerText(e, multilevel = TRUE)
   })
   
 
   # Funnel plot (frequentist)
   output$freq_funnel <- renderPlot({
-    funnel(fma(), xlab = "Observed outcome")
+    m <- fma()
+    funnelPair(data.frame(est = m$yi, var = m$vi, se = sqrt(m$vi)), centre = as.numeric(m$b),
+               xlab = "Hedges' g")
   })
+  output$freq_egger <- renderUI({
+    m <- fma()
+    if (m$k < smallStudyMinPapers)
+      return(p(tags$small(sprintf(paste("Egger's regression test: not run, %d studies (at least %d",
+                                        "are needed to separate chance from asymmetry)."),
+                                  m$k, smallStudyMinPapers))))
+    e <- tryCatch(rmaEgger(m), error = function(e) e)
+    if (inherits(e, "error")) return(p(style = "color:#c0392b;", conditionMessage(e)))
+    eggerText(e, multilevel = FALSE)
+  })
+  ## Egger test results as a sentence and a caveat (both frequentist tabs)
+  eggerText <- function(e, multilevel) {
+    pv <- function(p) fmtp(p, digits = 3, pname = "p", add0 = TRUE, sep = TRUE, equal = TRUE)
+    e[] <- lapply(e, function(v) if (is.numeric(v)) ifelse(abs(v) < .005, 0, v) else v)  # no "-0.00"
+    if (multilevel) {
+      gfree <- grepl("g-free", e$Covariate)
+      tagList(p(sprintf(paste("Modified Egger regression test (the CHE model with the %s as a moderator,",
+                              "CR2 cluster-robust): slope = %.2f, 95%% CI [%.2f, %.2f], t(%.2f) = %.2f, %s;",
+                              "%d effect sizes from %d papers."),
+                        if (gfree) "g-free standard error" else "standard error",
+                        e$Slope, e[["95% CI lower"]], e[["95% CI upper"]], e$df, e$t, pv(e$p),
+                        e[["Effect sizes"]], e$Papers)),
+              p(tags$small(if (gfree)
+                "The covariate is the square root of the data file's vi_gfree column, the sampling variance at an effect size of zero, which does not depend on the effect size (Pustejovsky & Rodgers, 2019)."
+                else "The data file has no vi_gfree column, so the covariate is the ordinary standard error. For standardized mean differences it depends on the effect size, which inflates the test's false-positive rate (Pustejovsky & Rodgers, 2019).")))
+    } else {
+      tagList(p(sprintf(paste("Egger's regression test (the standard error as predictor, %s): slope = %.2f,",
+                              "%s = %.2f, %s; limit estimate (the effect at a standard error of zero) %.2f,",
+                              "95%% CI [%.2f, %.2f]; %d studies."),
+                        if (is.na(e$df)) "z test" else "Knapp-Hartung t test", e$Slope,
+                        if (is.na(e$df)) "z" else sprintf("t(%d)", as.integer(e$df)), e$statistic, pv(e$p),
+                        e[["Limit estimate"]], e[["Limit 95% CI lower"]], e[["Limit 95% CI upper"]], e$Studies)),
+              p(tags$small("For standardized mean differences the standard error depends on the effect size, which inflates this test's false-positive rate (Pustejovsky & Rodgers, 2019). The Frequentist Multilevel tab's test uses the g-free standard error when the data file has a vi_gfree column.")))
+    }
+  }
 
   
   ## observer to signal when the "recalculate" button can be activated

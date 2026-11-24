@@ -541,8 +541,12 @@ if (run_aggregated == "Yes") {
   fma <- rma(MA_aggregated$es, MA_aggregated$var, slab=MA_aggregated$study, test="adhoc")
   output$freq_forest <- create_freq_forest(fma)
 @@LABEL:funnel_plot@@
-  # Funnel plot (frequentist)
-  output$freq_funnel <- funnel(fma, xlab = "Observed outcome")
+  # Funnel plots (frequentist): (a) centred on the estimate, (b) significance
+  # contours about zero (funnelPair() in the downloaded HelperFunctions.R)
+  funnelPair(data.frame(est = fma$yi, var = fma$vi, se = sqrt(fma$vi)), centre = as.numeric(fma$b),
+             xlab = "Hedges g")
+  # Egger regression test (standard error as predictor), with at least 10 studies
+  if (fma$k >= smallStudyMinPapers) print(rmaEgger(fma))
 }
 
 ######### frequentist analyses: multilevel CHE model (unaggregated data) #########
@@ -554,7 +558,14 @@ if (run_multilevel == "Yes") {
 @@LABEL:frequentist_multilevel@@
   fma_multilevel <- fitMultilevelCHE(MA_multilevel, rho = rhoCHE, sharing = sharingTable)
   output$freq_forest_multilevel <- create_freq_forest(fma_multilevel)
-  output$freq_funnel_multilevel <- funnel(fma_multilevel, xlab = "Observed outcome")
+  # Funnel plots: one point per paper, its effect sizes combined under the model
+  # sampling covariance (funnelPoints()); (a) centred on the estimate, (b) contours
+  funnelPair(funnelPoints(MA_multilevel, rho = rhoCHE, sharing = sharingTable),
+             centre = as.numeric(fma_multilevel$b[1]))
+  # Modified Egger test in the CHE model (g-free SE if the data have vi_gfree),
+  # with at least 10 papers
+  if (length(unique(MA_multilevel$Paper)) >= smallStudyMinPapers)
+    print(cheEgger(MA_multilevel, rho = rhoCHE, sharing = sharingTable))
 }
 
 

@@ -308,7 +308,8 @@ output$metaRegressionMlOutputUI <- renderUI({
           if (!is.null(st)) p(tags$small(st[["overall"]], br(), st[["test"]]))
         }),
         uiOutput("cheCellMeansOut"),
-        uiOutput("cheContrastOut")
+        uiOutput("cheContrastOut"),
+        uiOutput("cheSmallStudyOut")
       )
     )
   )
@@ -332,6 +333,63 @@ output$cheCellMeansOut <- renderUI({
                        "new paper.  With few papers at a level, df is small and the interval wide.")),
           renderTable(cm, digits = 3))
 })
+
+## small-study effects by moderator level: for each level with at least
+## smallStudyMinPapers papers, the two funnel panels (one point per paper in that
+## level, centred on the level's mean in the shared model) and the modified Egger
+## test fitted to that level's effect sizes; then every paper-by-level point,
+## centred on its level's mean (metaRegressionFunctions.R)
+cheSmallStudy <- reactive({
+  MAmlData <- MAml()
+  moderatorName <- input$moderator_variable
+  req(isTRUE(input$includeModerator == "Yes"), moderatorName %in% names(MAmlData))
+  snap <- req(myrvs$bayesSnapshot)
+  mod <- as.character(MAmlData[[moderatorName]])
+  pts <- funnelPoints(MAmlData, mod, rho = snap$rhoCHE, sharing = snap$sharing)
+  nPap <- table(pts$group)
+  ok <- names(nPap)[nPap >= smallStudyMinPapers]
+  cm <- if (length(ok)) cheCellMeans(MAmlData, mod, rho = snap$rhoCHE, sharing = snap$sharing)
+  list(pts = pts, nPap = nPap, ok = ok,
+       centres = if (length(ok)) setNames(cm$Estimate[match(ok, cm$Level)], ok),
+       egger = if (length(ok)) cheEggerByLevel(MAmlData, mod, rho = snap$rhoCHE, sharing = snap$sharing))
+})
+output$cheSmallStudyOut <- renderUI({
+  ss <- tryCatch(cheSmallStudy(), error = function(e) e)
+  if (inherits(ss, "error")) return(p(style = "color:#c0392b;", conditionMessage(ss)))
+  few <- ss$nPap[ss$nPap < smallStudyMinPapers]
+  tagList(
+    h4("Small-study effects by level"),
+    p(tags$small("One point per paper within each level: the paper's effect sizes at that level",
+                 "combined under the model's sampling covariance.  Funnel plots and the modified",
+                 sprintf("Egger test only for levels with at least %d papers;", smallStudyMinPapers),
+                 "each test is fitted to that level's effect sizes alone.  Panel (a) is centred on",
+                 "the level's mean in the shared model; panel (b) shows where a paper's own result",
+                 "is significant against no effect (p < .10, .05, .01).")),
+    if (length(few))
+      p(tags$small(paste0("Too few papers for a funnel plot or test: ",
+                          paste0(names(few), " (", as.integer(few), ")", collapse = ", "), "."))),
+    if (length(ss$ok)) tagList(
+      plotOutput("cheFunnelLevels", height = "auto"),
+      renderTable(ss$egger, digits = 3)),
+    h4("All papers, each centred on its level's mean"),
+    p(tags$small("Every paper-by-level point on one scale, centred on its level's inverse-variance",
+                 "weighted mean, so that levels with different means do not look like asymmetry.",
+                 "A picture of precision and spread; nothing is tested here.")),
+    plotOutput("cheFunnelResid", height = "auto")
+  )
+})
+output$cheFunnelLevels <- renderPlot({
+  ss <- cheSmallStudy(); req(length(ss$ok))
+  op <- par(mfrow = c(length(ss$ok), 2)); on.exit(par(op))
+  for (l in ss$ok) {
+    p1 <- ss$pts[ss$pts$group == l, ]
+    funnelPair(p1, centre = ss$centres[[l]], label = paste0(l, " (", nrow(p1), " papers)"),
+               centreName = "the level's mean", setLayout = FALSE)
+  }
+}, height = function() 420 * max(1, length(tryCatch(cheSmallStudy()$ok, error = function(e) NULL))))
+output$cheFunnelResid <- renderPlot({
+  funnelResiduals(cheSmallStudy()$pts)
+}, height = 500)
 
 ## contrast between two moderator levels in the frequentist multilevel model
 output$cheContrastOut <- renderUI({

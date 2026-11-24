@@ -75,6 +75,12 @@
 #     downloads keep only the current data's results; saved models no longer carry
 #     the session or the brms template store (fitBayesmeta(), tauPriorFunction()).
 #   * Inputs carry password-manager "ignore" markers (ui.R).
+#   * Small-study effects: both funnel plots get significance contours, with an
+#     Egger test; the multilevel tab's funnel has one point per paper (combined
+#     under the model's V; funnelPoints()) instead of one per effect size, and its
+#     test is the modified Egger regression inside the CHE model (cheEgger(): the
+#     g-free SE from an optional vi_gfree column); the multilevel regression tab
+#     adds per-level funnels and tests for levels with >= 10 papers.
 #
 ####################################################################################
 
