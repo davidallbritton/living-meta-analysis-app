@@ -55,9 +55,15 @@ maintained source of updated data for living meta-analyses.
 Rows appear in the dropdown in the order they are listed here, so put the most
 recently updated files first.
 
+Several entries can share one data file, each a different analysis of it: give
+each its own row with the same `filename`, its own `label` and `selections`, and,
+if it has them, its own `precomputed` folder.  An entry is identified by its data
+file and selections file together.
+
 A local copy can offer further files that are not part of the release: list them
 in `curated_index_local.csv` (same columns), which the app reads after
 `curated_index.csv`, and keep that file and its data files out of version control.
-If a file is listed in both, the row in `curated_index_local.csv` replaces the one
-in `curated_index.csv`, so a local copy can, for example, give a released file a
+If an entry (the same data file with the same selections file, or with none in
+both) is listed in both, the row in `curated_index_local.csv` replaces the one in
+`curated_index.csv`, so a local copy can, for example, give a released file a
 sharing table.

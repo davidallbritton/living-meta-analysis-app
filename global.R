@@ -119,9 +119,16 @@ source("bayesianMultilevelFunctions.R")   # brms three-level model + compiled-te
 ################## Curated data files (data/curated/) ##############################
 # The index of curated files: data/curated/curated_index.csv, then the optional
 # data/curated/curated_index_local.csv (same columns) for a local copy's extra
-# files.  A file listed in both keeps only its local row, in the released row's
-# place, so a local copy can relabel or annotate a released file.  Only files that
-# exist are kept; NULL if there are none.  See data/curated/README.md.
+# files.  An entry is a data file together with its selections file (column
+# "selections", blank for none), so several entries can share one data file, each
+# a different analysis of it with its own label, selections and precomputed
+# results.  An entry listed in both indexes (same data file and selections file)
+# keeps only its local row, in the released row's place, so a local copy can
+# relabel or annotate a released entry.  Only entries whose data file exists are
+# kept; NULL if there are none.  See data/curated/README.md.
+#   .local  TRUE for a row from the local index
+#   .value  the entry's value in the "curatedDataFile" dropdown: its file name, or,
+#           for entries that share a data file, the file name and selections file
 readCuratedIndex <- function() {
   files <- file.path("data/curated", c("curated_index.csv", "curated_index_local.csv"))
   files <- files[file.exists(files)]
@@ -129,11 +136,20 @@ readCuratedIndex <- function() {
   idx <- as.data.frame(dplyr::bind_rows(lapply(files, function(f)
     dplyr::mutate(readr::read_csv(f, show_col_types = FALSE, col_types = readr::cols(.default = "c")),
                   .local = basename(f) == "curated_index_local.csv"))))
-  firstPos <- match(idx$filename, idx$filename)
-  keep <- !duplicated(idx$filename, fromLast = TRUE)
+  sel <- if ("selections" %in% names(idx)) trimws(ifelse(is.na(idx$selections), "", idx$selections))
+         else rep("", nrow(idx))
+  key <- paste(idx$filename, sel, sep = "\r")
+  firstPos <- match(key, key)
+  keep <- !duplicated(key, fromLast = TRUE)
   idx <- idx[keep, , drop = FALSE][order(firstPos[keep]), , drop = FALSE]
-  idx <- idx[file.exists(file.path("data/curated", idx$filename)), , drop = FALSE]
-  if (nrow(idx)) idx else NULL
+  sel <- sel[keep][order(firstPos[keep])]
+  ok <- file.exists(file.path("data/curated", idx$filename))
+  idx <- idx[ok, , drop = FALSE]; sel <- sel[ok]
+  if (!nrow(idx)) return(NULL)
+  shared <- duplicated(idx$filename) | duplicated(idx$filename, fromLast = TRUE)
+  idx$.value <- ifelse(shared, paste0(idx$filename, " | ", ifelse(nzchar(sel), sel, "no selections")),
+                       idx$filename)
+  idx
 }
 
 ################## Default data set for initial display ###########################

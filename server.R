@@ -166,6 +166,9 @@ server <- function(input, output, session) {
     ## An optional data/curated/curated_index_local.csv (same columns) lists further
     ## files after those, for a local copy whose extra files are not part of the
     ## release (keep it and its files out of version control).
+    ## Several entries may share one data file, each with its own selections (and
+    ## label and precomputed results): the dropdown's values are readCuratedIndex()'s
+    ## .value, the file name or, for a shared file, the file name and selections file.
     curatedIndex <- readCuratedIndex()     # global.R
 
     ## Dropdown + load button shown under the upload control in "Load Data File".
@@ -176,7 +179,7 @@ server <- function(input, output, session) {
         hr(),
         selectInput("curatedDataFile",
                     label = "Or choose from the curated collection:",
-                    choices = c("Choose a data file" = "", setNames(curatedIndex$filename, curatedIndex$label))),
+                    choices = c("Choose a data file" = "", setNames(curatedIndex$.value, curatedIndex$label))),
         uiOutput("curatedDataDescription"),
         actionButton("loadCuratedData", "Load curated data file"),
         hr()
@@ -186,7 +189,7 @@ server <- function(input, output, session) {
     ## Short description of the selected curated file, shown above the load button.
     output$curatedDataDescription <- renderUI({
       req(curatedIndex, input$curatedDataFile)
-      chosen <- curatedIndex[curatedIndex$filename == input$curatedDataFile, , drop = FALSE]
+      chosen <- curatedIndex[curatedIndex$.value == input$curatedDataFile, , drop = FALSE]
       req(nrow(chosen) == 1)
       p(style = "font-size:90%",
         tags$b(chosen$label), br(),
@@ -206,7 +209,7 @@ server <- function(input, output, session) {
     ## Load the chosen curated file, replacing the current data (same as an upload).
     observeEvent(input$loadCuratedData, {
       req(curatedIndex, input$curatedDataFile)
-      chosen <- curatedIndex[curatedIndex$filename == input$curatedDataFile, , drop = FALSE]
+      chosen <- curatedIndex[curatedIndex$.value == input$curatedDataFile, , drop = FALSE]
       req(nrow(chosen) == 1)
       if (loadDataFile(file.path("data/curated", chosen$filename), chosen$label,
                        chosen$filename, "curated")) {
