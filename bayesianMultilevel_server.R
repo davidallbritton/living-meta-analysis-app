@@ -308,7 +308,10 @@ bmlExtrasUI <- function(prefix) {
                  "effect-size-level effects, and (second table) new papers as well, so that the",
                  "replicates carry the heterogeneity the model claims.  The posterior predictive",
                  "p (ppp) is the share of replicates whose statistic is at least the observed",
-                 "one; values near 0 or 1 flag misfit.  1,000 replicates, seed 4242.")),
+                 "one; values near 0 or 1 flag misfit.  Seed 4242.")),
+    checkboxInput(paste0(prefix, "PpcAllDraws"),
+                  paste("One replicate per posterior draw (all 12,000 with the app's sampler settings),",
+                        "instead of 1,000; about 12 times slower"), value = FALSE),
     actionButton(paste0(prefix, "PpcButton"), "Run posterior predictive checks"),
     uiOutput(paste0(prefix, "PpcOut"))
   )
@@ -350,19 +353,24 @@ bmlExtrasServer <- function(prefix, model) {
                          100 * v[["priorShareOfPrecision"]])))
   })
 
-  ## posterior predictive checks: only on request (they redraw the data 2 x 1,000 times)
+  ## posterior predictive checks: only on request (they redraw the data twice per replicate)
+  ## 1,000 replicates by default; with the checkbox ticked, one per posterior draw
+  ## (ndraws = NULL), as in analyses that report this check from every draw
   ppc <- eventReactive(input[[paste0(prefix, "PpcButton")]], {
     fit <- model()
+    nd <- if (isTRUE(input[[paste0(prefix, "PpcAllDraws")]])) NULL else 1000
     withProgress(message = "Replicating the data...", value = 0.1, {
-      es <- bmlPpcTable(fit, bmlMixedReplicates(fit, "es", seed = 4242, ndraws = 1000))
+      yr <- bmlMixedReplicates(fit, "es", seed = 4242, ndraws = nd)
+      es <- bmlPpcTable(fit, yr)
       incProgress(0.45)
-      pa <- bmlPpcTable(fit, bmlMixedReplicates(fit, "paper", seed = 4242, ndraws = 1000))
-      list(es = es, paper = pa)
+      pa <- bmlPpcTable(fit, bmlMixedReplicates(fit, "paper", seed = 4242, ndraws = nd))
+      list(es = es, paper = pa, n = nrow(yr))
     })
   })
   output[[paste0(prefix, "PpcOut")]] <- renderUI({
     r <- ppc()
-    tagList(p(tags$b("New effect-size-level effects:")), renderTable(r$es, digits = 3),
+    tagList(p(tags$small(sprintf("%s replicates per table, seed 4242.", format(r$n, big.mark = ",")))),
+            p(tags$b("New effect-size-level effects:")), renderTable(r$es, digits = 3),
             p(tags$b("New papers and new effect-size-level effects:")), renderTable(r$paper, digits = 3))
   })
 }

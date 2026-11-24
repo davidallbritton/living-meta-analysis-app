@@ -408,6 +408,7 @@ bmlContrast <- function(fit, levelA, levelB, type = "hdi") {
 ## would reproduce the data almost exactly, and a check built on that could not
 ## fail.  brms reuses the fit's V (data2), which is valid only because the new
 ## data are the fitted data in the same order with new labels.
+## ndraws = NULL gives one replicate per posterior draw.
 bmlMixedReplicates <- function(fit, level = c("es", "paper"), seed = 4242, ndraws = 2000) {
   level <- match.arg(level)
   nd <- fit$data

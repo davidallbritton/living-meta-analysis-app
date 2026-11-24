@@ -668,6 +668,10 @@ if (calculate_bma == "Yes") {   # needs proper bayesmeta priors and aggregated d
 #   proper (filled-in) mu prior.
 calculate_brms <- "No"   ## set to "Yes" to run the (slow) Bayesian multilevel models
 run_ppc <- "No"          ## set to "Yes" for the posterior predictive checks (slower still)
+## replicates for those checks: 1000, or NULL for one per posterior draw (as in the app\'s
+## "One replicate per posterior draw" option, about 12 times slower)
+ppc_ndraws <- %s
+ppc_ndraws_regression <- %s
 bmlModeratorName <- %s    ## moderator for the multilevel regression ("" = none chosen)
 if (run_multilevel == "Yes" && calculate_brms == "Yes") {
   properMuPrior <- length(mupriormean) == 1 && !is.na(mupriormean) &&
@@ -687,8 +691,8 @@ if (run_multilevel == "Yes" && calculate_brms == "Yes") {
     print(bmlShrinkageForest(bmlShrinkage(bml, interval_type)))   ## observed vs shrunken estimates
     print(bmlTriplot(bmlMeanDraws(bml)[, 1], mupriormean, mupriorsd, "Hedges\' g: overall mean"))
     if (run_ppc == "Yes") {   ## mixed posterior predictive checks (new effect sizes; new papers)
-      print(bmlPpcTable(bml, bmlMixedReplicates(bml, "es", seed = 4242, ndraws = 1000)))
-      print(bmlPpcTable(bml, bmlMixedReplicates(bml, "paper", seed = 4242, ndraws = 1000)))
+      print(bmlPpcTable(bml, bmlMixedReplicates(bml, "es", seed = 4242, ndraws = ppc_ndraws)))
+      print(bmlPpcTable(bml, bmlMixedReplicates(bml, "paper", seed = 4242, ndraws = ppc_ndraws)))
     }
 @@LABEL:bayesian_multilevel_regression@@
     ## per-group model (multilevel regression), if a moderator was chosen
@@ -712,8 +716,8 @@ if (run_multilevel == "Yes" && calculate_brms == "Yes") {
         }
       }
       if (run_ppc == "Yes") {
-        print(bmlPpcTable(bmlReg, bmlMixedReplicates(bmlReg, "es", seed = 4242, ndraws = 1000)))
-        print(bmlPpcTable(bmlReg, bmlMixedReplicates(bmlReg, "paper", seed = 4242, ndraws = 1000)))
+        print(bmlPpcTable(bmlReg, bmlMixedReplicates(bmlReg, "es", seed = 4242, ndraws = ppc_ndraws_regression)))
+        print(bmlPpcTable(bmlReg, bmlMixedReplicates(bmlReg, "paper", seed = 4242, ndraws = ppc_ndraws_regression)))
       }
     }
   } else {
@@ -721,7 +725,9 @@ if (run_multilevel == "Yes" && calculate_brms == "Yes") {
         "and a proper (filled-in) mu prior.\\n")
   }
 }
-', escapeAndDQuote(enc2utf8(bmlModeratorRecorded)))
+', if (isTRUE(input$bmlPpcAllDraws)) "NULL" else "1000",
+     if (isTRUE(input$bmlRegPpcAllDraws)) "NULL" else "1000",
+     escapeAndDQuote(enc2utf8(bmlModeratorRecorded)))
   code_for_bml <- applySectionLabels(code_for_bml)
 
   ####### Wrapping up and saving the code for display and downloading ###########
@@ -799,6 +805,8 @@ reactiveTriggers <- reactive(list(MA(), metaRegCode(), bmrCode(), descriptivesCo
                                   ## the contrast levels apply live (no recalculation)
                                   input$contrastLevelA, input$contrastLevelB,
                                   ## so does the kind of credible interval
-                                  input$intervalType))
+                                  input$intervalType,
+                                  ## and the replicates for the posterior predictive checks
+                                  input$bmlPpcAllDraws, input$bmlRegPpcAllDraws))
 
 
