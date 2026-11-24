@@ -1,7 +1,7 @@
 #######################################################################################
 ################### A General Tool for BAYESIAN META-ANALYSIS #######################
 #######################################################################################
-# v.1.6 2026.11.23
+# v.1.6.1 2026.11.24
 
 ################### Helper functions #################################################
 
@@ -749,6 +749,23 @@ checkOldPlots <- function(listPrevious, MA, tauprior, mupriorsd, scaletau, robus
     }
   }
   if(isTruthy(return_robustggplot)) return_robustggplot else FALSE
+}
+
+## A study added with "Add a Study" as a one-row data frame, its columns converted to the
+## types of the same columns in the data it is added to, so that dplyr::bind_rows() can
+## combine them: where the data's column is text (character or factor) the new value
+## becomes text, and where it is numeric the new value becomes a number.  For example, a
+## data file whose Experiment.Number column holds labels such as "1b" is read as text,
+## while the form enters the experiment number as a number.  Columns that are empty in
+## the data, or that the data does not have, keep the new value's type.  (v1.6.1)
+matchColumnTypes <- function(new, data) {
+  for (n in intersect(names(new), names(data))) {
+    old <- data[[n]]
+    if (all(is.na(old))) next
+    if (is.character(old) || is.factor(old)) new[[n]] <- as.character(new[[n]])
+    else if (is.numeric(old) && !is.numeric(new[[n]])) new[[n]] <- suppressWarnings(as.numeric(new[[n]]))
+  }
+  new
 }
 
 ########## Functions for generating R code

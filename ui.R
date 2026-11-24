@@ -1,7 +1,7 @@
 #######################################################################################
 ################### A General Tool for Living Meta-Analysis #######################
 #######################################################################################
-# v.1.6 2026.11.23
+# v.1.6.1 2026.11.24
 
 ###################   Shiny App UI ###################################
 
@@ -54,8 +54,8 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                       }).observe(document.body, {childList: true, subtree: true});
                     });
                   })();"))),
-                titlePanel(title = div("A General Tool for Living Meta-Analysis (v1.6)"),
-                           windowTitle = "A General Tool for Living Meta-Analysis (v1.6)"),
+                titlePanel(title = div("A General Tool for Living Meta-Analysis (v1.6.1)"),
+                           windowTitle = "A General Tool for Living Meta-Analysis (v1.6.1)"),
                 sidebarLayout(
                   sidebarPanel(fluidRow(
                     uiOutput("currentDataFile"),
@@ -574,7 +574,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                                href="https://doi.org/10.5281/zenodo.21938551", target = "_blank"),
                                              "(this DOI always resolves to the most recent release)."),
                                            br(),
-                                           ("Updated: 2026-11-23"),
+                                           ("Updated: 2026-11-24"),
                                            h4("Updates:"),
                                            ("Updates and extensions can be found at the OSF project site"),
                                            a("https://osf.io/3zxh2/", href="https://osf.io/3zxh2/", target = "_blank"),

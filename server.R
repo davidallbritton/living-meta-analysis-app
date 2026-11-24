@@ -1,7 +1,7 @@
 #######################################################################################
 ################### A General Tool for Living Meta-Analysis #################
 #######################################################################################
-# v.1.6 2026.11.23
+# v.1.6.1 2026.11.24
 # feature (2026-07-14): selection-factor checkboxes show live "[n ES, k studies]" count badges.
 
 ################### Shiny App SERVER ###################################
@@ -838,7 +838,9 @@ server <- function(input, output, session) {
     }
     newstudy$FromUserInput <- "Yes"
     #
-    # add the new row of data to the current data:
+    # add the new row of data to the current data, its columns converted to the data's types
+    # (v1.6.1: a text column, such as experiment numbers like "1b", stopped bind_rows())
+    newstudy <- matchColumnTypes(newstudy, myrvs$df.updated)
     myrvs$df.updated <- bind_rows(myrvs$df.updated, newstudy)
     newdatalist <- reformat.df(myrvs$df.updated) 
     req(newdatalist)  # make sure the new data was successfully processed before resetting the input fields

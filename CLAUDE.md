@@ -1,7 +1,7 @@
 # living-meta-analysis-app — guidance for Claude Code sessions
 
 This repository **is** the Shiny app "A General Tool for Living Meta-Analysis"
-(v1.6). It is the primary, public development repository — the app source lives
+(v1.6.1). It is the primary, public development repository — the app source lives
 at the repository root (which is why `shiny::runGitHub("living-meta-analysis-app",
 "davidallbritton")` works). Work directly here; there is no separate mirror.
 

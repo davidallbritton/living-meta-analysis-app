@@ -1,4 +1,4 @@
-# A General Tool for Living Meta-Analysis -- v.1.6 2026.11.23
+# A General Tool for Living Meta-Analysis -- v.1.6.1 2026.11.24
 ## generating static R code for the Descriptives panel
 ## (sourced local = T from codeGenerator.R, like metaRegression_code_generator.R)
 ##

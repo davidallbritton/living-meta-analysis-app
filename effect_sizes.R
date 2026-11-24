@@ -1,4 +1,4 @@
-# A General Tool for Living Meta-Analysis -- v.1.6 2026.11.23
+# A General Tool for Living Meta-Analysis -- v.1.6.1 2026.11.24
 
 Cohens_d<- function(M_C, M_E, S_C, S_E, N_C=NULL, N_E=NULL, N=NULL, r=NULL, design="between", type= "C-E"){
   

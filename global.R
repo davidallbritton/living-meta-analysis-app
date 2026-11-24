@@ -1,5 +1,5 @@
 ################### A General Tool for Living Meta-Analysis #################
-# v.1.6 2026.11.23
+# v.1.6.1 2026.11.24
 ####################################################################################
 #
 # Version history.  The Explanation tab lists only what is new compared with the app
@@ -81,6 +81,12 @@
 #     test is the modified Egger regression inside the CHE model (cheEgger(): the
 #     g-free SE from an optional vi_gfree column); the multilevel regression tab
 #     adds per-level funnels and tests for levels with >= 10 papers.
+#
+# v1.6.1
+#   "Add a Study" no longer stops the session when the data file has a text column
+#   where the form enters a number (for example experiment numbers such as "1b"): the
+#   new study's columns take the data's types before it is added (matchColumnTypes()
+#   in HelperFunctions.R).  No results change.
 #
 ####################################################################################
 
