@@ -1,5 +1,5 @@
 ################### A General Tool for Living Meta-Analysis #################
-# v.1.6 2026.11.22
+# v.1.6 2026.11.23
 ####################################################################################
 #
 # Version history.  The Explanation tab lists only what is new compared with the app

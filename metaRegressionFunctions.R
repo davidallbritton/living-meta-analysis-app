@@ -1,3 +1,4 @@
+# A General Tool for Living Meta-Analysis -- v.1.6 2026.11.23
 # include this along with the other helper functions
 
 ##############################################################################

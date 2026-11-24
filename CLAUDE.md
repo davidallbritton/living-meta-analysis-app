@@ -119,10 +119,20 @@ Statistically/numerically subtle items (attempt with care, or warn first):
   (needs proper priors ✓, many more draws, numerically fragile).
 - **Deep Stan-on-server diagnosis** if shinyapps.io deploys fail non-obviously (the bml
   tabs already degrade to an explanatory message on fit failure).
+- **Within-paper and between-paper effects of a moderator** (the decomposition used for
+  a posttest-delay model: `~ Dw + Dbar`, with a prior on the slopes).  Not in the app; a
+  curated entry restricted to the papers that have both levels approximates the
+  within-paper effect with the ordinary contrast.  A general version would extend to k
+  levels with one brms template by passing the predictors as a matrix column.
 
 Routine items any session can do: text/UI tweaks, extending descriptives/selections,
 using the data file's optional `r` column instead of the fixed 0.5 correlation in
 `agg()`/`vcalc()` (small, well-scoped).
 
-Note: the Bayesian CHE analogue (correlated within-paper sampling errors in the brms
-multilevel model) is now **implemented**.
+Hosting: shinyapps.io moves to Posit Connect Cloud in 2027.  rsconnect deployments are
+said to keep working there; a Git-backed deployment would need another way to ship the
+git-ignored precomputed fits (`bml.RDS` is over GitHub's file-size limit).
+
+Already implemented (don't propose them again): the Bayesian CHE analogue (correlated
+within-paper sampling errors in the brms model); paper-level funnel plots and Egger
+tests in the frequentist tabs; curated entries that share a data file.

@@ -1,3 +1,4 @@
+# A General Tool for Living Meta-Analysis -- v.1.6 2026.11.23
 ######### tab panel for selecting a moderator and saying "yes" do meta-analysis 
 #
 # This section is referenced by this part of the UI.R file:

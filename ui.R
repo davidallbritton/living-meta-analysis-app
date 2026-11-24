@@ -1,7 +1,7 @@
 #######################################################################################
 ################### A General Tool for Living Meta-Analysis #######################
 #######################################################################################
-# v.1.6 2026.11.22
+# v.1.6 2026.11.23
 
 ###################   Shiny App UI ###################################
 
@@ -574,7 +574,7 @@ ui <- fluidPage(theme = shinytheme("cosmo"),
                                                href="https://doi.org/10.5281/zenodo.21938551", target = "_blank"),
                                              "(this DOI always resolves to the most recent release)."),
                                            br(),
-                                           ("Updated: 2026-11-22"),
+                                           ("Updated: 2026-11-23"),
                                            h4("Updates:"),
                                            ("Updates and extensions can be found at the OSF project site"),
                                            a("https://osf.io/3zxh2/", href="https://osf.io/3zxh2/", target = "_blank"),
