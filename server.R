@@ -1448,12 +1448,15 @@ server <- function(input, output, session) {
   ### two-level tab and the Frequentist Multilevel tab)
   drawFreqForest <- function(model) {
     # Increase bottom margin to make space for the text
-    par(mar = c(5, 4, 4, 2) + 0.1)  # Adjust the bottom margin (the first value)
+    par(mar = c(7, 4, 4, 2) + 0.1)  # bottom margin: room for four lines of text
     # Generate the forest plot
     plot <- metafor::forest.rma(x = model, showweights = TRUE, addfit = TRUE,
                                 order = "obs", xlab = "Hedges' g",
                                 addpred = TRUE,
-                                efac = 0,
+                                # CI end ticks and arrows: metafor sizes them in proportion to the height of the plot in
+                                # rows, so past ~40 studies they would reach the neighbouring rows; scale them down to
+                                # at most ~0.3 of a row.  The diamond and prediction-interval ends keep full size.
+                                efac = c(rep(min(1, 45 / (model$k + 5)), 2), 1),
                                 col = "red",
                                 border = "red")
     # Add Cochran's Q and heterogeneity statistics as text below the plot.
@@ -1461,14 +1464,20 @@ server <- function(input, output, session) {
     hetText <- if (inherits(model, "rma.mv")) {
       paste0("σ² between papers = ", round(model$sigma2[1], 3),
              ",  σ² within papers = ", round(model$sigma2[2], 3),
-             "   (CHE model; summary CI is cluster-robust)")
+             "\nCHE model; the summary CI is CR2 cluster-robust, with ",
+             round(model$ddf[1], 1), " Satterthwaite df")
     } else {
       paste0("I² = ", round(model$I2, 2), "%")
     }
+    # the prediction interval drawn as the dotted line, also given as numbers
+    pred <- predict(model)
+    predText <- paste0("\n", round(100 * (1 - model$level)), "% prediction interval",
+                       if (inherits(model, "rma.mv")) " for a new effect size in a new paper",
+                       ": [", sprintf("%.2f", pred$pi.lb[1]), ", ", sprintf("%.2f", pred$pi.ub[1]), "]")
     mtext(side = 1, line = 4,
           text = paste0("Cochran's Q = ", round(model$QE, 2),
                        " (p = ",  format(round(model$QEp, 4), nsmall = 4), ")\n",
-                       hetText),
+                       hetText, predText),
           adj = 0, cex = 0.8)
     # Return the plot
     plot

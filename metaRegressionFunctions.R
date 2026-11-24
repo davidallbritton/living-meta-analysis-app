@@ -411,7 +411,7 @@ forestByGroup <- function(MA=MA, moderator, slab=MA$study, cex=1,
 ###### end of forestByGroup() function
 
 ## The statistics that go with forestByGroup()'s plot, as plain text: the
-## heterogeneity of the model for all studies without the moderator (its bottom
+## heterogeneity and prediction interval of the model for all studies without the moderator (its bottom
 ## diamond), and the test for subgroup differences from the shared model (an F
 ## test with both degrees of freedom; Q_M, chi-square, if the model used z tests).
 forestByGroupStats <- function(MA, moderator, multilevel = FALSE, rho = 0.5, sharing = NULL) {
@@ -431,6 +431,12 @@ forestByGroupStats <- function(MA, moderator, multilevel = FALSE, rho = 0.5, sha
                        fmtx(fma$QE, digits = 2), fma$k - fma$p, pv(fma$QEp),
                        fmtx(fma$I2, digits = 1), fmtx(fma$tau2, digits = 2))
   }
+  # the prediction interval drawn as the bottom diamond's dotted line, as numbers
+  pred <- predict(fma)
+  overall <- paste0(overall, sprintf("; %s%% prediction interval%s [%s, %s]",
+                                     round(100 * (1 - fma$level)),
+                                     if (multilevel) " for a new effect size in a new paper" else " for a new study",
+                                     fmtx(pred$pi.lb[1], digits = 2), fmtx(pred$pi.ub[1], digits = 2)))
   stat <- if (fmaMod$test == "z") sprintf("Q_M = %s, df = %d", fmtx(fmaMod$QM, digits = 2), fmaMod$QMdf[1])
           else sprintf("F(%d, %s) = %s", fmaMod$QMdf[1], fmtx(fmaMod$QMdf[2], digits = 1), fmtx(fmaMod$QM, digits = 2))
   c(overall = overall,
